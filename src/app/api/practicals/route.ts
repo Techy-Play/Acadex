@@ -4,6 +4,7 @@ import { addPracticalSchema } from "@/lib/validations";
 import Subject from "@/models/Subject";
 import Practical from "@/models/Practical";
 import ActivityLog from "@/models/ActivityLog";
+import Notification from "@/models/Notification";
 
 // GET /api/practicals - List practicals (optionally filter by subject)
 export async function GET(request: Request) {
@@ -66,6 +67,15 @@ export async function POST(request: Request) {
       user: adminId!,
       action: "PRACTICAL_ADDED",
       details: `Added practical: ${parsed.data.title}`,
+    });
+
+    // Notify students
+    await Notification.create({
+      type: "new_practical",
+      title: "New Practical Added",
+      message: `"${parsed.data.title}" has been uploaded`,
+      link: "/dashboard/practicals",
+      targetRole: "student",
     });
 
     return NextResponse.json(

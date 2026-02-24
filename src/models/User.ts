@@ -4,6 +4,7 @@ export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
   college_id: string;
+  email: string | null;
   password_hash: string;
   role: "admin" | "student";
   stream: mongoose.Types.ObjectId | null;
@@ -26,6 +27,13 @@ const UserSchema = new Schema<IUser>(
       unique: true,
       trim: true,
       maxlength: 50,
+    },
+    email: {
+      type: String,
+      default: null,
+      trim: true,
+      lowercase: true,
+      maxlength: 255,
     },
     password_hash: {
       type: String,

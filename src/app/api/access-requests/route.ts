@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import AccessRequest from "@/models/AccessRequest";
 import Stream from "@/models/Stream";
+import Notification from "@/models/Notification";
 
 // Ensure Stream model is registered for populate
 void Stream;
@@ -72,6 +73,15 @@ export async function POST(request: Request) {
       email: email.trim().toLowerCase(),
       stream: stream || null,
       reason: (reason || "").trim().slice(0, 500),
+    });
+
+    // Notify admins
+    await Notification.create({
+      type: "new_access_request",
+      title: "New Access Request",
+      message: `${name.trim()} (${college_id.trim()}) requested access`,
+      link: "/admin/access-requests",
+      targetRole: "admin",
     });
 
     return NextResponse.json(

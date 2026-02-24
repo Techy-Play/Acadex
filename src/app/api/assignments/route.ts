@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { addAssignmentSchema } from "@/lib/validations";
 import Assignment from "@/models/Assignment";
 import ActivityLog from "@/models/ActivityLog";
+import Notification from "@/models/Notification";
 
 // GET /api/assignments - List assignments (optionally filter by subject)
 export async function GET(request: Request) {
@@ -64,6 +65,18 @@ export async function POST(request: Request) {
       user: adminId!,
       action: "ASSIGNMENT_ADDED",
       details: `Added assignment: ${parsed.data.title}`,
+    });
+
+    // Notify students
+    const deadlineInfo = parsed.data.deadline
+      ? ` (Due: ${new Date(parsed.data.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })})`
+      : "";
+    await Notification.create({
+      type: "new_assignment",
+      title: "New Assignment Added",
+      message: `"${parsed.data.title}"${deadlineInfo} has been posted`,
+      link: "/dashboard/assignments",
+      targetRole: "student",
     });
 
     return NextResponse.json(

@@ -27,9 +27,21 @@ async function verifyJWT(token: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Public routes - no auth needed
+  // Public routes - check if user is already logged in and redirect
   const publicPaths = ["/", "/login"];
   if (publicPaths.includes(pathname)) {
+    const token = request.cookies.get(COOKIE_NAME)?.value;
+    if (token) {
+      const payload = await verifyJWT(token);
+      if (payload) {
+        // User is already logged in — redirect to their dashboard
+        if (payload.mustChangePassword) {
+          return NextResponse.redirect(new URL("/change-password", request.url));
+        }
+        const dest = payload.role === "admin" ? "/admin" : "/dashboard";
+        return NextResponse.redirect(new URL(dest, request.url));
+      }
+    }
     return NextResponse.next();
   }
 
@@ -110,6 +122,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
+    "/login",
     "/dashboard/:path*",
     "/admin/:path*",
     "/change-password",
@@ -117,6 +131,10 @@ export const config = {
     "/api/auth/logout",
     "/api/auth/me",
     "/api/auth/change-password",
+    "/api/auth/send-otp",
+    "/api/auth/verify-otp",
+    "/api/profile/:path*",
+    "/api/notifications/:path*",
     "/api/subjects/:path*",
     "/api/notes/:path*",
     "/api/assignments/:path*",

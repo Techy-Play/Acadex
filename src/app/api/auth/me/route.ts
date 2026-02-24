@@ -33,17 +33,25 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        college_id: user.college_id,
-        role: user.role,
-        stream: streamData,
-        must_change_password: user.must_change_password,
-        createdAt: user.createdAt,
+    return NextResponse.json(
+      {
+        user: {
+          id: user._id,
+          name: user.name,
+          college_id: user.college_id,
+          email: user.email || null,
+          role: user.role,
+          stream: streamData,
+          must_change_password: user.must_change_password,
+          createdAt: user.createdAt,
+        },
       },
-    });
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+      }
+    );
   } catch (error) {
     console.error("Get me error:", error);
     return NextResponse.json(

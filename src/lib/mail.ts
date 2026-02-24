@@ -91,3 +91,35 @@ export function denialEmailHTML(name: string, reason: string) {
     </div>
   `;
 }
+
+export function otpEmailHTML(name: string, otp: string, purpose: "password_change" | "email_change") {
+  const purposeText = purpose === "password_change" ? "change your password" : "update your email address";
+  return `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #6366f1, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">Section C Hub</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Verification Code</p>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
+        <h2 style="color: #1f2937; margin: 0 0 16px 0;">Hi ${name},</h2>
+        <p style="color: #4b5563; line-height: 1.6;">
+          You requested to <strong>${purposeText}</strong>. Use the verification code below to proceed:
+        </p>
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
+          <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 13px;">Your OTP Code</p>
+          <p style="margin: 0; font-size: 36px; font-weight: 700; color: #6366f1; letter-spacing: 8px; font-family: monospace;">${otp}</p>
+        </div>
+        <p style="color: #ef4444; font-size: 13px; font-weight: 600;">
+          ⚠️ This code expires in 10 minutes. Do not share it with anyone.
+        </p>
+        <p style="color: #4b5563; line-height: 1.6; margin-top: 16px;">
+          If you did not request this, you can safely ignore this email.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+        <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+          This is an automated email from Section C Hub.
+        </p>
+      </div>
+    </div>
+  `;
+}

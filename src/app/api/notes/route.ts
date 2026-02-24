@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { addNoteSchema } from "@/lib/validations";
 import Note from "@/models/Note";
 import ActivityLog from "@/models/ActivityLog";
+import Notification from "@/models/Notification";
 
 // GET /api/notes - List notes (optionally filter by subject)
 export async function GET(request: Request) {
@@ -62,6 +63,15 @@ export async function POST(request: Request) {
       user: adminId!,
       action: "NOTE_ADDED",
       details: `Added note: ${parsed.data.title}`,
+    });
+
+    // Notify students
+    await Notification.create({
+      type: "new_note",
+      title: "New Note Added",
+      message: `"${parsed.data.title}" has been uploaded`,
+      link: "/dashboard/notes",
+      targetRole: "student",
     });
 
     return NextResponse.json({ success: true, note: populated }, { status: 201 });
