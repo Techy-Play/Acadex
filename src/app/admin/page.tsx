@@ -9,7 +9,9 @@ interface Stats {
   totalStudents: number;
   totalNotes: number;
   totalAssignments: number;
+  totalPracticals: number;
   totalSubjects: number;
+  totalStreams: number;
 }
 
 export default function AdminDashboard() {
@@ -17,25 +19,31 @@ export default function AdminDashboard() {
     totalStudents: 0,
     totalNotes: 0,
     totalAssignments: 0,
+    totalPracticals: 0,
     totalSubjects: 0,
+    totalStreams: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        const [studentsRes, notesRes, assignmentsRes, subjectsRes] =
+        const [studentsRes, notesRes, assignmentsRes, practicalsRes, subjectsRes, streamsRes] =
           await Promise.all([
             fetch("/api/admin/students"),
             fetch("/api/notes"),
             fetch("/api/assignments"),
+            fetch("/api/practicals"),
             fetch("/api/subjects"),
+            fetch("/api/streams"),
           ]);
 
         const studentsData = await studentsRes.json();
         const notesData = await notesRes.json();
         const assignmentsData = await assignmentsRes.json();
+        const practicalsData = await practicalsRes.json();
         const subjectsData = await subjectsRes.json();
+        const streamsData = await streamsRes.json();
 
         setStats({
           totalStudents: studentsData.students?.filter(
@@ -43,7 +51,9 @@ export default function AdminDashboard() {
           ).length || 0,
           totalNotes: notesData.notes?.length || 0,
           totalAssignments: assignmentsData.assignments?.length || 0,
+          totalPracticals: practicalsData.practicals?.length || 0,
           totalSubjects: subjectsData.subjects?.length || 0,
+          totalStreams: streamsData.streams?.length || 0,
         });
       } catch (error) {
         console.error("Failed to fetch stats:", error);
@@ -74,10 +84,22 @@ export default function AdminDashboard() {
       color: "from-purple-500 to-purple-600",
     },
     {
+      title: "Practicals",
+      value: stats.totalPracticals,
+      icon: "🧪",
+      color: "from-emerald-500 to-emerald-600",
+    },
+    {
       title: "Subjects",
       value: stats.totalSubjects,
       icon: "📚",
       color: "from-pink-500 to-pink-600",
+    },
+    {
+      title: "Streams",
+      value: stats.totalStreams,
+      icon: "🎓",
+      color: "from-teal-500 to-teal-600",
     },
   ];
 
@@ -92,7 +114,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {statCards.map((stat) => (
           <Card key={stat.title} className="rounded-2xl">
             <CardHeader className="pb-2">
@@ -117,18 +139,18 @@ export default function AdminDashboard() {
       {/* Quick Actions */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Link href="/admin/add-student">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <Link href="/admin/users">
             <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
               <CardContent className="p-5 flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
                   <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="font-medium text-sm">Add Student</p>
-                  <p className="text-xs text-muted-foreground">Register new</p>
+                  <p className="font-medium text-sm">Manage Users</p>
+                  <p className="text-xs text-muted-foreground">Add & manage</p>
                 </div>
               </CardContent>
             </Card>
@@ -166,6 +188,22 @@ export default function AdminDashboard() {
             </Card>
           </Link>
 
+          <Link href="/admin/practicals">
+            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
+              <CardContent className="p-5 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                  <svg className="h-5 w-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Practicals</p>
+                  <p className="text-xs text-muted-foreground">Add & manage</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
           <Link href="/admin/subjects">
             <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
               <CardContent className="p-5 flex items-center gap-3">
@@ -177,6 +215,38 @@ export default function AdminDashboard() {
                 <div>
                   <p className="font-medium text-sm">Subjects</p>
                   <p className="text-xs text-muted-foreground">Add & remove</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/streams">
+            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
+              <CardContent className="p-5 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-teal-100 dark:bg-teal-900/50 flex items-center justify-center">
+                  <svg className="h-5 w-5 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Streams</p>
+                  <p className="text-xs text-muted-foreground">Manage streams</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/access-requests">
+            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
+              <CardContent className="p-5 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                  <svg className="h-5 w-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Access Requests</p>
+                  <p className="text-xs text-muted-foreground">Review & approve</p>
                 </div>
               </CardContent>
             </Card>

@@ -155,6 +155,107 @@
   }
 }
 
+/* ─── Accent Color Themes ─── */
+/* Each accent overrides primary, ring, sidebar-primary, and chart colors */
+
+[data-accent="pink"] {
+  --primary: oklch(0.592 0.249 0.584);
+  --ring: oklch(0.592 0.249 0.584);
+  --sidebar-primary: oklch(0.592 0.249 0.584);
+  --chart-1: oklch(0.592 0.249 0.584);
+}
+[data-accent="pink"].dark,
+.dark[data-accent="pink"] {
+  --primary: oklch(0.738 0.213 0.584);
+  --ring: oklch(0.738 0.213 0.584);
+  --sidebar-primary: oklch(0.738 0.213 0.584);
+  --chart-1: oklch(0.738 0.213 0.584);
+}
+
+[data-accent="magenta"] {
+  --primary: oklch(0.541 0.281 316.907);
+  --ring: oklch(0.541 0.281 316.907);
+  --sidebar-primary: oklch(0.541 0.281 316.907);
+  --chart-1: oklch(0.541 0.281 316.907);
+}
+[data-accent="magenta"].dark,
+.dark[data-accent="magenta"] {
+  --primary: oklch(0.701 0.229 316.907);
+  --ring: oklch(0.701 0.229 316.907);
+  --sidebar-primary: oklch(0.701 0.229 316.907);
+  --chart-1: oklch(0.701 0.229 316.907);
+}
+
+[data-accent="cyan"] {
+  --primary: oklch(0.600 0.150 200.723);
+  --ring: oklch(0.600 0.150 200.723);
+  --sidebar-primary: oklch(0.600 0.150 200.723);
+  --chart-1: oklch(0.600 0.150 200.723);
+}
+[data-accent="cyan"].dark,
+.dark[data-accent="cyan"] {
+  --primary: oklch(0.752 0.150 200.723);
+  --ring: oklch(0.752 0.150 200.723);
+  --sidebar-primary: oklch(0.752 0.150 200.723);
+  --chart-1: oklch(0.752 0.150 200.723);
+}
+
+[data-accent="navy"] {
+  --primary: oklch(0.371 0.124 261.917);
+  --ring: oklch(0.371 0.124 261.917);
+  --sidebar-primary: oklch(0.371 0.124 261.917);
+  --chart-1: oklch(0.371 0.124 261.917);
+}
+[data-accent="navy"].dark,
+.dark[data-accent="navy"] {
+  --primary: oklch(0.570 0.180 261.917);
+  --ring: oklch(0.570 0.180 261.917);
+  --sidebar-primary: oklch(0.570 0.180 261.917);
+  --chart-1: oklch(0.570 0.180 261.917);
+}
+
+[data-accent="emerald"] {
+  --primary: oklch(0.533 0.163 163.318);
+  --ring: oklch(0.533 0.163 163.318);
+  --sidebar-primary: oklch(0.533 0.163 163.318);
+  --chart-1: oklch(0.533 0.163 163.318);
+}
+[data-accent="emerald"].dark,
+.dark[data-accent="emerald"] {
+  --primary: oklch(0.696 0.170 162.480);
+  --ring: oklch(0.696 0.170 162.480);
+  --sidebar-primary: oklch(0.696 0.170 162.480);
+  --chart-1: oklch(0.696 0.170 162.480);
+}
+
+[data-accent="sunset"] {
+  --primary: oklch(0.600 0.220 40.000);
+  --ring: oklch(0.600 0.220 40.000);
+  --sidebar-primary: oklch(0.600 0.220 40.000);
+  --chart-1: oklch(0.600 0.220 40.000);
+}
+[data-accent="sunset"].dark,
+.dark[data-accent="sunset"] {
+  --primary: oklch(0.750 0.200 40.000);
+  --ring: oklch(0.750 0.200 40.000);
+  --sidebar-primary: oklch(0.750 0.200 40.000);
+  --chart-1: oklch(0.750 0.200 40.000);
+}
+
+[data-accent="purple"] {
+  --primary: oklch(0.488 0.243 303.900);
+  --ring: oklch(0.488 0.243 303.900);
+  --sidebar-primary: oklch(0.488 0.243 303.900);
+  --chart-1: oklch(0.488 0.243 303.900);
+}
+[data-accent="purple"].dark,
+.dark[data-accent="purple"] {
+  --primary: oklch(0.627 0.265 303.900);
+  --ring: oklch(0.627 0.265 303.900);
+  --sidebar-primary: oklch(0.627 0.265 303.900);
+  --chart-1: oklch(0.627 0.265 303.900);
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

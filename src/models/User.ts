@@ -6,6 +6,7 @@ export interface IUser extends Document {
   college_id: string;
   password_hash: string;
   role: "admin" | "student";
+  stream: mongoose.Types.ObjectId | null;
   must_change_password: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -34,6 +35,11 @@ const UserSchema = new Schema<IUser>(
       type: String,
       enum: ["admin", "student"],
       default: "student",
+    },
+    stream: {
+      type: Schema.Types.ObjectId,
+      ref: "Stream",
+      default: null,
     },
     must_change_password: {
       type: Boolean,

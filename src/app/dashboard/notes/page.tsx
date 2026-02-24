@@ -33,18 +33,34 @@ export default function NotesPage() {
   const [selectedSubject, setSelectedSubject] = useState(initialSubject);
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [loading, setLoading] = useState(true);
+  const [streamSubjectIds, setStreamSubjectIds] = useState<Set<string> | null>(null);
 
   useEffect(() => {
-    async function fetchSubjects() {
+    async function fetchInit() {
       try {
-        const res = await fetch("/api/subjects");
-        const data = await res.json();
-        setSubjects(data.subjects || []);
+        const [subjectsRes, meRes] = await Promise.all([
+          fetch("/api/subjects"),
+          fetch("/api/auth/me"),
+        ]);
+        const subjectsData = await subjectsRes.json();
+        const meData = meRes.ok ? await meRes.json() : { user: {} };
+
+        const allSubjects: Subject[] = subjectsData.subjects || [];
+
+        // Filter subjects by stream
+        let ssIds: Set<string> | null = null;
+        if (meData.user?.stream?.subjects?.length) {
+          ssIds = new Set(meData.user.stream.subjects.map((s: { _id: string }) => s._id));
+          setStreamSubjectIds(ssIds);
+          setSubjects(allSubjects.filter((s) => ssIds!.has(s._id)));
+        } else {
+          setSubjects(allSubjects);
+        }
       } catch (error) {
         console.error("Failed to fetch subjects:", error);
       }
     }
-    fetchSubjects();
+    fetchInit();
   }, []);
 
   useEffect(() => {
@@ -57,7 +73,14 @@ export default function NotesPage() {
             : `/api/notes?subject=${selectedSubject}`;
         const res = await fetch(url);
         const data = await res.json();
-        setNotes(data.notes || []);
+        let allNotes: Note[] = data.notes || [];
+
+        // Filter by stream subjects if applicable and viewing "all"
+        if (selectedSubject === "all" && streamSubjectIds) {
+          allNotes = allNotes.filter((n) => n.subject && streamSubjectIds.has(n.subject._id));
+        }
+
+        setNotes(allNotes);
       } catch (error) {
         console.error("Failed to fetch notes:", error);
       } finally {
@@ -65,7 +88,7 @@ export default function NotesPage() {
       }
     }
     fetchNotes();
-  }, [selectedSubject]);
+  }, [selectedSubject, streamSubjectIds]);
 
   // Sort notes
   const sortedNotes = [...notes].sort((a, b) => {

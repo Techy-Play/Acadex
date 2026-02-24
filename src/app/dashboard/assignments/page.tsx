@@ -37,6 +37,7 @@ export default function AssignmentsPage() {
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [loading, setLoading] = useState(true);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+  const [streamSubjectIds, setStreamSubjectIds] = useState<Set<string> | null>(null);
 
   // Fetch completions from server
   useEffect(() => {
@@ -87,16 +88,29 @@ export default function AssignmentsPage() {
   }, [completedIds]);
 
   useEffect(() => {
-    async function fetchSubjects() {
+    async function fetchInit() {
       try {
-        const res = await fetch("/api/subjects");
-        const data = await res.json();
-        setSubjects(data.subjects || []);
+        const [subjectsRes, meRes] = await Promise.all([
+          fetch("/api/subjects"),
+          fetch("/api/auth/me"),
+        ]);
+        const subjectsData = await subjectsRes.json();
+        const meData = meRes.ok ? await meRes.json() : { user: {} };
+
+        const allSubjects: Subject[] = subjectsData.subjects || [];
+
+        if (meData.user?.stream?.subjects?.length) {
+          const ssIds = new Set<string>(meData.user.stream.subjects.map((s: { _id: string }) => s._id));
+          setStreamSubjectIds(ssIds);
+          setSubjects(allSubjects.filter((s) => ssIds.has(s._id)));
+        } else {
+          setSubjects(allSubjects);
+        }
       } catch (error) {
         console.error("Failed to fetch subjects:", error);
       }
     }
-    fetchSubjects();
+    fetchInit();
   }, []);
 
   useEffect(() => {
@@ -109,7 +123,14 @@ export default function AssignmentsPage() {
             : `/api/assignments?subject=${selectedSubject}`;
         const res = await fetch(url);
         const data = await res.json();
-        setAssignments(data.assignments || []);
+        let allAssignments: Assignment[] = data.assignments || [];
+
+        // Filter by stream subjects if applicable and viewing "all"
+        if (selectedSubject === "all" && streamSubjectIds) {
+          allAssignments = allAssignments.filter((a) => a.subject && streamSubjectIds.has(a.subject._id));
+        }
+
+        setAssignments(allAssignments);
       } catch (error) {
         console.error("Failed to fetch assignments:", error);
       } finally {
@@ -117,7 +138,7 @@ export default function AssignmentsPage() {
       }
     }
     fetchAssignments();
-  }, [selectedSubject]);
+  }, [selectedSubject, streamSubjectIds]);
 
   // Sort assignments
   const sortedAssignments = [...assignments].sort((a, b) => {

@@ -1,0 +1,93 @@
+import nodemailer from "nodemailer";
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS, // Gmail App Password
+  },
+});
+
+interface SendMailOptions {
+  to: string;
+  subject: string;
+  html: string;
+}
+
+export async function sendMail({ to, subject, html }: SendMailOptions) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn("Email credentials not configured — skipping email send.");
+    return null;
+  }
+
+  const info = await transporter.sendMail({
+    from: `"Section C Hub" <${process.env.EMAIL_USER}>`,
+    to,
+    subject,
+    html,
+  });
+
+  return info;
+}
+
+export function approvalEmailHTML(name: string, collegeId: string, tempPassword: string) {
+  return `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #6366f1, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">Section C Hub</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Account Access Granted</p>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
+        <h2 style="color: #1f2937; margin: 0 0 16px 0;">Welcome, ${name}! 🎉</h2>
+        <p style="color: #4b5563; line-height: 1.6;">
+          Your access request for <strong>Section C Hub</strong> has been approved! Here are your login credentials:
+        </p>
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+          <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 13px;">College ID</p>
+          <p style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700; color: #1f2937; letter-spacing: 1px;">${collegeId}</p>
+          <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 13px;">Temporary Password</p>
+          <p style="margin: 0; font-size: 18px; font-weight: 700; color: #6366f1; letter-spacing: 2px; font-family: monospace;">${tempPassword}</p>
+        </div>
+        <p style="color: #ef4444; font-size: 13px; font-weight: 600;">
+          ⚠️ You will be required to change your password on first login.
+        </p>
+        <p style="color: #4b5563; line-height: 1.6; margin-top: 16px;">
+          If you have any questions, contact your class admin.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+        <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+          This is an automated email from Section C Hub.
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+export function denialEmailHTML(name: string, reason: string) {
+  return `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #6366f1, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">Section C Hub</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Access Request Update</p>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
+        <h2 style="color: #1f2937; margin: 0 0 16px 0;">Hi ${name},</h2>
+        <p style="color: #4b5563; line-height: 1.6;">
+          Unfortunately, your access request for <strong>Section C Hub</strong> has been denied.
+        </p>
+        ${reason ? `
+        <div style="background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 0 8px 8px 0; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0 0 4px 0; color: #991b1b; font-size: 13px; font-weight: 600;">Reason:</p>
+          <p style="margin: 0; color: #7f1d1d;">${reason}</p>
+        </div>` : ""}
+        <p style="color: #4b5563; line-height: 1.6;">
+          If you believe this was a mistake, please contact your class admin for further assistance.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+        <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+          This is an automated email from Section C Hub.
+        </p>
+      </div>
+    </div>
+  `;
+}

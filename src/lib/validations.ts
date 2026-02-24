@@ -65,9 +65,20 @@ export const addAssignmentSchema = z.object({
   deadline: z.string().optional().nullable(),
 });
 
+export const addPracticalSchema = z.object({
+  subject: z.string().min(1, "Subject is required"),
+  title: z
+    .string()
+    .min(1, "Title is required")
+    .max(255, "Title too long"),
+  description: z.string().optional().default(""),
+  file_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type AddStudentInput = z.infer<typeof addStudentSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type AddNoteInput = z.infer<typeof addNoteSchema>;
 export type AddAssignmentInput = z.infer<typeof addAssignmentSchema>;
+export type AddPracticalInput = z.infer<typeof addPracticalSchema>;

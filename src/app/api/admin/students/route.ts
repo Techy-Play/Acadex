@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import { connectDB } from "@/lib/db";
 import { addStudentSchema } from "@/lib/validations";
 import User from "@/models/User";
+import Stream from "@/models/Stream";
 import ActivityLog from "@/models/ActivityLog";
 
 // GET /api/admin/students - List all students
@@ -15,9 +16,38 @@ export async function GET(request: Request) {
 
     await connectDB();
 
-    const students = await User.find()
+    // Fetch users first, then manually attach stream data
+    // (avoids Mongoose populate issues with model registration timing)
+    const users = await User.find()
       .select("-password_hash")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Collect unique stream IDs
+    const streamIds = [
+      ...new Set(
+        users
+          .map((u) => u.stream?.toString())
+          .filter((id): id is string => !!id)
+      ),
+    ];
+
+    // Fetch streams in one query if any exist
+    let streamMap: Record<string, { _id: string; name: string }> = {};
+    if (streamIds.length > 0) {
+      const streams = await Stream.find({ _id: { $in: streamIds } })
+        .select("_id name")
+        .lean();
+      for (const s of streams) {
+        streamMap[s._id.toString()] = { _id: s._id.toString(), name: s.name };
+      }
+    }
+
+    // Attach stream object to each user
+    const students = users.map((u) => ({
+      ...u,
+      stream: u.stream ? streamMap[u.stream.toString()] || null : null,
+    }));
 
     return NextResponse.json({ students });
   } catch (error) {
@@ -51,6 +81,7 @@ export async function POST(request: Request) {
     }
 
     const { name, college_id, password, role } = parsed.data;
+    const stream = body.stream || null;
 
     await connectDB();
 
@@ -72,6 +103,7 @@ export async function POST(request: Request) {
       college_id,
       password_hash: passwordHash,
       role,
+      stream,
       must_change_password: true,
     });
 

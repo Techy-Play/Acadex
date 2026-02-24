@@ -38,6 +38,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Public access request API (students apply without auth)
+  if (pathname.startsWith("/api/access-requests")) {
+    return NextResponse.next();
+  }
+
   // Get token from cookie
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
@@ -116,5 +121,9 @@ export const config = {
     "/api/notes/:path*",
     "/api/assignments/:path*",
     "/api/completions/:path*",
+    "/api/practicals/:path*",
+    "/api/practical-completions/:path*",
+    "/api/streams/:path*",
+    "/api/access-requests/:path*",
   ],
 };
