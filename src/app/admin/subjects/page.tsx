@@ -1,0 +1,306 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+
+interface Subject {
+  _id: string;
+  name: string;
+}
+
+export default function ManageSubjectsPage() {
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Add form state
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addLoading, setAddLoading] = useState(false);
+  const [addName, setAddName] = useState("");
+
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteSubject, setDeleteSubject] = useState<Subject | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const fetchSubjects = async () => {
+    try {
+      const res = await fetch("/api/subjects");
+      const data = await res.json();
+      if (res.ok) setSubjects(data.subjects || []);
+    } catch {
+      toast.error("Failed to fetch subjects");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSubjects();
+  }, []);
+
+  // ─── Add Subject ────────────────────────────────
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddLoading(true);
+
+    try {
+      const res = await fetch("/api/subjects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: addName.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Failed to add subject");
+        return;
+      }
+
+      toast.success("Subject added successfully!");
+      setAddName("");
+      setShowAddForm(false);
+      fetchSubjects();
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
+  // ─── Delete Subject ─────────────────────────────
+  const openDeleteDialog = (subject: Subject) => {
+    setDeleteSubject(subject);
+    setDeletePassword("");
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteSubject || !deletePassword) return;
+    setDeleting(true);
+
+    try {
+      const res = await fetch(`/api/subjects/${deleteSubject._id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: deletePassword }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Failed to delete subject");
+        return;
+      }
+
+      toast.success("Subject deleted!");
+      setSubjects(subjects.filter((s) => s._id !== deleteSubject._id));
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setDeleteSubject(null);
+      setDeletePassword("");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Subjects</h1>
+          <p className="text-muted-foreground">
+            {subjects.length} subject{subjects.length !== 1 ? "s" : ""} available
+          </p>
+        </div>
+        <Button
+          className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+          onClick={() => setShowAddForm(!showAddForm)}
+        >
+          {showAddForm ? "Cancel" : "+ Add Subject"}
+        </Button>
+      </div>
+
+      {/* Add Subject Form (collapsible) */}
+      {showAddForm && (
+        <Card className="rounded-2xl border-indigo-200 dark:border-indigo-800">
+          <CardHeader>
+            <CardTitle className="text-lg">New Subject</CardTitle>
+            <CardDescription>
+              Add a new subject. Notes and assignments can then be linked to it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleAdd} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="addName">Subject Name</Label>
+                <Input
+                  id="addName"
+                  placeholder="e.g. Database Management Systems"
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  required
+                  className="rounded-xl"
+                />
+              </div>
+              <Button
+                type="submit"
+                className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                disabled={addLoading || !addName.trim()}
+              >
+                {addLoading ? "Adding..." : "Add Subject"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Subjects Table */}
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <CardTitle className="text-lg">All Subjects</CardTitle>
+          <CardDescription>
+            Manage your subjects. Deleting requires your admin password for security.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {subjects.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              No subjects yet. Click &ldquo;+ Add Subject&rdquo; above to get started.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>#</TableHead>
+                    <TableHead>Subject Name</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {subjects.map((subject, index) => (
+                    <TableRow key={subject._id}>
+                      <TableCell className="text-muted-foreground">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="rounded-full text-sm px-3 py-1">
+                          📚 {subject.name}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="rounded-lg"
+                          onClick={() => openDeleteDialog(subject)}
+                        >
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Confirmation Dialog with Password */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              Delete Subject
+            </DialogTitle>
+            <DialogDescription>
+              You are about to delete &ldquo;{deleteSubject?.name}&rdquo;.
+              This will only work if the subject has no notes or assignments linked to it.
+              <br />
+              <span className="font-semibold text-red-500 dark:text-red-400">
+                Enter your admin password to confirm this action.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="deletePassword">Admin Password</Label>
+              <Input
+                id="deletePassword"
+                type="password"
+                placeholder="Enter your password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                className="rounded-xl"
+                autoComplete="current-password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setDeletePassword("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="rounded-xl"
+              onClick={handleDelete}
+              disabled={deleting || !deletePassword}
+            >
+              {deleting ? "Deleting..." : "Delete Subject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

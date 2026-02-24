@@ -1,0 +1,120 @@
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
+
+// We use jose instead of jsonwebtoken in middleware because
+// Next.js Edge Runtime doesn't support Node.js crypto module.
+// jose is already included with Next.js.
+
+const COOKIE_NAME = "section-c-token";
+
+async function verifyJWT(token: string) {
+  try {
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
+    const { payload } = await jwtVerify(token, secret);
+    return payload as {
+      userId: string;
+      collegeId: string;
+      role: "admin" | "student";
+      name: string;
+      mustChangePassword?: boolean;
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Public routes - no auth needed
+  const publicPaths = ["/", "/login"];
+  if (publicPaths.includes(pathname)) {
+    return NextResponse.next();
+  }
+
+  // API auth routes are public
+  if (pathname.startsWith("/api/auth/login")) {
+    return NextResponse.next();
+  }
+
+  // Get token from cookie
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+
+  if (!token) {
+    // If it's an API route, return 401
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    // Redirect to login for page routes
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Verify token
+  const payload = await verifyJWT(token);
+
+  if (!payload) {
+    // Invalid token - clear cookie and redirect
+    const response = pathname.startsWith("/api/")
+      ? NextResponse.json({ error: "Invalid token" }, { status: 401 })
+      : NextResponse.redirect(new URL("/login", request.url));
+    response.cookies.delete(COOKIE_NAME);
+    return response;
+  }
+
+  // Force password change if required
+  if (
+    payload.mustChangePassword &&
+    pathname !== "/change-password" &&
+    !pathname.startsWith("/api/auth/change-password") &&
+    !pathname.startsWith("/api/auth/logout") &&
+    !pathname.startsWith("/api/auth/me")
+  ) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "Password change required", mustChangePassword: true },
+        { status: 403 }
+      );
+    }
+    return NextResponse.redirect(new URL("/change-password", request.url));
+  }
+
+  // Admin route protection
+  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
+    if (payload.role !== "admin") {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
+  // Add user info to request headers for API routes
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-user-id", payload.userId);
+  requestHeaders.set("x-user-role", payload.role);
+  requestHeaders.set("x-user-name", payload.name);
+  requestHeaders.set("x-user-college-id", payload.collegeId);
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+}
+
+export const config = {
+  matcher: [
+    "/dashboard/:path*",
+    "/admin/:path*",
+    "/change-password",
+    "/api/admin/:path*",
+    "/api/auth/logout",
+    "/api/auth/me",
+    "/api/auth/change-password",
+    "/api/subjects/:path*",
+    "/api/notes/:path*",
+    "/api/assignments/:path*",
+    "/api/completions/:path*",
+  ],
+};
