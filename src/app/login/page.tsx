@@ -146,8 +146,15 @@ export default function LoginPage() {
 
       {/* Main Content */}
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-8">
-        <div className="w-full max-w-md">
-          <MagicCard>
+        <div className="w-full max-w-md rounded-2xl">
+          <MagicCard
+            className="rounded-2xl"
+            gradientSize={300}
+            gradientColor="#6366f120"
+            gradientFrom="#6366f1"
+            gradientTo="#a855f7"
+            gradientOpacity={0.15}
+          >
             <div className="bg-card/90 backdrop-blur-xl rounded-2xl">
               {!showApplyForm ? (
                 <>

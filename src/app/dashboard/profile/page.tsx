@@ -276,7 +276,7 @@ export default function ProfilePage() {
         <CardContent className="pt-6">
           <div className="flex items-start gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-lg font-medium">
+              <AvatarFallback className="bg-primary text-primary-foreground text-lg font-medium">
                 {initials}
               </AvatarFallback>
             </Avatar>

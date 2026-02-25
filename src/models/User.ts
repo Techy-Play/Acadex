@@ -9,6 +9,8 @@ export interface IUser extends Document {
   role: "admin" | "student";
   stream: mongoose.Types.ObjectId | null;
   must_change_password: boolean;
+  theme: string;
+  accentColor: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +54,16 @@ const UserSchema = new Schema<IUser>(
     must_change_password: {
       type: Boolean,
       default: false,
+    },
+    theme: {
+      type: String,
+      enum: ["light", "dark", "system"],
+      default: "system",
+    },
+    accentColor: {
+      type: String,
+      enum: ["default", "pink", "magenta", "cyan", "navy", "emerald", "sunset", "purple"],
+      default: "default",
     },
   },
   {

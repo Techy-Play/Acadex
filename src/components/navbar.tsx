@@ -144,7 +144,7 @@ export function Navbar({ userName, userRole, onMenuToggle }: NavbarProps) {
           </Button>
 
           <Link href={userRole === "admin" ? "/admin" : "/dashboard"} className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
               <span className="text-white font-bold text-xs">SC</span>
             </div>
             <span className="font-semibold text-sm tracking-tight hidden sm:inline">
@@ -232,7 +232,7 @@ export function Navbar({ userName, userRole, onMenuToggle }: NavbarProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-9 w-9">
-                  <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-xs font-medium">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
                     {initials}
                   </AvatarFallback>
                 </Avatar>

@@ -4,6 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MagicCard } from "@/components/ui/magic-card";
+import Link from "next/link";
+
+function toDownloadUrl(url: string): string {
+  try {
+    const fileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileMatch) return `https://drive.google.com/uc?export=download&id=${fileMatch[1]}`;
+    const parsed = new URL(url);
+    const idParam = parsed.searchParams.get("id");
+    if (parsed.hostname === "drive.google.com" && idParam) return `https://drive.google.com/uc?export=download&id=${idParam}`;
+  } catch {}
+  return url;
+}
 
 interface NoteCardProps {
   title: string;
@@ -17,9 +29,9 @@ export function NoteCard({ title, subjectName, fileUrl, uploadedAt }: NoteCardPr
     <MagicCard
       className="rounded-2xl shadow-sm hover:shadow-md transition-all"
       gradientSize={200}
-      gradientColor="#10b98120"
-      gradientFrom="#10b981"
-      gradientTo="#6366f1"
+      gradientColor="color-mix(in oklch, var(--primary) 15%, transparent)"
+      gradientFrom="var(--primary)"
+      gradientTo="var(--accent)"
       gradientOpacity={0.08}
     >
       <div className="bg-card rounded-2xl">
@@ -33,8 +45,8 @@ export function NoteCard({ title, subjectName, fileUrl, uploadedAt }: NoteCardPr
                 </Badge>
               )}
             </div>
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-100 to-indigo-100 dark:from-emerald-900/40 dark:to-indigo-900/40 flex items-center justify-center flex-shrink-0">
-              <svg className="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <svg className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
@@ -55,14 +67,28 @@ export function NoteCard({ title, subjectName, fileUrl, uploadedAt }: NoteCardPr
             <Button
               variant="outline"
               size="sm"
-              className="rounded-xl text-xs h-8 gap-1.5 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300 transition-colors"
+              className="rounded-xl text-xs h-8 gap-1.5 hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
               asChild
             >
-              <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+              <Link href={`/dashboard/viewer?url=${encodeURIComponent(fileUrl)}&title=${encodeURIComponent(title)}`}>
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Open
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl text-xs h-8 gap-1.5 hover:bg-accent hover:text-accent-foreground transition-colors"
+              asChild
+            >
+              <a href={toDownloadUrl(fileUrl)} target="_blank" rel="noopener noreferrer">
                 <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                Open
+                Download
               </a>
             </Button>
           </div>

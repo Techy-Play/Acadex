@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -229,7 +230,7 @@ export default function ManageAssignmentsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -245,7 +246,7 @@ export default function ManageAssignmentsPage() {
           </p>
         </div>
         <Button
-          className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+          className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => setShowAddForm(!showAddForm)}
         >
           {showAddForm ? "Cancel" : "+ Add Assignment"}
@@ -254,7 +255,7 @@ export default function ManageAssignmentsPage() {
 
       {/* Add Assignment Form (collapsible) */}
       {showAddForm && (
-        <Card className="rounded-2xl border-indigo-200 dark:border-indigo-800">
+        <Card className="rounded-2xl border-primary/20">
           <CardHeader>
             <CardTitle className="text-lg">New Assignment</CardTitle>
             <CardDescription>
@@ -330,7 +331,7 @@ export default function ManageAssignmentsPage() {
 
               <Button
                 type="submit"
-                className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={addLoading || !addSubject}
               >
                 {addLoading ? "Adding..." : "Add Assignment"}
@@ -340,103 +341,119 @@ export default function ManageAssignmentsPage() {
         </Card>
       )}
 
-      {/* Assignments Table */}
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle className="text-lg">All Assignments</CardTitle>
-          <CardDescription>
-            Edit or delete assignments. Students see these in their dashboard.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {assignments.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
+      {/* Assignments grouped by Subject */}
+      {assignments.length === 0 ? (
+        <Card className="rounded-2xl">
+          <CardContent className="py-8">
+            <p className="text-center text-muted-foreground">
               No assignments yet. Click &ldquo;+ Add Assignment&rdquo; above to get started.
             </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Deadline</TableHead>
-                    <TableHead>PDF</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {assignments.map((a) => {
-                    const isOverdue = a.deadline
-                      ? new Date(a.deadline) < new Date()
-                      : false;
-                    return (
-                      <TableRow key={a._id}>
-                        <TableCell className="font-medium max-w-[200px] truncate">
-                          {a.title}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="rounded-full">
-                            {a.subject?.name}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {a.deadline ? (
-                            <Badge
-                              variant={isOverdue ? "destructive" : "outline"}
-                              className="rounded-full text-xs"
-                            >
-                              {isOverdue ? "Overdue" : "Due"}:{" "}
-                              {new Date(a.deadline).toLocaleDateString("en-IN", {
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </Badge>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {a.file_url ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="rounded-lg text-xs"
-                              onClick={() => window.open(a.file_url, "_blank")}
-                            >
-                              Open
-                            </Button>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-lg"
-                            onClick={() => openEditDialog(a)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="rounded-lg"
-                            onClick={() => openDeleteDialog(a)}
-                          >
-                            Delete
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        (() => {
+          const grouped: Record<string, Assignment[]> = {};
+          for (const a of assignments) {
+            const subjectName = a.subject?.name || "Unknown";
+            if (!grouped[subjectName]) grouped[subjectName] = [];
+            grouped[subjectName].push(a);
+          }
+          return Object.entries(grouped)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([subjectName, items]) => (
+              <Card key={subjectName} className="rounded-2xl">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">📝 {subjectName}</CardTitle>
+                    <Badge variant="secondary" className="rounded-full">
+                      {items.length} assignment{items.length !== 1 ? "s" : ""}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Deadline</TableHead>
+                          <TableHead>PDF</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {items.map((a) => {
+                          const isOverdue = a.deadline
+                            ? new Date(a.deadline) < new Date()
+                            : false;
+                          return (
+                            <TableRow key={a._id}>
+                              <TableCell className="font-medium max-w-[200px] truncate">
+                                {a.title}
+                              </TableCell>
+                              <TableCell>
+                                {a.deadline ? (
+                                  <Badge
+                                    variant={isOverdue ? "destructive" : "outline"}
+                                    className="rounded-full text-xs"
+                                  >
+                                    {isOverdue ? "Overdue" : "Due"}:{" "}
+                                    {new Date(a.deadline).toLocaleDateString("en-IN", {
+                                      month: "short",
+                                      day: "numeric",
+                                    })}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {a.file_url ? (
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="rounded-lg text-xs"
+                                      asChild
+                                    >
+                                      <Link href={`/dashboard/viewer?url=${encodeURIComponent(a.file_url)}&title=${encodeURIComponent(a.title)}`} target="_blank">
+                                        Open
+                                      </Link>
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-lg"
+                                  onClick={() => openEditDialog(a)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="rounded-lg"
+                                  onClick={() => openDeleteDialog(a)}
+                                >
+                                  Delete
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            ));
+        })()
+      )}
 
       {/* Edit Assignment Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -508,7 +525,7 @@ export default function ManageAssignmentsPage() {
               Cancel
             </Button>
             <Button
-              className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleEdit}
               disabled={saving || !editTitle}
             >

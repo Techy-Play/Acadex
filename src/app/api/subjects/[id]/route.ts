@@ -82,3 +82,44 @@ export async function DELETE(
     );
   }
 }
+
+// PUT /api/subjects/[id] — update a subject (admin only)
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const role = request.headers.get("x-user-role");
+    if (role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { name, type } = body;
+
+    const { id } = await params;
+
+    await connectDB();
+
+    const update: Record<string, string> = {};
+    if (name && name.trim()) update.name = name.trim();
+    if (type && ["theory", "practical"].includes(type)) update.type = type;
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
+
+    const subject = await Subject.findByIdAndUpdate(id, { $set: update }, { new: true });
+    if (!subject) {
+      return NextResponse.json({ error: "Subject not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ subject });
+  } catch (error) {
+    console.error("Update subject error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

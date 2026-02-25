@@ -204,7 +204,7 @@ export default function ManageStreamsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -220,7 +220,7 @@ export default function ManageStreamsPage() {
           </p>
         </div>
         <Button
-          className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+          className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => setShowAddForm(!showAddForm)}
         >
           {showAddForm ? "Cancel" : "+ Add Stream"}
@@ -229,7 +229,7 @@ export default function ManageStreamsPage() {
 
       {/* Add Stream Form (collapsible) */}
       {showAddForm && (
-        <Card className="rounded-2xl border-indigo-200 dark:border-indigo-800">
+        <Card className="rounded-2xl border-primary/20">
           <CardHeader>
             <CardTitle className="text-lg">New Stream</CardTitle>
             <CardDescription>
@@ -278,7 +278,7 @@ export default function ManageStreamsPage() {
 
               <Button
                 type="submit"
-                className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={addLoading || !addName.trim()}
               >
                 {addLoading ? "Adding..." : "Add Stream"}
@@ -420,7 +420,7 @@ export default function ManageStreamsPage() {
               Cancel
             </Button>
             <Button
-              className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleEdit}
               disabled={editLoading || !editName.trim()}
             >

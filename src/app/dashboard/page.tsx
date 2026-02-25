@@ -8,6 +8,7 @@ import { SubjectCard } from "@/components/subject-card";
 interface Subject {
   _id: string;
   name: string;
+  type?: "theory" | "practical";
 }
 
 interface NoteItem {
@@ -41,6 +42,8 @@ interface StatsData {
   practicals: PracticalItem[];
 }
 
+type ViewMode = "grid" | "list" | "detail";
+
 export default function StudentDashboard() {
   const router = useRouter();
   const [data, setData] = useState<StatsData>({
@@ -53,6 +56,17 @@ export default function StudentDashboard() {
   const [practicalCompletedIds, setPracticalCompletedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [stream, setStream] = useState<StreamData | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("dashboard-view") as ViewMode) || "grid";
+    }
+    return "grid";
+  });
+
+  const handleViewChange = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem("dashboard-view", mode);
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -224,7 +238,7 @@ export default function StudentDashboard() {
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">Welcome to Section C Hub</p>
         {stream && (
-          <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-indigo-100 dark:bg-indigo-900/40 px-3 py-1 text-sm font-medium text-indigo-700 dark:text-indigo-300">
+          <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
             🎓 {stream.name}
           </div>
         )}
@@ -233,11 +247,11 @@ export default function StudentDashboard() {
       {/* Stats Row */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
         {/* Subjects */}
-        <Card className="rounded-2xl border-0 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/20">
+        <Card className="rounded-2xl border-0 bg-primary text-primary-foreground shadow-lg shadow-primary/20">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-indigo-100">Subjects</p>
+                <p className="text-sm font-medium text-primary-foreground/80">Subjects</p>
                 <p className="text-3xl font-bold mt-1">{data.subjects.length}</p>
               </div>
               <div className="h-11 w-11 rounded-xl bg-white/20 flex items-center justify-center">
@@ -364,7 +378,7 @@ export default function StudentDashboard() {
         <Card className="rounded-2xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <svg className="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
               Assignment Progress
@@ -373,7 +387,7 @@ export default function StudentDashboard() {
           <CardContent className="space-y-4">
             <div className="flex items-end justify-between">
               <div>
-                <p className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                <p className="text-4xl font-bold text-primary">
                   {overallPercent}%
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -386,7 +400,7 @@ export default function StudentDashboard() {
             </div>
             <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700 ease-out"
+                className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
                 style={{ width: `${overallPercent}%` }}
               />
             </div>
@@ -493,48 +507,263 @@ export default function StudentDashboard() {
         </CardContent>
       </Card>
 
-      {/* Subjects Grid */}
+      {/* Subjects Grid — Grouped by Type */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h2 className="text-lg font-semibold">Your Subjects</h2>
-          <div className="flex gap-4">
-            <button
-              onClick={() => router.push("/dashboard/practicals")}
-              className="text-sm text-teal-600 dark:text-teal-400 hover:underline font-medium"
-            >
-              View all practicals →
-            </button>
-            <button
-              onClick={() => router.push("/dashboard/assignments")}
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
-            >
-              View all assignments →
-            </button>
+          <div className="flex items-center gap-3">
+            {/* View Toggle */}
+            <div className="flex items-center border rounded-lg overflow-hidden">
+              <button
+                onClick={() => handleViewChange("grid")}
+                className={`p-2 transition-colors ${viewMode === "grid" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted text-muted-foreground"}`}
+                title="Grid View"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => handleViewChange("list")}
+                className={`p-2 transition-colors border-x ${viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted text-muted-foreground"}`}
+                title="List View"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              <button
+                onClick={() => handleViewChange("detail")}
+                className={`p-2 transition-colors ${viewMode === "detail" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted text-muted-foreground"}`}
+                title="Detail View"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h14a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex gap-4">
+              <button
+                onClick={() => router.push("/dashboard/practicals")}
+                className="text-sm text-teal-600 dark:text-teal-400 hover:underline font-medium"
+              >
+                View all practicals →
+              </button>
+              <button
+                onClick={() => router.push("/dashboard/assignments")}
+                className="text-sm text-primary hover:underline font-medium"
+              >
+                View all assignments →
+              </button>
+            </div>
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {data.subjects.map((subject) => {
-            const assignTotal = assignmentCountBySubject[subject._id] || 0;
-            const assignDone = completedBySubject[subject._id] || 0;
-            const pracTotal = practicalCountBySubject[subject._id] || 0;
-            const pracDone = practicalCompletedBySubject[subject._id] || 0;
-            return (
-              <SubjectCard
-                key={subject._id}
-                name={subject.name}
-                noteCount={noteCountBySubject[subject._id] || 0}
-                assignmentCount={assignTotal}
-                completedCount={assignDone}
-                practicalCount={pracTotal}
-                practicalCompletedCount={pracDone}
-                onClick={() =>
-                  router.push(`/dashboard/notes?subject=${subject._id}`)
-                }
-              />
-            );
-          })}
-        </div>
+
+        {/* Render subjects based on view mode */}
+        {renderSubjectsByView(data.subjects.filter(s => s.type !== "practical"), "Theory", "📖")}
+        {renderSubjectsByView(data.subjects.filter(s => s.type === "practical"), "Practical", "🧪")}
       </div>
     </div>
   );
+
+  function renderSubjectsByView(subjects: Subject[], label: string, emoji: string) {
+    if (subjects.length === 0) return null;
+
+    return (
+      <div className={label === "Theory" ? "mb-6" : ""}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-base">{emoji}</span>
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{label}</h3>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+
+        {viewMode === "grid" && (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {subjects.map((subject) => {
+              const assignTotal = assignmentCountBySubject[subject._id] || 0;
+              const assignDone = completedBySubject[subject._id] || 0;
+              const pracTotal = practicalCountBySubject[subject._id] || 0;
+              const pracDone = practicalCompletedBySubject[subject._id] || 0;
+              return (
+                <SubjectCard
+                  key={subject._id}
+                  name={subject.name}
+                  noteCount={noteCountBySubject[subject._id] || 0}
+                  assignmentCount={assignTotal}
+                  completedCount={assignDone}
+                  practicalCount={pracTotal}
+                  practicalCompletedCount={pracDone}
+                  onClick={() => router.push(`/dashboard/notes?subject=${subject._id}`)}
+                />
+              );
+            })}
+          </div>
+        )}
+
+        {viewMode === "list" && (
+          <div className="border rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 text-left">
+                  <th className="px-4 py-3 font-semibold text-muted-foreground">Subject</th>
+                  <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Notes</th>
+                  <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Assignments</th>
+                  <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Practicals</th>
+                  <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Progress</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {subjects.map((subject) => {
+                  const assignTotal = assignmentCountBySubject[subject._id] || 0;
+                  const assignDone = completedBySubject[subject._id] || 0;
+                  const pracTotal = practicalCountBySubject[subject._id] || 0;
+                  const pracDone = practicalCompletedBySubject[subject._id] || 0;
+                  const totalTasks = assignTotal + pracTotal;
+                  const totalDone = assignDone + pracDone;
+                  const pct = totalTasks > 0 ? Math.round((totalDone / totalTasks) * 100) : 0;
+
+                  return (
+                    <tr
+                      key={subject._id}
+                      className="hover:bg-muted/30 cursor-pointer transition-colors"
+                      onClick={() => router.push(`/dashboard/notes?subject=${subject._id}`)}
+                    >
+                      <td className="px-4 py-3 font-medium flex items-center gap-2">
+                        <span className="text-lg">📚</span>
+                        {subject.name}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                          {noteCountBySubject[subject._id] || 0}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-purple-600 dark:text-purple-400">{assignDone}/{assignTotal}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-teal-600 dark:text-teal-400">{pracDone}/{pracTotal}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2 justify-center">
+                          <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-500" : "bg-primary"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-medium w-8">{pct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {viewMode === "detail" && (
+          <div className="space-y-4">
+            {subjects.map((subject) => {
+              const notes = noteCountBySubject[subject._id] || 0;
+              const assignTotal = assignmentCountBySubject[subject._id] || 0;
+              const assignDone = completedBySubject[subject._id] || 0;
+              const pracTotal = practicalCountBySubject[subject._id] || 0;
+              const pracDone = practicalCompletedBySubject[subject._id] || 0;
+              const assignPct = assignTotal > 0 ? Math.round((assignDone / assignTotal) * 100) : 0;
+              const pracPct = pracTotal > 0 ? Math.round((pracDone / pracTotal) * 100) : 0;
+
+              // Find upcoming deadlines for this subject
+              const subjectDeadlines = data.assignments
+                .filter((a) => a.subject?._id === subject._id && a.deadline && !completedIds.has(a._id) && new Date(a.deadline) >= now)
+                .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())
+                .slice(0, 3);
+
+              return (
+                <Card
+                  key={subject._id}
+                  className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5"
+                  onClick={() => router.push(`/dashboard/notes?subject=${subject._id}`)}
+                >
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-xl">
+                          📚
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold">{subject.name}</h3>
+                          <p className="text-xs text-muted-foreground capitalize">{subject.type || "theory"} subject</p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-lg">
+                        {notes} notes
+                      </span>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {/* Assignment Progress */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-1.5">
+                            <svg className="h-3.5 w-3.5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                            Assignments
+                          </span>
+                          <span className="font-medium">{assignDone}/{assignTotal}</span>
+                        </div>
+                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${assignPct === 100 ? "bg-emerald-500" : "bg-primary"}`}
+                            style={{ width: `${assignPct}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Practical Progress */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-1.5">
+                            <svg className="h-3.5 w-3.5 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                            </svg>
+                            Practicals
+                          </span>
+                          <span className="font-medium">{pracDone}/{pracTotal}</span>
+                        </div>
+                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${pracPct === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-teal-500 to-emerald-500"}`}
+                            style={{ width: `${pracPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Upcoming Deadlines */}
+                    {subjectDeadlines.length > 0 && (
+                      <div className="mt-4 pt-3 border-t">
+                        <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Upcoming Deadlines</p>
+                        <div className="space-y-1.5">
+                          {subjectDeadlines.map((a) => (
+                            <div key={a._id} className="flex items-center justify-between text-xs">
+                              <span className="font-medium truncate mr-2">{a.title}</span>
+                              <span className="text-muted-foreground whitespace-nowrap">
+                                {new Date(a.deadline!).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
 }

@@ -21,29 +21,55 @@ export default function LandingPage() {
       <div className="absolute bottom-40 right-10 w-96 h-96 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl animate-float [animation-delay:3s]" />
       <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-blue-300/15 dark:bg-blue-500/8 rounded-full blur-3xl animate-float [animation-delay:5s]" />
 
-      {/* Navbar */}
-      <nav className="flex items-center justify-between px-6 py-4 md:px-12 animate-slide-down relative z-10">
-        <div className="flex items-center gap-3">
+      {/* Desktop Navbar */}
+      <nav className="hidden md:flex items-center justify-between px-6 py-4 md:px-12 animate-slide-down relative z-10">
+        <Link href="/" className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <span className="text-white font-bold text-sm">SC</span>
           </div>
           <span className="font-bold text-lg tracking-tight">
             Section C Hub
           </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
+        </Link>
+        <div className="flex items-center gap-1">
+          <Link href="/" className="px-4 py-2 text-sm font-medium text-foreground bg-accent rounded-lg">
+            Home
+          </Link>
+          <Link href="/about" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-accent">
+            About
+          </Link>
+          <Link href="/contact" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-accent">
+            Contact
+          </Link>
+          <div className="ml-2">
+            <ThemeToggle />
+          </div>
           <Link
             href="/login"
-            className="inline-flex items-center justify-center rounded-xl bg-primary text-primary-foreground px-5 py-2.5 text-sm font-medium shadow-sm hover:opacity-90 transition-all hover:-translate-y-0.5"
+            className="ml-1 inline-flex items-center justify-center rounded-xl bg-primary text-primary-foreground px-5 py-2.5 text-sm font-medium shadow-sm hover:opacity-90 transition-all hover:-translate-y-0.5"
           >
             Login
           </Link>
         </div>
       </nav>
 
+      {/* Mobile top bar */}
+      <nav className="flex md:hidden items-center justify-between px-4 py-3 relative z-10 animate-slide-down">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <span className="text-white font-bold text-xs">SC</span>
+          </div>
+          <span className="font-bold text-base tracking-tight">
+            Section C Hub
+          </span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+        </div>
+      </nav>
+
       {/* Hero Section */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 md:px-12 pt-8 pb-4">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 md:px-12 pt-8 pb-28 md:pb-4">
         <div className="max-w-5xl mx-auto text-center space-y-8">
           {/* Badge */}
           <div className="animate-fade-in [animation-delay:0.1s] opacity-0">
@@ -203,8 +229,38 @@ export default function LandingPage() {
         </div>
       </main>
 
+      {/* Mobile Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t bg-background/90 backdrop-blur-md">
+        <div className="flex items-center justify-around py-2">
+          <Link href="/" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-foreground">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span className="text-[10px] font-medium">Home</span>
+          </Link>
+          <Link href="/about" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-[10px] font-medium">About</span>
+          </Link>
+          <Link href="/contact" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span className="text-[10px] font-medium">Contact</span>
+          </Link>
+          <Link href="/login" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            </svg>
+            <span className="text-[10px] font-medium">Login</span>
+          </Link>
+        </div>
+      </div>
+
       {/* Footer */}
-      <footer className="py-8 px-6 md:px-12 mt-12 border-t bg-card/30 backdrop-blur-sm animate-fade-in [animation-delay:1.4s] opacity-0">
+      <footer className="hidden md:block py-8 px-6 md:px-12 mt-12 border-t bg-card/30 backdrop-blur-sm animate-fade-in [animation-delay:1.4s] opacity-0">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">

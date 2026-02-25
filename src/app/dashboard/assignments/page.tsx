@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { AssignmentCard } from "@/components/assignment-card";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -35,6 +36,7 @@ export default function AssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [selectedSubject, setSelectedSubject] = useState(initialSubject);
   const [sortOrder, setSortOrder] = useState<string>("newest");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [streamSubjectIds, setStreamSubjectIds] = useState<Set<string> | null>(null);
@@ -140,8 +142,14 @@ export default function AssignmentsPage() {
     fetchAssignments();
   }, [selectedSubject, streamSubjectIds]);
 
-  // Sort assignments
-  const sortedAssignments = [...assignments].sort((a, b) => {
+  // Filter by status then sort
+  const sortedAssignments = useMemo(() => {
+    const filtered = assignments.filter((a) => {
+      if (statusFilter === "completed") return completedIds.has(a._id);
+      if (statusFilter === "pending") return !completedIds.has(a._id);
+      return true;
+    });
+    return [...filtered].sort((a, b) => {
     switch (sortOrder) {
       case "newest":
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -152,10 +160,26 @@ export default function AssignmentsPage() {
         if (!a.deadline) return 1;
         if (!b.deadline) return -1;
         return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      case "name-az":
+        return a.title.localeCompare(b.title);
+      case "name-za":
+        return b.title.localeCompare(a.title);
       default:
         return 0;
     }
   });
+  }, [assignments, statusFilter, sortOrder, completedIds]);
+
+  // Group assignments by subject
+  const groupedAssignments = useMemo(() => {
+    const grouped: Record<string, Assignment[]> = {};
+    for (const a of sortedAssignments) {
+      const subjectName = a.subject?.name || "Unknown";
+      if (!grouped[subjectName]) grouped[subjectName] = [];
+      grouped[subjectName].push(a);
+    }
+    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+  }, [sortedAssignments]);
 
   const completedCount = assignments.filter((a) => completedIds.has(a._id)).length;
   const totalCount = assignments.length;
@@ -180,7 +204,17 @@ export default function AssignmentsPage() {
             Track your assignments &mdash; check them off as you complete them
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[140px] rounded-xl">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={sortOrder} onValueChange={setSortOrder}>
             <SelectTrigger className="w-full sm:w-[160px] rounded-xl">
               <SelectValue placeholder="Sort by" />
@@ -189,6 +223,8 @@ export default function AssignmentsPage() {
               <SelectItem value="newest">Newest first</SelectItem>
               <SelectItem value="oldest">Oldest first</SelectItem>
               <SelectItem value="deadline">Deadline (soonest)</SelectItem>
+              <SelectItem value="name-az">Name A-Z</SelectItem>
+              <SelectItem value="name-za">Name Z-A</SelectItem>
             </SelectContent>
           </Select>
           <Select value={selectedSubject} onValueChange={setSelectedSubject}>
@@ -249,13 +285,13 @@ export default function AssignmentsPage() {
               <span className="text-sm font-medium">
                 Progress: {completedCount} / {totalCount} completed
               </span>
-              <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+              <span className="text-sm font-bold text-primary">
                 {progressPercent}%
               </span>
             </div>
             <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500 ease-out"
+                className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -263,16 +299,22 @@ export default function AssignmentsPage() {
         </Card>
       )}
 
-      {/* Assignments Grid */}
+      {/* Assignments Grouped by Subject */}
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="rounded-2xl border p-6 animate-pulse"
-            >
-              <div className="h-20 bg-muted rounded-xl" />
-            </div>
+        <div className="space-y-6">
+          {[1, 2].map((i) => (
+            <Card key={i} className="rounded-2xl animate-pulse">
+              <CardHeader className="pb-3">
+                <div className="h-5 w-40 bg-muted rounded-lg" />
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {[1, 2, 3].map((j) => (
+                    <div key={j} className="h-28 bg-muted rounded-xl" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       ) : assignments.length === 0 ? (
@@ -286,20 +328,38 @@ export default function AssignmentsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sortedAssignments.map((assignment) => (
-            <AssignmentCard
-              key={assignment._id}
-              id={assignment._id}
-              title={assignment.title}
-              description={assignment.description}
-              subjectName={assignment.subject?.name}
-              deadline={assignment.deadline}
-              fileUrl={assignment.file_url}
-              createdAt={assignment.createdAt}
-              completed={completedIds.has(assignment._id)}
-              onToggleComplete={toggleComplete}
-            />
+        <div className="space-y-6">
+          {groupedAssignments.map(([subjectName, subjectAssignments]) => (
+            <Card key={subjectName} className="rounded-2xl">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    📝 {subjectName}
+                    <Badge variant="secondary" className="rounded-full text-xs">
+                      {subjectAssignments.length}
+                    </Badge>
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {subjectAssignments.map((assignment) => (
+                    <AssignmentCard
+                      key={assignment._id}
+                      id={assignment._id}
+                      title={assignment.title}
+                      description={assignment.description}
+                      subjectName={assignment.subject?.name}
+                      deadline={assignment.deadline}
+                      fileUrl={assignment.file_url}
+                      createdAt={assignment.createdAt}
+                      completed={completedIds.has(assignment._id)}
+                      onToggleComplete={toggleComplete}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

@@ -37,19 +37,19 @@ export function SubjectCard({
       <MagicCard
         className="rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1"
         gradientSize={250}
-        gradientColor="#6366f120"
-        gradientFrom="#6366f1"
-        gradientTo="#a855f7"
+        gradientColor="color-mix(in oklch, var(--primary) 12%, transparent)"
+        gradientFrom="var(--primary)"
+        gradientTo="var(--accent)"
         gradientOpacity={0.1}
       >
         <div className="bg-card rounded-2xl">
           <CardHeader className="pb-2 p-5">
             <div className="flex items-start justify-between">
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 flex items-center justify-center text-lg mb-2">
+              <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center text-lg mb-2">
                 📚
               </div>
               {assignmentCount > 0 && (
-                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-1 rounded-lg">
+                <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-1 rounded-lg">
                   {progressPercent}%
                 </span>
               )}
@@ -86,7 +86,7 @@ export function SubjectCard({
                   className={`h-full rounded-full transition-all duration-500 ease-out ${
                     progressPercent === 100
                       ? "bg-gradient-to-r from-emerald-400 to-green-500"
-                      : "bg-gradient-to-r from-indigo-500 to-purple-500"
+                      : "bg-primary"
                   }`}
                   style={{ width: `${progressPercent}%` }}
                 />

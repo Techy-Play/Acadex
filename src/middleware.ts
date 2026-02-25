@@ -27,6 +27,12 @@ async function verifyJWT(token: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Public pages that DON'T redirect logged-in users
+  const publicNonRedirect = ["/about", "/contact"];
+  if (publicNonRedirect.includes(pathname)) {
+    return NextResponse.next();
+  }
+
   // Public routes - check if user is already logged in and redirect
   const publicPaths = ["/", "/login"];
   if (publicPaths.includes(pathname)) {
@@ -52,6 +58,11 @@ export async function middleware(request: NextRequest) {
 
   // Public access request API (students apply without auth)
   if (pathname.startsWith("/api/access-requests")) {
+    return NextResponse.next();
+  }
+
+  // Public contact API (visitors can submit messages without auth)
+  if (pathname === "/api/contact" && request.method === "POST") {
     return NextResponse.next();
   }
 
@@ -124,6 +135,8 @@ export const config = {
   matcher: [
     "/",
     "/login",
+    "/about",
+    "/contact",
     "/dashboard/:path*",
     "/admin/:path*",
     "/change-password",
@@ -143,5 +156,6 @@ export const config = {
     "/api/practical-completions/:path*",
     "/api/streams/:path*",
     "/api/access-requests/:path*",
+    "/api/contact/:path*",
   ],
 };

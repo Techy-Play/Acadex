@@ -43,6 +43,8 @@ export async function GET(request: Request) {
           role: user.role,
           stream: streamData,
           must_change_password: user.must_change_password,
+          theme: user.theme || "system",
+          accentColor: user.accentColor || "default",
           createdAt: user.createdAt,
         },
       },

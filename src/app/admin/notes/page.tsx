@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -213,7 +214,7 @@ export default function ManageNotesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -229,7 +230,7 @@ export default function ManageNotesPage() {
           </p>
         </div>
         <Button
-          className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+          className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => setShowAddForm(!showAddForm)}
         >
           {showAddForm ? "Cancel" : "+ Add Note"}
@@ -238,7 +239,7 @@ export default function ManageNotesPage() {
 
       {/* Add Note Form (collapsible) */}
       {showAddForm && (
-        <Card className="rounded-2xl border-indigo-200 dark:border-indigo-800">
+        <Card className="rounded-2xl border-primary/20">
           <CardHeader>
             <CardTitle className="text-lg">New Note</CardTitle>
             <CardDescription>
@@ -294,7 +295,7 @@ export default function ManageNotesPage() {
 
               <Button
                 type="submit"
-                className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={addLoading || !addSubject}
               >
                 {addLoading ? "Adding..." : "Add Note"}
@@ -304,82 +305,81 @@ export default function ManageNotesPage() {
         </Card>
       )}
 
-      {/* Notes Table */}
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle className="text-lg">All Notes</CardTitle>
-          <CardDescription>
-            Edit or delete notes. Students see these in their dashboard.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {notes.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
+      {/* Notes Grouped by Subject */}
+      {notes.length === 0 ? (
+        <Card className="rounded-2xl">
+          <CardContent className="py-12">
+            <p className="text-center text-muted-foreground">
               No notes yet. Click &ldquo;+ Add Note&rdquo; above to get started.
             </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Uploaded</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {notes.map((note) => (
-                    <TableRow key={note._id}>
-                      <TableCell className="font-medium max-w-[200px] truncate">
-                        {note.title}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="rounded-full">
-                          {note.subject?.name}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(note.uploadedAt).toLocaleDateString("en-IN", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-lg"
-                          onClick={() => window.open(note.file_url, "_blank")}
-                        >
-                          Open
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-lg"
-                          onClick={() => openEditDialog(note)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="rounded-lg"
-                          onClick={() => openDeleteDialog(note)}
-                        >
-                          Delete
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        (() => {
+          const grouped: Record<string, Note[]> = {};
+          for (const note of notes) {
+            const subjectName = note.subject?.name || "Unknown";
+            if (!grouped[subjectName]) grouped[subjectName] = [];
+            grouped[subjectName].push(note);
+          }
+          return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([subjectName, subjectNotes]) => (
+            <Card key={subjectName} className="rounded-2xl">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    📚 {subjectName}
+                    <Badge variant="secondary" className="rounded-full text-xs">
+                      {subjectNotes.length}
+                    </Badge>
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Uploaded</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {subjectNotes.map((note) => (
+                        <TableRow key={note._id}>
+                          <TableCell className="font-medium max-w-[200px] truncate">
+                            {note.title}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(note.uploadedAt).toLocaleDateString("en-IN", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <Button variant="outline" size="sm" className="rounded-lg" asChild>
+                              <Link href={`/dashboard/viewer?url=${encodeURIComponent(note.file_url)}&title=${encodeURIComponent(note.title)}`} target="_blank">
+                                Open
+                              </Link>
+                            </Button>
+                            <Button variant="outline" size="sm" className="rounded-lg" onClick={() => openEditDialog(note)}>
+                              Edit
+                            </Button>
+                            <Button variant="destructive" size="sm" className="rounded-lg" onClick={() => openDeleteDialog(note)}>
+                              Delete
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          ));
+        })()
+      )}
 
       {/* Edit Note Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -432,7 +432,7 @@ export default function ManageNotesPage() {
               Cancel
             </Button>
             <Button
-              className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleEdit}
               disabled={saving || !editTitle || !editFileUrl}
             >

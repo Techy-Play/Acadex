@@ -252,7 +252,7 @@ export default function UsersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -268,7 +268,7 @@ export default function UsersPage() {
         </div>
         <Button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+          className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
         >
           {showAddForm ? (
             <span className="flex items-center gap-2">
@@ -290,7 +290,7 @@ export default function UsersPage() {
 
       {/* Add Student Form */}
       {showAddForm && (
-        <Card className="rounded-2xl border-indigo-200 dark:border-indigo-800">
+        <Card className="rounded-2xl border-primary/20">
           <CardHeader>
             <CardTitle className="text-lg">Add New Student</CardTitle>
             <CardDescription>
@@ -367,7 +367,7 @@ export default function UsersPage() {
               <div className="flex items-end">
                 <Button
                   type="submit"
-                  className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                  className="w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                   disabled={addLoading}
                 >
                   {addLoading ? "Adding..." : "Add Student"}
@@ -511,7 +511,7 @@ export default function UsersPage() {
               Cancel
             </Button>
             <Button
-              className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleSaveStream}
               disabled={savingStream}
             >
@@ -570,7 +570,7 @@ export default function UsersPage() {
                   Cancel
                 </Button>
                 <Button
-                  className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                  className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={handleResetPassword}
                   disabled={resetting}
                 >

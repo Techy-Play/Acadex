@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -224,7 +225,7 @@ export default function ManagePracticalsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -241,7 +242,7 @@ export default function ManagePracticalsPage() {
           </p>
         </div>
         <Button
-          className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+          className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => setShowAddForm(!showAddForm)}
         >
           {showAddForm ? "Cancel" : "+ Add Practical"}
@@ -250,7 +251,7 @@ export default function ManagePracticalsPage() {
 
       {/* Add Practical Form (collapsible) */}
       {showAddForm && (
-        <Card className="rounded-2xl border-emerald-200 dark:border-emerald-800">
+        <Card className="rounded-2xl border-primary/20">
           <CardHeader>
             <CardTitle className="text-lg">New Practical</CardTitle>
             <CardDescription>
@@ -319,7 +320,7 @@ export default function ManagePracticalsPage() {
 
               <Button
                 type="submit"
-                className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+                className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={addLoading || !addSubject}
               >
                 {addLoading ? "Adding..." : "Add Practical"}
@@ -329,93 +330,105 @@ export default function ManagePracticalsPage() {
         </Card>
       )}
 
-      {/* Practicals Table */}
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle className="text-lg">All Practicals</CardTitle>
-          <CardDescription>
-            Edit or delete practicals. Students see these with a completion
-            checklist.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {practicals.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              No practicals yet. Click &ldquo;+ Add Practical&rdquo; above to
-              get started.
+      {/* Practicals grouped by Subject */}
+      {practicals.length === 0 ? (
+        <Card className="rounded-2xl">
+          <CardContent className="py-8">
+            <p className="text-center text-muted-foreground">
+              No practicals yet. Click &ldquo;+ Add Practical&rdquo; above to get started.
             </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>PDF</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {practicals.map((p) => (
-                    <TableRow key={p._id}>
-                      <TableCell className="font-medium max-w-[200px] truncate">
-                        {p.title}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="rounded-full">
-                          {p.subject?.name}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {p.file_url ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-lg text-xs"
-                            onClick={() => window.open(p.file_url, "_blank")}
-                          >
-                            Open
-                          </Button>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">
-                            —
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(p.createdAt).toLocaleDateString("en-IN", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-lg"
-                          onClick={() => openEditDialog(p)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="rounded-lg"
-                          onClick={() => openDeleteDialog(p)}
-                        >
-                          Delete
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        (() => {
+          const grouped: Record<string, Practical[]> = {};
+          for (const p of practicals) {
+            const subjectName = p.subject?.name || "Unknown";
+            if (!grouped[subjectName]) grouped[subjectName] = [];
+            grouped[subjectName].push(p);
+          }
+          return Object.entries(grouped)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([subjectName, items]) => (
+              <Card key={subjectName} className="rounded-2xl">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">🧪 {subjectName}</CardTitle>
+                    <Badge variant="secondary" className="rounded-full">
+                      {items.length} practical{items.length !== 1 ? "s" : ""}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>PDF</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {items.map((p) => (
+                          <TableRow key={p._id}>
+                            <TableCell className="font-medium max-w-[200px] truncate">
+                              {p.title}
+                            </TableCell>
+                            <TableCell>
+                              {p.file_url ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-lg text-xs"
+                                  asChild
+                                >
+                                  <Link href={`/dashboard/viewer?url=${encodeURIComponent(p.file_url)}&title=${encodeURIComponent(p.title)}`} target="_blank">
+                                    Open
+                                  </Link>
+                                </Button>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">
+                                  —
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {new Date(p.createdAt).toLocaleDateString("en-IN", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </TableCell>
+                            <TableCell className="text-right space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-lg"
+                                onClick={() => openEditDialog(p)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="rounded-lg"
+                                onClick={() => openDeleteDialog(p)}
+                              >
+                                Delete
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            ));
+        })()
+      )}
 
       {/* Edit Practical Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -478,7 +491,7 @@ export default function ManagePracticalsPage() {
               Cancel
             </Button>
             <Button
-              className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleEdit}
               disabled={saving || !editTitle}
             >

@@ -28,11 +28,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 
 interface Subject {
   _id: string;
   name: string;
+  type: "theory" | "practical";
 }
 
 export default function ManageSubjectsPage() {
@@ -43,6 +51,7 @@ export default function ManageSubjectsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [addName, setAddName] = useState("");
+  const [addType, setAddType] = useState<"theory" | "practical">("theory");
 
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -75,7 +84,7 @@ export default function ManageSubjectsPage() {
       const res = await fetch("/api/subjects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: addName.trim() }),
+        body: JSON.stringify({ name: addName.trim(), type: addType }),
       });
 
       const data = await res.json();
@@ -87,6 +96,7 @@ export default function ManageSubjectsPage() {
 
       toast.success("Subject added successfully!");
       setAddName("");
+      setAddType("theory");
       setShowAddForm(false);
       fetchSubjects();
     } catch {
@@ -136,7 +146,7 @@ export default function ManageSubjectsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -152,7 +162,7 @@ export default function ManageSubjectsPage() {
           </p>
         </div>
         <Button
-          className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+          className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => setShowAddForm(!showAddForm)}
         >
           {showAddForm ? "Cancel" : "+ Add Subject"}
@@ -161,7 +171,7 @@ export default function ManageSubjectsPage() {
 
       {/* Add Subject Form (collapsible) */}
       {showAddForm && (
-        <Card className="rounded-2xl border-indigo-200 dark:border-indigo-800">
+        <Card className="rounded-2xl border-primary/20">
           <CardHeader>
             <CardTitle className="text-lg">New Subject</CardTitle>
             <CardDescription>
@@ -170,20 +180,34 @@ export default function ManageSubjectsPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAdd} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="addName">Subject Name</Label>
-                <Input
-                  id="addName"
-                  placeholder="e.g. Database Management Systems"
-                  value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                  required
-                  className="rounded-xl"
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="addName">Subject Name</Label>
+                  <Input
+                    id="addName"
+                    placeholder="e.g. Database Management Systems"
+                    value={addName}
+                    onChange={(e) => setAddName(e.target.value)}
+                    required
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={addType} onValueChange={(v) => setAddType(v as "theory" | "practical")}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="theory">📖 Theory</SelectItem>
+                      <SelectItem value="practical">🧪 Practical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <Button
                 type="submit"
-                className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={addLoading || !addName.trim()}
               >
                 {addLoading ? "Adding..." : "Add Subject"}
@@ -213,6 +237,7 @@ export default function ManageSubjectsPage() {
                   <TableRow>
                     <TableHead>#</TableHead>
                     <TableHead>Subject Name</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -224,8 +249,36 @@ export default function ManageSubjectsPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="rounded-full text-sm px-3 py-1">
-                          📚 {subject.name}
+                          {subject.type === "practical" ? "🧪" : "📚"} {subject.name}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <button
+                          onClick={async () => {
+                            const newType = subject.type === "practical" ? "theory" : "practical";
+                            try {
+                              const res = await fetch(`/api/subjects/${subject._id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ type: newType }),
+                              });
+                              if (res.ok) {
+                                setSubjects(subjects.map(s =>
+                                  s._id === subject._id ? { ...s, type: newType } : s
+                                ));
+                                toast.success(`Changed to ${newType}`);
+                              }
+                            } catch { toast.error("Failed to update type"); }
+                          }}
+                          className="text-xs"
+                        >
+                          <Badge
+                            variant={subject.type === "practical" ? "default" : "outline"}
+                            className="rounded-full cursor-pointer hover:opacity-80 transition-opacity"
+                          >
+                            {subject.type === "practical" ? "🧪 Practical" : "📖 Theory"}
+                          </Badge>
+                        </button>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button

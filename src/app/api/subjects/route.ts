@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name } = body;
+    const { name, type } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -50,7 +50,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const subject = await Subject.create({ name: name.trim() });
+    const subject = await Subject.create({
+      name: name.trim(),
+      type: type === "practical" ? "practical" : "theory",
+    });
 
     return NextResponse.json({ subject }, { status: 201 });
   } catch (error) {

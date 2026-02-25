@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { NoteCard } from "@/components/note-card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -47,7 +49,6 @@ export default function NotesPage() {
 
         const allSubjects: Subject[] = subjectsData.subjects || [];
 
-        // Filter subjects by stream
         let ssIds: Set<string> | null = null;
         if (meData.user?.stream?.subjects?.length) {
           ssIds = new Set(meData.user.stream.subjects.map((s: { _id: string }) => s._id));
@@ -75,7 +76,6 @@ export default function NotesPage() {
         const data = await res.json();
         let allNotes: Note[] = data.notes || [];
 
-        // Filter by stream subjects if applicable and viewing "all"
         if (selectedSubject === "all" && streamSubjectIds) {
           allNotes = allNotes.filter((n) => n.subject && streamSubjectIds.has(n.subject._id));
         }
@@ -91,12 +91,33 @@ export default function NotesPage() {
   }, [selectedSubject, streamSubjectIds]);
 
   // Sort notes
-  const sortedNotes = [...notes].sort((a, b) => {
-    if (sortOrder === "newest") {
-      return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+  const sortedNotes = useMemo(() => {
+    return [...notes].sort((a, b) => {
+      switch (sortOrder) {
+        case "newest":
+          return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+        case "oldest":
+          return new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime();
+        case "name-az":
+          return a.title.localeCompare(b.title);
+        case "name-za":
+          return b.title.localeCompare(a.title);
+        default:
+          return 0;
+      }
+    });
+  }, [notes, sortOrder]);
+
+  // Group notes by subject
+  const groupedNotes = useMemo(() => {
+    const grouped: Record<string, Note[]> = {};
+    for (const note of sortedNotes) {
+      const subjectName = note.subject?.name || "Unknown";
+      if (!grouped[subjectName]) grouped[subjectName] = [];
+      grouped[subjectName].push(note);
     }
-    return new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime();
-  });
+    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+  }, [sortedNotes]);
 
   return (
     <div className="space-y-6">
@@ -116,6 +137,8 @@ export default function NotesPage() {
             <SelectContent className="rounded-xl">
               <SelectItem value="newest">Newest first</SelectItem>
               <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="name-az">Name A-Z</SelectItem>
+              <SelectItem value="name-za">Name Z-A</SelectItem>
             </SelectContent>
           </Select>
           <Select value={selectedSubject} onValueChange={setSelectedSubject}>
@@ -134,16 +157,22 @@ export default function NotesPage() {
         </div>
       </div>
 
-      {/* Notes Grid */}
+      {/* Notes Grouped by Subject */}
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="rounded-2xl border p-6 animate-pulse"
-            >
-              <div className="h-16 bg-muted rounded-xl" />
-            </div>
+        <div className="space-y-6">
+          {[1, 2].map((i) => (
+            <Card key={i} className="rounded-2xl animate-pulse">
+              <CardHeader className="pb-3">
+                <div className="h-5 w-40 bg-muted rounded-lg" />
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {[1, 2, 3].map((j) => (
+                    <div key={j} className="h-24 bg-muted rounded-xl" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       ) : notes.length === 0 ? (
@@ -157,15 +186,33 @@ export default function NotesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sortedNotes.map((note) => (
-            <NoteCard
-              key={note._id}
-              title={note.title}
-              subjectName={note.subject?.name}
-              fileUrl={note.file_url}
-              uploadedAt={note.uploadedAt}
-            />
+        <div className="space-y-6">
+          {groupedNotes.map(([subjectName, subjectNotes]) => (
+            <Card key={subjectName} className="rounded-2xl">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    📚 {subjectName}
+                    <Badge variant="secondary" className="rounded-full text-xs">
+                      {subjectNotes.length}
+                    </Badge>
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {subjectNotes.map((note) => (
+                    <NoteCard
+                      key={note._id}
+                      title={note.title}
+                      subjectName={note.subject?.name}
+                      fileUrl={note.file_url}
+                      uploadedAt={note.uploadedAt}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

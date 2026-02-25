@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/sidebar";
+import { useAccentColor } from "@/components/theme-toggle";
 
 // Icons as inline SVGs
 const icons = {
@@ -52,6 +54,11 @@ const icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
     </svg>
   ),
+  messages: (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+  ),
 };
 
 const studentLinks = [
@@ -65,6 +72,7 @@ const adminLinks = [
   { href: "/admin", label: "Dashboard", icon: icons.home },
   { href: "/admin/users", label: "Manage Users", icon: icons.users },
   { href: "/admin/access-requests", label: "Access Requests", icon: icons.addUser },
+  { href: "/admin/messages", label: "Messages", icon: icons.messages },
   { href: "/admin/notes", label: "Notes", icon: icons.notes },
   { href: "/admin/assignments", label: "Assignments", icon: icons.assignments },
   { href: "/admin/practicals", label: "Practicals", icon: icons.practicals },
@@ -78,10 +86,14 @@ interface UserData {
   college_id: string;
   role: "admin" | "student";
   must_change_password: boolean;
+  theme?: string;
+  accentColor?: string;
 }
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { setTheme } = useTheme();
+  const { initFromServer } = useAccentColor();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,6 +108,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         }
         const data = await res.json();
         setUser(data.user);
+
+        // Apply server-saved theme preferences
+        if (data.user.theme && data.user.theme !== "system") {
+          setTheme(data.user.theme);
+        }
+        if (data.user.accentColor && data.user.accentColor !== "default") {
+          initFromServer(data.user.accentColor);
+        }
       } catch {
         router.push("/login");
       } finally {
@@ -103,13 +123,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       }
     }
     fetchUser();
-  }, [router]);
+  }, [router, setTheme, initFromServer]);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <svg className="animate-spin h-8 w-8 text-indigo-600" viewBox="0 0 24 24">
+          <svg className="animate-spin h-8 w-8 text-primary" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
