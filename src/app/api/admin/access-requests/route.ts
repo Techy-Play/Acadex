@@ -4,11 +4,13 @@ import { connectDB } from "@/lib/db";
 import AccessRequest from "@/models/AccessRequest";
 import User from "@/models/User";
 import Stream from "@/models/Stream";
+import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
 import { sendMail, approvalEmailHTML, denialEmailHTML } from "@/lib/mail";
 
 // Ensure models are registered
 void Stream;
+void Section;
 
 function generateTempPassword(length = 10) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
@@ -27,14 +29,37 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
+
     await connectDB();
 
-    const requests = await AccessRequest.find()
+    // Section admin only sees requests for their section
+    const filter: Record<string, unknown> = {};
+    if (!isSuperAdmin && adminSection) {
+      filter.section = adminSection;
+    }
+
+    const requests = await AccessRequest.find(filter)
       .populate("stream", "name")
+      .populate("section", "name")
       .sort({ createdAt: -1 })
       .lean();
 
-    return NextResponse.json({ requests });
+    // Check which college_ids already exist in Users collection
+    const collegeIds = requests.map((r) => r.college_id);
+    const existingUsers = await User.find(
+      { college_id: { $in: collegeIds } },
+      { college_id: 1 }
+    ).lean();
+    const existingIdSet = new Set(existingUsers.map((u) => u.college_id));
+
+    const enrichedRequests = requests.map((r) => ({
+      ...r,
+      duplicateId: existingIdSet.has(r.college_id),
+    }));
+
+    return NextResponse.json({ requests: enrichedRequests });
   } catch (error) {
     console.error("List access requests error:", error);
     return NextResponse.json(
@@ -101,6 +126,7 @@ export async function PATCH(request: Request) {
         password_hash: passwordHash,
         role: "student",
         stream: accessReq.stream,
+        section: accessReq.section,
         must_change_password: true,
       });
 

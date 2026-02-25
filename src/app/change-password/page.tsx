@@ -58,7 +58,7 @@ export default function ChangePasswordPage() {
       if (meData.user?.role === "admin") {
         router.push("/admin");
       } else {
-        router.push("/dashboard");
+        router.push("/user/dashboard");
       }
     } catch {
       toast.error("Something went wrong. Please try again.");

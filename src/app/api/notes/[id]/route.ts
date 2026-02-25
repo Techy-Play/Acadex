@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Note from "@/models/Note";
+import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
+
+const populateFields = [
+  { path: "subject", select: "name type" },
+  { path: "section", select: "name" },
+];
 
 // GET /api/notes/[id] - Get a single note
 export async function GET(
@@ -11,8 +17,9 @@ export async function GET(
   try {
     const { id } = await params;
     await connectDB();
+    void Section;
 
-    const note = await Note.findById(id).populate("subject", "name");
+    const note = await Note.findById(id).populate(populateFields);
     if (!note) {
       return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
@@ -54,9 +61,20 @@ export async function PUT(
     if (body.title !== undefined) note.title = body.title;
     if (body.file_url !== undefined) note.file_url = body.file_url;
     if (body.subject !== undefined) note.subject = body.subject;
+    if (body.section !== undefined) note.section = body.section || null;
+
+    // Section admin can only edit their own section's notes
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
+    if (!isSuperAdmin && note.section?.toString() !== adminSection) {
+      return NextResponse.json(
+        { error: "You can only edit notes from your own section" },
+        { status: 403 }
+      );
+    }
 
     await note.save();
-    const populated = await note.populate("subject", "name");
+    const populated = await note.populate(populateFields);
 
     await ActivityLog.create({
       user: adminId!,
@@ -90,10 +108,22 @@ export async function DELETE(
     const { id } = await params;
     await connectDB();
 
-    const note = await Note.findByIdAndDelete(id);
+    const note = await Note.findById(id);
     if (!note) {
       return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
+
+    // Section admin can only delete their own section's notes
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
+    if (!isSuperAdmin && note.section?.toString() !== adminSection) {
+      return NextResponse.json(
+        { error: "You can only delete notes from your own section" },
+        { status: 403 }
+      );
+    }
+
+    await Note.findByIdAndDelete(id);
 
     await ActivityLog.create({
       user: adminId!,

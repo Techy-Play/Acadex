@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import Notification from "@/models/Notification";
+import Assignment from "@/models/Assignment";
 
-// GET /api/notifications — Fetch notifications for current user's role
+// GET /api/notifications — Fetch notifications for current user
 export async function GET(request: Request) {
   try {
     const userId = request.headers.get("x-user-id");
@@ -14,25 +16,72 @@ export async function GET(request: Request) {
 
     await connectDB();
 
-    // Get recent notifications for this role (last 30 days, max 50)
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    // ── Generate deadline alerts for upcoming assignments (24h) ──
+    try {
+      const now = new Date();
+      const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
+      const upcomingAssignments = await Assignment.find({
+        deadline: { $gte: now, $lte: in24h },
+      })
+        .populate("subject", "name")
+        .lean();
+
+      for (const a of upcomingAssignments) {
+        // Don't create duplicate deadline alerts
+        const existing = await Notification.findOne({
+          type: "deadline_alert",
+          link: `/user/dashboard/assignments`,
+          "message": { $regex: a._id.toString() },
+        });
+        if (!existing) {
+          const subjectName =
+            (a.subject as { name?: string })?.name || "Unknown";
+          const deadlineStr = new Date(a.deadline!).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          await Notification.create({
+            type: "deadline_alert",
+            title: "Assignment Deadline Approaching",
+            message: `"${a.title}" (${subjectName}) is due ${deadlineStr} [${a._id}]`,
+            link: "/user/dashboard/assignments",
+            targetRole: "student",
+          });
+        }
+      }
+    } catch {
+      // Don't fail the whole request if deadline check fails
+    }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const userObjId = new mongoose.Types.ObjectId(userId);
+
+    // Fetch notifications for this role OR targeted to this specific user
+    // Exclude dismissed ones
     const notifications = await Notification.find({
-      targetRole: userRole,
       createdAt: { $gte: thirtyDaysAgo },
+      dismissedBy: { $ne: userObjId },
+      $or: [
+        { targetRole: userRole },
+        { targetUsers: userObjId },
+      ],
     })
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
 
-    // Map to include read status for this specific user
     const mapped = notifications.map((n) => ({
       id: n._id,
       type: n.type,
       title: n.title,
       message: n.message,
       link: n.link,
-      read: n.readBy.some((id: mongoose.Types.ObjectId) => id.toString() === userId),
+      read: (n.readBy || []).some(
+        (id: mongoose.Types.ObjectId) => id.toString() === userId
+      ),
       createdAt: n.createdAt,
     }));
 
@@ -59,15 +108,16 @@ export async function PUT(request: Request) {
     }
 
     await connectDB();
+    const userObjId = new mongoose.Types.ObjectId(userId);
 
-    // Add userId to readBy for all unread notifications of this role
+    // Mark all role-targeted + user-targeted notifications as read
     await Notification.updateMany(
       {
-        targetRole: userRole,
-        readBy: { $ne: userId },
+        $or: [{ targetRole: userRole }, { targetUsers: userObjId }],
+        readBy: { $ne: userObjId },
       },
       {
-        $addToSet: { readBy: userId },
+        $addToSet: { readBy: userObjId },
       }
     );
 
@@ -81,5 +131,36 @@ export async function PUT(request: Request) {
   }
 }
 
-// Required for the lean() ObjectId type
-import mongoose from "mongoose";
+// DELETE /api/notifications — Clear all notifications for this user (dismiss)
+export async function DELETE(request: Request) {
+  try {
+    const userId = request.headers.get("x-user-id");
+    const userRole = request.headers.get("x-user-role");
+
+    if (!userId || !userRole) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await connectDB();
+    const userObjId = new mongoose.Types.ObjectId(userId);
+
+    // Add userId to dismissedBy for all notifications visible to this user
+    await Notification.updateMany(
+      {
+        $or: [{ targetRole: userRole }, { targetUsers: userObjId }],
+        dismissedBy: { $ne: userObjId },
+      },
+      {
+        $addToSet: { dismissedBy: userObjId, readBy: userObjId },
+      }
+    );
+
+    return NextResponse.json({ message: "All notifications cleared" });
+  } catch (error) {
+    console.error("Clear all notifications error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

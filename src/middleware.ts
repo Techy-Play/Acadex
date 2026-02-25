@@ -17,6 +17,8 @@ async function verifyJWT(token: string) {
       collegeId: string;
       role: "admin" | "student";
       name: string;
+      isSuperAdmin?: boolean;
+      section?: string | null;
       mustChangePassword?: boolean;
     };
   } catch {
@@ -44,7 +46,7 @@ export async function middleware(request: NextRequest) {
         if (payload.mustChangePassword) {
           return NextResponse.redirect(new URL("/change-password", request.url));
         }
-        const dest = payload.role === "admin" ? "/admin" : "/dashboard";
+        const dest = payload.role === "admin" ? "/admin" : "/user/dashboard";
         return NextResponse.redirect(new URL(dest, request.url));
       }
     }
@@ -58,6 +60,11 @@ export async function middleware(request: NextRequest) {
 
   // Public access request API (students apply without auth)
   if (pathname.startsWith("/api/access-requests")) {
+    return NextResponse.next();
+  }
+
+  // Public sections API for access request form (GET only)
+  if (pathname === "/api/sections" && request.method === "GET") {
     return NextResponse.next();
   }
 
@@ -113,7 +120,7 @@ export async function middleware(request: NextRequest) {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      return NextResponse.redirect(new URL("/user/dashboard", request.url));
     }
   }
 
@@ -123,6 +130,10 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set("x-user-role", payload.role);
   requestHeaders.set("x-user-name", payload.name);
   requestHeaders.set("x-user-college-id", payload.collegeId);
+  requestHeaders.set("x-user-is-super-admin", String(payload.isSuperAdmin || false));
+  if (payload.section) {
+    requestHeaders.set("x-user-section", payload.section);
+  }
 
   return NextResponse.next({
     request: {
@@ -137,9 +148,10 @@ export const config = {
     "/login",
     "/about",
     "/contact",
-    "/dashboard/:path*",
+    "/user/dashboard/:path*",
     "/admin/:path*",
     "/change-password",
+    "/account-restricted",
     "/api/admin/:path*",
     "/api/auth/logout",
     "/api/auth/me",
@@ -155,6 +167,7 @@ export const config = {
     "/api/practicals/:path*",
     "/api/practical-completions/:path*",
     "/api/streams/:path*",
+    "/api/sections/:path*",
     "/api/access-requests/:path*",
     "/api/contact/:path*",
   ],

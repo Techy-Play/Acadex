@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { RouteProgress } from "@/components/route-progress";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,11 +33,14 @@ export default function RootLayout({
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
           storageKey="section-c-theme"
         >
+          <Suspense>
+            <RouteProgress />
+          </Suspense>
           {children}
           <Toaster richColors position="top-right" />
         </ThemeProvider>

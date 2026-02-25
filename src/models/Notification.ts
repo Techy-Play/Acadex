@@ -1,13 +1,25 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+export type NotificationType =
+  | "new_note"
+  | "new_assignment"
+  | "new_practical"
+  | "deadline_alert"
+  | "new_access_request"
+  | "contact_message"
+  | "profile_update"
+  | "admin_message";
+
 export interface INotification extends Document {
   _id: mongoose.Types.ObjectId;
-  type: "new_note" | "new_assignment" | "new_practical" | "deadline_alert" | "new_access_request";
+  type: NotificationType;
   title: string;
   message: string;
   link: string | null;
-  targetRole: "student" | "admin";
+  targetRole: "student" | "admin" | null;
+  targetUsers: mongoose.Types.ObjectId[];
   readBy: mongoose.Types.ObjectId[];
+  dismissedBy: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -16,7 +28,16 @@ const NotificationSchema = new Schema<INotification>(
   {
     type: {
       type: String,
-      enum: ["new_note", "new_assignment", "new_practical", "deadline_alert", "new_access_request"],
+      enum: [
+        "new_note",
+        "new_assignment",
+        "new_practical",
+        "deadline_alert",
+        "new_access_request",
+        "contact_message",
+        "profile_update",
+        "admin_message",
+      ],
       required: true,
     },
     title: {
@@ -37,10 +58,22 @@ const NotificationSchema = new Schema<INotification>(
     },
     targetRole: {
       type: String,
-      enum: ["student", "admin"],
-      required: true,
+      enum: ["student", "admin", null],
+      default: null,
     },
+    targetUsers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     readBy: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    dismissedBy: [
       {
         type: Schema.Types.ObjectId,
         ref: "User",
@@ -54,6 +87,7 @@ const NotificationSchema = new Schema<INotification>(
 
 // Index for efficient querying
 NotificationSchema.index({ targetRole: 1, createdAt: -1 });
+NotificationSchema.index({ targetUsers: 1, createdAt: -1 });
 
 // Prevent model recompilation in development (hot reload)
 const Notification: Model<INotification> =

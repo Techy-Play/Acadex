@@ -2,20 +2,27 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { addAssignmentSchema } from "@/lib/validations";
 import Assignment from "@/models/Assignment";
+import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
 import Notification from "@/models/Notification";
 
-// GET /api/assignments - List assignments (optionally filter by subject)
+// GET /api/assignments - List assignments (optionally filter by subject and/or section)
 export async function GET(request: Request) {
   try {
     await connectDB();
+    void Section;
 
     const { searchParams } = new URL(request.url);
     const subjectId = searchParams.get("subject");
+    const sectionId = searchParams.get("section");
 
-    const filter = subjectId ? { subject: subjectId } : {};
+    const filter: Record<string, string> = {};
+    if (subjectId) filter.subject = subjectId;
+    if (sectionId) filter.section = sectionId;
+
     const assignments = await Assignment.find(filter)
-      .populate("subject", "name")
+      .populate("subject", "name type")
+      .populate("section", "name")
       .sort({ createdAt: -1 });
 
     return NextResponse.json({ assignments });
@@ -33,6 +40,8 @@ export async function POST(request: Request) {
   try {
     const userRole = request.headers.get("x-user-role");
     const adminId = request.headers.get("x-user-id");
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
 
     if (userRole !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -48,7 +57,13 @@ export async function POST(request: Request) {
       );
     }
 
+    let sectionId = parsed.data.section || null;
+    if (!isSuperAdmin) {
+      sectionId = adminSection || null;
+    }
+
     await connectDB();
+    void Section;
 
     const assignment = await Assignment.create({
       subject: parsed.data.subject,
@@ -56,9 +71,14 @@ export async function POST(request: Request) {
       description: parsed.data.description || "",
       file_url: parsed.data.file_url || "",
       deadline: parsed.data.deadline ? new Date(parsed.data.deadline) : null,
+      section: sectionId,
+      uploadedBy: adminId,
     });
 
-    const populated = await assignment.populate("subject", "name");
+    const populated = await assignment.populate([
+      { path: "subject", select: "name type" },
+      { path: "section", select: "name" },
+    ]);
 
     // Log activity
     await ActivityLog.create({
@@ -75,7 +95,7 @@ export async function POST(request: Request) {
       type: "new_assignment",
       title: "New Assignment Added",
       message: `"${parsed.data.title}"${deadlineInfo} has been posted`,
-      link: "/dashboard/assignments",
+      link: "/user/dashboard/assignments",
       targetRole: "student",
     });
 

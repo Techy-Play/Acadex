@@ -3,21 +3,28 @@ import { connectDB } from "@/lib/db";
 import { addPracticalSchema } from "@/lib/validations";
 import Subject from "@/models/Subject";
 import Practical from "@/models/Practical";
+import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
 import Notification from "@/models/Notification";
 
-// GET /api/practicals - List practicals (optionally filter by subject)
+// GET /api/practicals - List practicals (optionally filter by subject and/or section)
 export async function GET(request: Request) {
   try {
     await connectDB();
-    void Subject; // Ensure Subject model is registered for populate
+    void Subject;
+    void Section;
 
     const { searchParams } = new URL(request.url);
     const subjectId = searchParams.get("subject");
+    const sectionId = searchParams.get("section");
 
-    const filter = subjectId ? { subject: subjectId } : {};
+    const filter: Record<string, string> = {};
+    if (subjectId) filter.subject = subjectId;
+    if (sectionId) filter.section = sectionId;
+
     const practicals = await Practical.find(filter)
-      .populate("subject", "name")
+      .populate("subject", "name type")
+      .populate("section", "name")
       .sort({ createdAt: -1 });
 
     return NextResponse.json({ practicals });
@@ -35,6 +42,8 @@ export async function POST(request: Request) {
   try {
     const userRole = request.headers.get("x-user-role");
     const adminId = request.headers.get("x-user-id");
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
 
     if (userRole !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -50,17 +59,28 @@ export async function POST(request: Request) {
       );
     }
 
+    let sectionId = parsed.data.section || null;
+    if (!isSuperAdmin) {
+      sectionId = adminSection || null;
+    }
+
     await connectDB();
     void Subject;
+    void Section;
 
     const practical = await Practical.create({
       subject: parsed.data.subject,
       title: parsed.data.title,
       description: parsed.data.description || "",
       file_url: parsed.data.file_url || "",
+      section: sectionId,
+      uploadedBy: adminId,
     });
 
-    const populated = await practical.populate("subject", "name");
+    const populated = await practical.populate([
+      { path: "subject", select: "name type" },
+      { path: "section", select: "name" },
+    ]);
 
     // Log activity
     await ActivityLog.create({
@@ -74,7 +94,7 @@ export async function POST(request: Request) {
       type: "new_practical",
       title: "New Practical Added",
       message: `"${parsed.data.title}" has been uploaded`,
-      link: "/dashboard/practicals",
+      link: "/user/dashboard/practicals",
       targetRole: "student",
     });
 

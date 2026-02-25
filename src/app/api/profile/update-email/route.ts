@@ -91,6 +91,30 @@ export async function POST(request: Request) {
     // Clean up OTP
     await OTP.deleteMany({ user: userId, purpose: "email_change" });
 
+    // Notify user about email change
+    try {
+      const Notification = (await import("@/models/Notification")).default;
+      await Notification.create({
+        type: "profile_update",
+        title: "Email Updated",
+        message: `Your email was changed to ${updatedUser.email}. If you didn't do this, contact admin immediately.`,
+        link: "/user/dashboard/profile",
+        targetUsers: [userId],
+      });
+    } catch { /* non-blocking */ }
+
+    // Send security email to new email
+    try {
+      if (updatedUser.email) {
+        const { sendMail, profileUpdateEmailHTML } = await import("@/lib/mail");
+        await sendMail({
+          to: updatedUser.email,
+          subject: "📧 Section C Hub — Email Updated",
+          html: profileUpdateEmailHTML(user.name, "email"),
+        });
+      }
+    } catch { /* non-blocking */ }
+
     return NextResponse.json({
       message: "Email updated successfully",
       email: updatedUser.email,

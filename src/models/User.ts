@@ -7,10 +7,16 @@ export interface IUser extends Document {
   email: string | null;
   password_hash: string;
   role: "admin" | "student";
+  isSuperAdmin: boolean;
+  adminAlias: string | null;
   stream: mongoose.Types.ObjectId | null;
+  section: mongoose.Types.ObjectId | null;
   must_change_password: boolean;
   theme: string;
   accentColor: string;
+  mobileNavPosition: "top" | "bottom" | "left";
+  dashboardView: "grid" | "list" | "detail";
+  status: "active" | "banned" | "suspended";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,9 +52,24 @@ const UserSchema = new Schema<IUser>(
       enum: ["admin", "student"],
       default: "student",
     },
+    isSuperAdmin: {
+      type: Boolean,
+      default: false,
+    },
+    adminAlias: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: 100,
+    },
     stream: {
       type: Schema.Types.ObjectId,
       ref: "Stream",
+      default: null,
+    },
+    section: {
+      type: Schema.Types.ObjectId,
+      ref: "Section",
       default: null,
     },
     must_change_password: {
@@ -58,12 +79,27 @@ const UserSchema = new Schema<IUser>(
     theme: {
       type: String,
       enum: ["light", "dark", "system"],
-      default: "system",
+      default: "dark",
     },
     accentColor: {
       type: String,
-      enum: ["default", "pink", "magenta", "cyan", "navy", "emerald", "sunset", "purple"],
-      default: "default",
+      enum: ["default", "rose", "ocean", "emerald", "violet", "sunset", "amoled", "pastel", "contrast"],
+      default: "amoled",
+    },
+    mobileNavPosition: {
+      type: String,
+      enum: ["top", "bottom", "left"],
+      default: "bottom",
+    },
+    dashboardView: {
+      type: String,
+      enum: ["grid", "list", "detail"],
+      default: "list",
+    },
+    status: {
+      type: String,
+      enum: ["active", "banned", "suspended"],
+      default: "active",
     },
   },
   {

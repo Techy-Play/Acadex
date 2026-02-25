@@ -12,6 +12,7 @@ interface Stats {
   totalPracticals: number;
   totalSubjects: number;
   totalStreams: number;
+  totalSections: number;
 }
 
 export default function AdminDashboard() {
@@ -22,13 +23,14 @@ export default function AdminDashboard() {
     totalPracticals: 0,
     totalSubjects: 0,
     totalStreams: 0,
+    totalSections: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        const [studentsRes, notesRes, assignmentsRes, practicalsRes, subjectsRes, streamsRes] =
+        const [studentsRes, notesRes, assignmentsRes, practicalsRes, subjectsRes, streamsRes, sectionsRes] =
           await Promise.all([
             fetch("/api/admin/students"),
             fetch("/api/notes"),
@@ -36,6 +38,7 @@ export default function AdminDashboard() {
             fetch("/api/practicals"),
             fetch("/api/subjects"),
             fetch("/api/streams"),
+            fetch("/api/sections"),
           ]);
 
         const studentsData = await studentsRes.json();
@@ -44,6 +47,7 @@ export default function AdminDashboard() {
         const practicalsData = await practicalsRes.json();
         const subjectsData = await subjectsRes.json();
         const streamsData = await streamsRes.json();
+        const sectionsData = await sectionsRes.json();
 
         setStats({
           totalStudents: studentsData.students?.filter(
@@ -54,6 +58,7 @@ export default function AdminDashboard() {
           totalPracticals: practicalsData.practicals?.length || 0,
           totalSubjects: subjectsData.subjects?.length || 0,
           totalStreams: streamsData.streams?.length || 0,
+          totalSections: sectionsData.sections?.length || 0,
         });
       } catch (error) {
         console.error("Failed to fetch stats:", error);
@@ -100,6 +105,12 @@ export default function AdminDashboard() {
       value: stats.totalStreams,
       icon: "🎓",
       color: "from-teal-500 to-teal-600",
+    },
+    {
+      title: "Sections",
+      value: stats.totalSections,
+      icon: "🏫",
+      color: "from-cyan-500 to-cyan-600",
     },
   ];
 
@@ -231,6 +242,22 @@ export default function AdminDashboard() {
                 <div>
                   <p className="font-medium text-sm">Streams</p>
                   <p className="text-xs text-muted-foreground">Manage streams</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/sections">
+            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
+              <CardContent className="p-5 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-cyan-100 dark:bg-cyan-900/50 flex items-center justify-center">
+                  <svg className="h-5 w-5 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Sections</p>
+                  <p className="text-xs text-muted-foreground">Manage sections</p>
                 </div>
               </CardContent>
             </Card>

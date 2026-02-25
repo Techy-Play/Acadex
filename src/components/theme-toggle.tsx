@@ -13,14 +13,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const ACCENT_COLORS = [
-  { name: "Default", value: "default", color: "bg-gray-800 dark:bg-gray-200" },
-  { name: "Pink", value: "pink", color: "bg-pink-500" },
-  { name: "Magenta", value: "magenta", color: "bg-fuchsia-600" },
-  { name: "Cyan", value: "cyan", color: "bg-cyan-500" },
-  { name: "Navy", value: "navy", color: "bg-blue-900" },
+  { name: "Default", value: "default", color: "bg-neutral-800 dark:bg-neutral-200" },
+  { name: "Rose", value: "rose", color: "bg-rose-500" },
+  { name: "Ocean", value: "ocean", color: "bg-sky-500" },
   { name: "Emerald", value: "emerald", color: "bg-emerald-500" },
+  { name: "Violet", value: "violet", color: "bg-violet-500" },
   { name: "Sunset", value: "sunset", color: "bg-orange-500" },
-  { name: "Purple", value: "purple", color: "bg-purple-600" },
+  { name: "AMOLED", value: "amoled", color: "bg-cyan-400" },
+  { name: "Pastel", value: "pastel", color: "bg-amber-400" },
+  { name: "Contrast", value: "contrast", color: "bg-yellow-400" },
 ];
 
 function SunIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -86,7 +87,7 @@ export function useAccentColor() {
   const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
-    const saved = localStorage.getItem("section-c-accent") || "default";
+    const saved = localStorage.getItem("section-c-accent") || "amoled";
     setAccentState(saved);
     applyAccent(saved);
     setLoaded(true);
@@ -100,7 +101,7 @@ export function useAccentColor() {
   }, []);
 
   const initFromServer = React.useCallback((serverAccent: string) => {
-    if (serverAccent && serverAccent !== "default") {
+    if (serverAccent) {
       setAccentState(serverAccent);
       localStorage.setItem("section-c-accent", serverAccent);
       applyAccent(serverAccent);
@@ -167,7 +168,7 @@ export function ThemeToggle() {
         <DropdownMenuLabel className="text-xs text-muted-foreground font-medium">
           Accent Color
         </DropdownMenuLabel>
-        <div className="grid grid-cols-4 gap-1.5 px-2 py-2">
+        <div className="grid grid-cols-3 gap-1.5 px-2 py-2">
           {ACCENT_COLORS.map((c) => (
             <button
               key={c.value}

@@ -129,7 +129,7 @@ export default function NotesPage() {
             Browse subject-wise study materials
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           <Select value={sortOrder} onValueChange={setSortOrder}>
             <SelectTrigger className="w-full sm:w-[160px] rounded-xl">
               <SelectValue placeholder="Sort by" />
@@ -154,6 +154,17 @@ export default function NotesPage() {
               ))}
             </SelectContent>
           </Select>
+          {(sortOrder !== "newest" || selectedSubject !== "all") && (
+            <button
+              className="text-xs text-primary hover:underline whitespace-nowrap"
+              onClick={() => {
+                setSortOrder("newest");
+                setSelectedSubject("all");
+              }}
+            >
+              Reset filters
+            </button>
+          )}
         </div>
       </div>
 

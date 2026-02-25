@@ -150,3 +150,29 @@ export function otpEmailHTML(name: string, otp: string, purpose: "password_chang
     </div>
   `;
 }
+
+export function profileUpdateEmailHTML(name: string, changeType: "password" | "email") {
+  const changeText = changeType === "password" ? "password was changed" : "email address was updated";
+  return `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #6366f1, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">Section C Hub</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Security Alert</p>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
+        <h2 style="color: #1f2937; margin: 0 0 16px 0;">Hi ${name},</h2>
+        <p style="color: #4b5563; line-height: 1.6;">
+          Your <strong>${changeText}</strong> on Section C Hub.
+        </p>
+        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0; color: #92400e; font-size: 13px;">
+            ⚠️ If you did not make this change, please contact your admin immediately to secure your account.
+          </p>
+        </div>
+        <p style="color: #9ca3af; font-size: 12px; text-align: center; margin-top: 24px;">
+          This is an automated security email from Section C Hub.
+        </p>
+      </div>
+    </div>
+  `;
+}

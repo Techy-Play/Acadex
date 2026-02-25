@@ -43,6 +43,11 @@ interface Subject {
   name: string;
 }
 
+interface SectionItem {
+  _id: string;
+  name: string;
+}
+
 interface Assignment {
   _id: string;
   title: string;
@@ -51,11 +56,13 @@ interface Assignment {
   deadline: string | null;
   createdAt: string;
   subject: { _id: string; name: string };
+  section?: { _id: string; name: string } | null;
 }
 
 export default function ManageAssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [sections, setSections] = useState<SectionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Add form state
@@ -66,6 +73,7 @@ export default function ManageAssignmentsPage() {
   const [addDescription, setAddDescription] = useState("");
   const [addFileUrl, setAddFileUrl] = useState("");
   const [addDeadline, setAddDeadline] = useState("");
+  const [addSection, setAddSection] = useState("");
 
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -75,6 +83,7 @@ export default function ManageAssignmentsPage() {
   const [editFileUrl, setEditFileUrl] = useState("");
   const [editSubject, setEditSubject] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
+  const [editSection, setEditSection] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Delete state
@@ -104,9 +113,20 @@ export default function ManageAssignmentsPage() {
     }
   };
 
+  const fetchSections = async () => {
+    try {
+      const res = await fetch("/api/sections");
+      const data = await res.json();
+      if (res.ok) setSections(data.sections || []);
+    } catch {
+      // silent
+    }
+  };
+
   useEffect(() => {
     fetchAssignments();
     fetchSubjects();
+    fetchSections();
   }, []);
 
   // ─── Add Assignment ─────────────────────────────
@@ -124,6 +144,7 @@ export default function ManageAssignmentsPage() {
           description: addDescription || undefined,
           file_url: addFileUrl || undefined,
           deadline: addDeadline || undefined,
+          ...(addSection && { section: addSection }),
         }),
       });
 
@@ -140,6 +161,7 @@ export default function ManageAssignmentsPage() {
       setAddFileUrl("");
       setAddDeadline("");
       setAddSubject("");
+      setAddSection("");
       setShowAddForm(false);
       fetchAssignments();
     } catch {
@@ -156,6 +178,7 @@ export default function ManageAssignmentsPage() {
     setEditDescription(a.description || "");
     setEditFileUrl(a.file_url || "");
     setEditSubject(a.subject._id);
+    setEditSection(a.section?._id || "");
     setEditDeadline(
       a.deadline ? new Date(a.deadline).toISOString().slice(0, 16) : ""
     );
@@ -176,6 +199,7 @@ export default function ManageAssignmentsPage() {
           file_url: editFileUrl,
           subject: editSubject,
           deadline: editDeadline || null,
+          ...(editSection && { section: editSection }),
         }),
       });
 
@@ -329,6 +353,24 @@ export default function ManageAssignmentsPage() {
                 </div>
               </div>
 
+              {sections.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Section (Optional)</Label>
+                  <Select value={addSection} onValueChange={setAddSection}>
+                    <SelectTrigger className="rounded-xl w-full sm:w-[200px]">
+                      <SelectValue placeholder="Auto (your section)" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {sections.map((s) => (
+                        <SelectItem key={s._id} value={s._id}>
+                          🏫 {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <Button
                 type="submit"
                 className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
@@ -376,6 +418,7 @@ export default function ManageAssignmentsPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Title</TableHead>
+                          <TableHead>Section</TableHead>
                           <TableHead>Deadline</TableHead>
                           <TableHead>PDF</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
@@ -390,6 +433,15 @@ export default function ManageAssignmentsPage() {
                             <TableRow key={a._id}>
                               <TableCell className="font-medium max-w-[200px] truncate">
                                 {a.title}
+                              </TableCell>
+                              <TableCell>
+                                {a.section ? (
+                                  <Badge variant="outline" className="rounded-full text-xs">
+                                    🏫 {a.section.name}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
                               </TableCell>
                               <TableCell>
                                 {a.deadline ? (
@@ -416,7 +468,7 @@ export default function ManageAssignmentsPage() {
                                       className="rounded-lg text-xs"
                                       asChild
                                     >
-                                      <Link href={`/dashboard/viewer?url=${encodeURIComponent(a.file_url)}&title=${encodeURIComponent(a.title)}`} target="_blank">
+                                      <Link href={`/user/dashboard/viewer?url=${encodeURIComponent(a.file_url)}&title=${encodeURIComponent(a.title)}`} target="_blank">
                                         Open
                                       </Link>
                                     </Button>
@@ -515,6 +567,23 @@ export default function ManageAssignmentsPage() {
                 className="rounded-xl"
               />
             </div>
+            {sections.length > 0 && (
+              <div className="space-y-2">
+                <Label>Section</Label>
+                <Select value={editSection} onValueChange={setEditSection}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="No section" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {sections.map((s) => (
+                      <SelectItem key={s._id} value={s._id}>
+                        🏫 {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

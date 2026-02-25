@@ -36,9 +36,11 @@ interface AccessRequest {
   college_id: string;
   email: string;
   stream: { _id: string; name: string } | null;
+  section: { _id: string; name: string } | null;
   reason: string;
   status: "pending" | "approved" | "denied";
   admin_note: string;
+  duplicateId?: boolean;
   createdAt: string;
 }
 
@@ -276,6 +278,7 @@ export default function AccessRequestsPage() {
                     <TableHead>College ID</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Stream</TableHead>
+                    <TableHead>Section</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -285,12 +288,30 @@ export default function AccessRequestsPage() {
                   {filteredRequests.map((req) => (
                     <TableRow key={req._id}>
                       <TableCell className="font-medium">{req.name}</TableCell>
-                      <TableCell>{req.college_id}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <span>{req.college_id}</span>
+                          {req.duplicateId && (
+                            <Badge variant="outline" className="rounded-full text-[10px] px-1.5 py-0 text-orange-600 border-orange-400 bg-orange-50 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-700 animate-pulse">
+                              ⚠ ID in use
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-xs">{req.email}</TableCell>
                       <TableCell>
                         {req.stream ? (
                           <Badge variant="outline" className="rounded-full text-xs">
                             🎓 {req.stream.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {req.section ? (
+                          <Badge variant="outline" className="rounded-full text-xs">
+                            🏫 {req.section.name}
                           </Badge>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>

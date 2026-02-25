@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db";
 import { addStudentSchema } from "@/lib/validations";
 import User from "@/models/User";
 import Stream from "@/models/Stream";
+import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
 
 // GET /api/admin/students - List all students
@@ -14,11 +15,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
+
     await connectDB();
 
-    // Fetch users first, then manually attach stream data
-    // (avoids Mongoose populate issues with model registration timing)
-    const users = await User.find()
+    // Section admin only sees users in their section
+    const filter: Record<string, unknown> = {};
+    if (!isSuperAdmin && adminSection) {
+      filter.section = adminSection;
+    }
+
+    // Fetch users first, then manually attach stream/section data
+    const users = await User.find(filter)
       .select("-password_hash")
       .sort({ createdAt: -1 })
       .lean();
@@ -28,6 +37,15 @@ export async function GET(request: Request) {
       ...new Set(
         users
           .map((u) => u.stream?.toString())
+          .filter((id): id is string => !!id)
+      ),
+    ];
+
+    // Collect unique section IDs
+    const sectionIds = [
+      ...new Set(
+        users
+          .map((u) => u.section?.toString())
           .filter((id): id is string => !!id)
       ),
     ];
@@ -43,10 +61,22 @@ export async function GET(request: Request) {
       }
     }
 
-    // Attach stream object to each user
+    // Fetch sections in one query if any exist
+    let sectionMap: Record<string, { _id: string; name: string }> = {};
+    if (sectionIds.length > 0) {
+      const sections = await Section.find({ _id: { $in: sectionIds } })
+        .select("_id name")
+        .lean();
+      for (const s of sections) {
+        sectionMap[s._id.toString()] = { _id: s._id.toString(), name: s.name };
+      }
+    }
+
+    // Attach stream and section objects to each user
     const students = users.map((u) => ({
       ...u,
       stream: u.stream ? streamMap[u.stream.toString()] || null : null,
+      section: u.section ? sectionMap[u.section.toString()] || null : null,
     }));
 
     return NextResponse.json({ students });
@@ -82,6 +112,23 @@ export async function POST(request: Request) {
 
     const { name, college_id, password, role } = parsed.data;
     const stream = body.stream || null;
+    let section = body.section || null;
+
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
+
+    // Only super admin can create admin users
+    if (role === "admin" && !isSuperAdmin) {
+      return NextResponse.json(
+        { error: "Only super admin can create admin users" },
+        { status: 403 }
+      );
+    }
+
+    // Section admin auto-fills their section
+    if (!isSuperAdmin) {
+      section = adminSection || null;
+    }
 
     await connectDB();
 
@@ -104,6 +151,7 @@ export async function POST(request: Request) {
       password_hash: passwordHash,
       role,
       stream,
+      section,
       must_change_password: true,
     });
 

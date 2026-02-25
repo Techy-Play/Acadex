@@ -29,6 +29,11 @@ interface StreamOption {
   name: string;
 }
 
+interface SectionOption {
+  _id: string;
+  name: string;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -42,15 +47,20 @@ export default function LoginPage() {
   const [applyCollegeId, setApplyCollegeId] = useState("");
   const [applyEmail, setApplyEmail] = useState("");
   const [applyStream, setApplyStream] = useState("none");
+  const [applySection, setApplySection] = useState("");
   const [applyReason, setApplyReason] = useState("");
   const [streams, setStreams] = useState<StreamOption[]>([]);
+  const [sections, setSections] = useState<SectionOption[]>([]);
   const [applySuccess, setApplySuccess] = useState(false);
 
   useEffect(() => {
     if (showApplyForm && streams.length === 0) {
       fetch("/api/access-requests")
         .then((r) => r.json())
-        .then((data) => setStreams(data.streams || []))
+        .then((data) => {
+          setStreams(data.streams || []);
+          setSections(data.sections || []);
+        })
         .catch(() => {});
     }
   }, [showApplyForm, streams.length]);
@@ -81,7 +91,7 @@ export default function LoginPage() {
       } else if (data.user.role === "admin") {
         router.push("/admin");
       } else {
-        router.push("/dashboard");
+        router.push("/user/dashboard");
       }
     } catch {
       toast.error("Something went wrong. Please try again.");
@@ -103,6 +113,7 @@ export default function LoginPage() {
           college_id: applyCollegeId,
           email: applyEmail,
           stream: applyStream === "none" ? null : applyStream,
+          section: applySection || null,
           reason: applyReason,
         }),
       });
@@ -277,6 +288,7 @@ export default function LoginPage() {
                           setApplyCollegeId("");
                           setApplyEmail("");
                           setApplyStream("none");
+                          setApplySection("");
                           setApplyReason("");
                         }}
                         className="w-full rounded-xl h-11 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
@@ -327,13 +339,18 @@ export default function LoginPage() {
                         <Input
                           id="apply_college_id"
                           type="text"
-                          placeholder="e.g. 2024BCS001"
+                          placeholder="e.g. 2417003"
                           value={applyCollegeId}
                           onChange={(e) => setApplyCollegeId(e.target.value)}
                           required
                           maxLength={50}
+                          pattern="^(241|257|258|259)\d{4}$"
+                          title="Must start with 241, 257, 258, or 259 followed by 4 digits"
                           className="rounded-xl h-11 border-muted-foreground/20 focus:border-indigo-500 transition-colors"
                         />
+                        <p className="text-xs text-muted-foreground">
+                          Format: 241/257/258/259 followed by 4 digits
+                        </p>
                       </div>
 
                       <div className="space-y-2">
@@ -351,8 +368,26 @@ export default function LoginPage() {
                           className="rounded-xl h-11 border-muted-foreground/20 focus:border-indigo-500 transition-colors"
                         />
                         <p className="text-xs text-muted-foreground">
-                          You&apos;ll receive login credentials here once approved
+                          You&apos;ll receive login credentials here. Allowed: gmail.com, outlook.com, hotmail.com, yahoo.com, amrapali.ac.in
                         </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">
+                          Section <span className="text-red-500">*</span>
+                        </Label>
+                        <Select value={applySection} onValueChange={setApplySection} required>
+                          <SelectTrigger className="rounded-xl h-11 border-muted-foreground/20">
+                            <SelectValue placeholder="Select your section" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            {sections.map((s) => (
+                              <SelectItem key={s._id} value={s._id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div className="space-y-2">

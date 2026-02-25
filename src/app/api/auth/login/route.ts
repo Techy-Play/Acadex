@@ -41,12 +41,28 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if account is banned or suspended
+    if (user.status === "banned") {
+      return NextResponse.json(
+        { error: "Your account has been banned. Please contact the administrator." },
+        { status: 403 }
+      );
+    }
+    if (user.status === "suspended") {
+      return NextResponse.json(
+        { error: "Your account has been suspended. Please contact the administrator." },
+        { status: 403 }
+      );
+    }
+
     // Create JWT token
     const token = signToken({
       userId: user._id.toString(),
       collegeId: user.college_id,
       role: user.role,
       name: user.name,
+      isSuperAdmin: user.isSuperAdmin || false,
+      section: user.section ? user.section.toString() : null,
     });
 
     // Log activity

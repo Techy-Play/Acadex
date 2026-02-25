@@ -43,6 +43,11 @@ interface Subject {
   name: string;
 }
 
+interface SectionItem {
+  _id: string;
+  name: string;
+}
+
 interface Practical {
   _id: string;
   title: string;
@@ -50,11 +55,13 @@ interface Practical {
   file_url: string;
   createdAt: string;
   subject: { _id: string; name: string };
+  section?: { _id: string; name: string } | null;
 }
 
 export default function ManagePracticalsPage() {
   const [practicals, setPracticals] = useState<Practical[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [sections, setSections] = useState<SectionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Add form state
@@ -64,6 +71,7 @@ export default function ManagePracticalsPage() {
   const [addTitle, setAddTitle] = useState("");
   const [addDescription, setAddDescription] = useState("");
   const [addFileUrl, setAddFileUrl] = useState("");
+  const [addSection, setAddSection] = useState("");
 
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -72,6 +80,7 @@ export default function ManagePracticalsPage() {
   const [editDescription, setEditDescription] = useState("");
   const [editFileUrl, setEditFileUrl] = useState("");
   const [editSubject, setEditSubject] = useState("");
+  const [editSection, setEditSection] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Delete state
@@ -103,9 +112,20 @@ export default function ManagePracticalsPage() {
     }
   };
 
+  const fetchSections = async () => {
+    try {
+      const res = await fetch("/api/sections");
+      const data = await res.json();
+      if (res.ok) setSections(data.sections || []);
+    } catch {
+      // silent
+    }
+  };
+
   useEffect(() => {
     fetchPracticals();
     fetchSubjects();
+    fetchSections();
   }, []);
 
   // ─── Add Practical ──────────────────────────────
@@ -122,6 +142,7 @@ export default function ManagePracticalsPage() {
           title: addTitle,
           description: addDescription || undefined,
           file_url: addFileUrl || undefined,
+          ...(addSection && { section: addSection }),
         }),
       });
 
@@ -137,6 +158,7 @@ export default function ManagePracticalsPage() {
       setAddDescription("");
       setAddFileUrl("");
       setAddSubject("");
+      setAddSection("");
       setShowAddForm(false);
       fetchPracticals();
     } catch {
@@ -153,6 +175,7 @@ export default function ManagePracticalsPage() {
     setEditDescription(p.description || "");
     setEditFileUrl(p.file_url || "");
     setEditSubject(p.subject._id);
+    setEditSection(p.section?._id || "");
     setEditDialogOpen(true);
   };
 
@@ -169,6 +192,7 @@ export default function ManagePracticalsPage() {
           description: editDescription,
           file_url: editFileUrl,
           subject: editSubject,
+          ...(editSection && { section: editSection }),
         }),
       });
 
@@ -306,16 +330,35 @@ export default function ManagePracticalsPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="addFileUrl">PDF / File URL (Optional)</Label>
-                <Input
-                  id="addFileUrl"
-                  type="url"
-                  placeholder="https://drive.google.com/..."
-                  value={addFileUrl}
-                  onChange={(e) => setAddFileUrl(e.target.value)}
-                  className="rounded-xl"
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="addFileUrl">PDF / File URL (Optional)</Label>
+                  <Input
+                    id="addFileUrl"
+                    type="url"
+                    placeholder="https://drive.google.com/..."
+                    value={addFileUrl}
+                    onChange={(e) => setAddFileUrl(e.target.value)}
+                    className="rounded-xl"
+                  />
+                </div>
+                {sections.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Section (Optional)</Label>
+                    <Select value={addSection} onValueChange={setAddSection}>
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Auto (your section)" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {sections.map((s) => (
+                          <SelectItem key={s._id} value={s._id}>
+                            🏫 {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
 
               <Button
@@ -377,6 +420,15 @@ export default function ManagePracticalsPage() {
                               {p.title}
                             </TableCell>
                             <TableCell>
+                              {p.section ? (
+                                <Badge variant="outline" className="rounded-full text-xs">
+                                  🏫 {p.section.name}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
                               {p.file_url ? (
                                 <Button
                                   variant="outline"
@@ -384,7 +436,7 @@ export default function ManagePracticalsPage() {
                                   className="rounded-lg text-xs"
                                   asChild
                                 >
-                                  <Link href={`/dashboard/viewer?url=${encodeURIComponent(p.file_url)}&title=${encodeURIComponent(p.title)}`} target="_blank">
+                                  <Link href={`/user/dashboard/viewer?url=${encodeURIComponent(p.file_url)}&title=${encodeURIComponent(p.title)}`} target="_blank">
                                     Open
                                   </Link>
                                 </Button>
@@ -471,6 +523,23 @@ export default function ManagePracticalsPage() {
                 rows={3}
                 className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
               />
+            {sections.length > 0 && (
+              <div className="space-y-2">
+                <Label>Section</Label>
+                <Select value={editSection} onValueChange={setEditSection}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="No section" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {sections.map((s) => (
+                      <SelectItem key={s._id} value={s._id}>
+                        🏫 {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             </div>
             <div className="space-y-2">
               <Label>PDF / File URL</Label>

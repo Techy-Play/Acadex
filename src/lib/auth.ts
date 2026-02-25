@@ -10,6 +10,8 @@ export interface JWTPayload {
   collegeId: string;
   role: "admin" | "student";
   name: string;
+  isSuperAdmin?: boolean;
+  section?: string | null;
 }
 
 export function signToken(payload: JWTPayload): string {

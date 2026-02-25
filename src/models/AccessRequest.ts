@@ -6,6 +6,7 @@ export interface IAccessRequest extends Document {
   college_id: string;
   email: string;
   stream: mongoose.Types.ObjectId | null;
+  section: mongoose.Types.ObjectId | null;
   reason: string;
   status: "pending" | "approved" | "denied";
   admin_note: string;
@@ -37,6 +38,11 @@ const AccessRequestSchema = new Schema<IAccessRequest>(
     stream: {
       type: Schema.Types.ObjectId,
       ref: "Stream",
+      default: null,
+    },
+    section: {
+      type: Schema.Types.ObjectId,
+      ref: "Section",
       default: null,
     },
     reason: {

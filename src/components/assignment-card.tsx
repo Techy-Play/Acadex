@@ -188,7 +188,7 @@ export function AssignmentCard({
           {fileUrl && (
             <>
               <Link
-                href={`/dashboard/viewer?url=${encodeURIComponent(fileUrl)}&title=${encodeURIComponent(title)}`}
+                href={`/user/dashboard/viewer?url=${encodeURIComponent(fileUrl)}&title=${encodeURIComponent(title)}`}
                 onClick={(e) => e.stopPropagation()}
               >
                 <Button

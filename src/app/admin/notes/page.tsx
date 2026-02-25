@@ -43,17 +43,24 @@ interface Subject {
   name: string;
 }
 
+interface SectionItem {
+  _id: string;
+  name: string;
+}
+
 interface Note {
   _id: string;
   title: string;
   file_url: string;
   uploadedAt: string;
   subject: { _id: string; name: string };
+  section?: { _id: string; name: string } | null;
 }
 
 export default function ManageNotesPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [sections, setSections] = useState<SectionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Add form state
@@ -62,6 +69,7 @@ export default function ManageNotesPage() {
   const [addSubject, setAddSubject] = useState("");
   const [addTitle, setAddTitle] = useState("");
   const [addFileUrl, setAddFileUrl] = useState("");
+  const [addSection, setAddSection] = useState("");
 
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -69,6 +77,7 @@ export default function ManageNotesPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editFileUrl, setEditFileUrl] = useState("");
   const [editSubject, setEditSubject] = useState("");
+  const [editSection, setEditSection] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Delete state
@@ -98,9 +107,20 @@ export default function ManageNotesPage() {
     }
   };
 
+  const fetchSections = async () => {
+    try {
+      const res = await fetch("/api/sections");
+      const data = await res.json();
+      if (res.ok) setSections(data.sections || []);
+    } catch {
+      // silent
+    }
+  };
+
   useEffect(() => {
     fetchNotes();
     fetchSubjects();
+    fetchSections();
   }, []);
 
   // ─── Add Note ───────────────────────────────────
@@ -116,6 +136,7 @@ export default function ManageNotesPage() {
           subject: addSubject,
           title: addTitle,
           file_url: addFileUrl,
+          ...(addSection && { section: addSection }),
         }),
       });
 
@@ -130,6 +151,7 @@ export default function ManageNotesPage() {
       setAddTitle("");
       setAddFileUrl("");
       setAddSubject("");
+      setAddSection("");
       setShowAddForm(false);
       fetchNotes();
     } catch {
@@ -145,6 +167,7 @@ export default function ManageNotesPage() {
     setEditTitle(note.title);
     setEditFileUrl(note.file_url);
     setEditSubject(note.subject._id);
+    setEditSection(note.section?._id || "");
     setEditDialogOpen(true);
   };
 
@@ -160,6 +183,7 @@ export default function ManageNotesPage() {
           title: editTitle,
           file_url: editFileUrl,
           subject: editSubject,
+          ...(editSection && { section: editSection }),
         }),
       });
 
@@ -277,20 +301,39 @@ export default function ManageNotesPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="addFileUrl">File URL</Label>
-                <Input
-                  id="addFileUrl"
-                  type="url"
-                  placeholder="https://drive.google.com/..."
-                  value={addFileUrl}
-                  onChange={(e) => setAddFileUrl(e.target.value)}
-                  required
-                  className="rounded-xl"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Use a shared Google Drive or Dropbox link so students can access it.
-                </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="addFileUrl">File URL</Label>
+                  <Input
+                    id="addFileUrl"
+                    type="url"
+                    placeholder="https://drive.google.com/..."
+                    value={addFileUrl}
+                    onChange={(e) => setAddFileUrl(e.target.value)}
+                    required
+                    className="rounded-xl"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Use a shared Google Drive or Dropbox link so students can access it.
+                  </p>
+                </div>
+                {sections.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Section (Optional)</Label>
+                    <Select value={addSection} onValueChange={setAddSection}>
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Auto (your section)" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {sections.map((s) => (
+                          <SelectItem key={s._id} value={s._id}>
+                            🏫 {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
 
               <Button
@@ -340,6 +383,7 @@ export default function ManageNotesPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Title</TableHead>
+                        <TableHead>Section</TableHead>
                         <TableHead>Uploaded</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -350,6 +394,15 @@ export default function ManageNotesPage() {
                           <TableCell className="font-medium max-w-[200px] truncate">
                             {note.title}
                           </TableCell>
+                          <TableCell>
+                            {note.section ? (
+                              <Badge variant="outline" className="rounded-full text-xs">
+                                🏫 {note.section.name}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {new Date(note.uploadedAt).toLocaleDateString("en-IN", {
                               year: "numeric",
@@ -359,7 +412,7 @@ export default function ManageNotesPage() {
                           </TableCell>
                           <TableCell className="text-right space-x-2">
                             <Button variant="outline" size="sm" className="rounded-lg" asChild>
-                              <Link href={`/dashboard/viewer?url=${encodeURIComponent(note.file_url)}&title=${encodeURIComponent(note.title)}`} target="_blank">
+                              <Link href={`/user/dashboard/viewer?url=${encodeURIComponent(note.file_url)}&title=${encodeURIComponent(note.title)}`} target="_blank">
                                 Open
                               </Link>
                             </Button>
@@ -422,6 +475,23 @@ export default function ManageNotesPage() {
                 className="rounded-xl"
               />
             </div>
+            {sections.length > 0 && (
+              <div className="space-y-2">
+                <Label>Section</Label>
+                <Select value={editSection} onValueChange={setEditSection}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="No section" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {sections.map((s) => (
+                      <SelectItem key={s._id} value={s._id}>
+                        🏫 {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

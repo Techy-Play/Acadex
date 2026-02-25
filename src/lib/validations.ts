@@ -1,5 +1,22 @@
 import { z } from "zod";
 
+// Allowed email domains
+export const ALLOWED_EMAIL_DOMAINS = [
+  "gmail.com",
+  "outlook.com",
+  "hotmail.com",
+  "yahoo.com",
+  "amrapali.ac.in",
+];
+
+// College ID format: 7 digits starting with 241/257/258/259
+export const STUDENT_COLLEGE_ID_REGEX = /^(241|257|258|259)\d{4}$/;
+
+export function isAllowedEmailDomain(email: string): boolean {
+  const domain = email.split("@")[1]?.toLowerCase();
+  return ALLOWED_EMAIL_DOMAINS.includes(domain);
+}
+
 export const loginSchema = z.object({
   college_id: z
     .string()
@@ -52,6 +69,7 @@ export const addNoteSchema = z.object({
     .string()
     .url("Must be a valid URL")
     .min(1, "File URL is required"),
+  section: z.string().optional().nullable(),
 });
 
 export const addAssignmentSchema = z.object({
@@ -63,6 +81,7 @@ export const addAssignmentSchema = z.object({
   description: z.string().optional().default(""),
   file_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   deadline: z.string().optional().nullable(),
+  section: z.string().optional().nullable(),
 });
 
 export const addPracticalSchema = z.object({
@@ -73,7 +92,42 @@ export const addPracticalSchema = z.object({
     .max(255, "Title too long"),
   description: z.string().optional().default(""),
   file_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  section: z.string().optional().nullable(),
 });
+
+export const accessRequestSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Name is required")
+    .max(100, "Name too long"),
+  college_id: z
+    .string()
+    .min(1, "College ID is required")
+    .max(50, "College ID too long")
+    .refine(
+      (id) => STUDENT_COLLEGE_ID_REGEX.test(id),
+      "College ID must be 7 digits starting with 241, 257, 258, or 259"
+    ),
+  email: z
+    .string()
+    .email("Must be a valid email")
+    .max(255, "Email too long")
+    .refine(
+      isAllowedEmailDomain,
+      `Email must end with: ${ALLOWED_EMAIL_DOMAINS.join(", ")}`
+    ),
+  stream: z.string().optional().nullable(),
+  section: z.string().min(1, "Section is required"),
+  reason: z.string().max(500, "Reason too long").optional().default(""),
+});
+
+export const emailDomainSchema = z
+  .string()
+  .email("Must be a valid email")
+  .refine(
+    isAllowedEmailDomain,
+    `Email must end with: ${ALLOWED_EMAIL_DOMAINS.join(", ")}`
+  );
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type AddStudentInput = z.infer<typeof addStudentSchema>;
@@ -82,3 +136,4 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type AddNoteInput = z.infer<typeof addNoteSchema>;
 export type AddAssignmentInput = z.infer<typeof addAssignmentSchema>;
 export type AddPracticalInput = z.infer<typeof addPracticalSchema>;
+export type AccessRequestInput = z.infer<typeof accessRequestSchema>;

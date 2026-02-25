@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Assignment from "@/models/Assignment";
+import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
+
+const populateFields = [
+  { path: "subject", select: "name type" },
+  { path: "section", select: "name" },
+];
 
 // GET /api/assignments/[id] - Get a single assignment
 export async function GET(
@@ -11,8 +17,9 @@ export async function GET(
   try {
     const { id } = await params;
     await connectDB();
+    void Section;
 
-    const assignment = await Assignment.findById(id).populate("subject", "name");
+    const assignment = await Assignment.findById(id).populate(populateFields);
     if (!assignment) {
       return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
     }
@@ -58,9 +65,20 @@ export async function PUT(
     if (body.deadline !== undefined) {
       assignment.deadline = body.deadline ? new Date(body.deadline) : null;
     }
+    if (body.section !== undefined) assignment.section = body.section || null;
+
+    // Section admin can only edit their own section's assignments
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
+    if (!isSuperAdmin && assignment.section?.toString() !== adminSection) {
+      return NextResponse.json(
+        { error: "You can only edit assignments from your own section" },
+        { status: 403 }
+      );
+    }
 
     await assignment.save();
-    const populated = await assignment.populate("subject", "name");
+    const populated = await assignment.populate(populateFields);
 
     await ActivityLog.create({
       user: adminId!,
@@ -94,10 +112,22 @@ export async function DELETE(
     const { id } = await params;
     await connectDB();
 
-    const assignment = await Assignment.findByIdAndDelete(id);
+    const assignment = await Assignment.findById(id);
     if (!assignment) {
       return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
     }
+
+    // Section admin can only delete their own section's assignments
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
+    if (!isSuperAdmin && assignment.section?.toString() !== adminSection) {
+      return NextResponse.json(
+        { error: "You can only delete assignments from your own section" },
+        { status: 403 }
+      );
+    }
+
+    await Assignment.findByIdAndDelete(id);
 
     await ActivityLog.create({
       user: adminId!,

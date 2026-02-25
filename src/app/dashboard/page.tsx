@@ -509,9 +509,9 @@ export default function StudentDashboard() {
 
       {/* Subjects Grid — Grouped by Type */}
       <div>
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
           <h2 className="text-lg font-semibold">Your Subjects</h2>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {/* View Toggle */}
             <div className="flex items-center border rounded-lg overflow-hidden">
               <button
@@ -542,18 +542,18 @@ export default function StudentDashboard() {
                 </svg>
               </button>
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-3 text-sm">
               <button
                 onClick={() => router.push("/dashboard/practicals")}
-                className="text-sm text-teal-600 dark:text-teal-400 hover:underline font-medium"
+                className="text-teal-600 dark:text-teal-400 hover:underline font-medium whitespace-nowrap"
               >
-                View all practicals →
+                Practicals →
               </button>
               <button
                 onClick={() => router.push("/dashboard/assignments")}
-                className="text-sm text-primary hover:underline font-medium"
+                className="text-primary hover:underline font-medium whitespace-nowrap"
               >
-                View all assignments →
+                Assignments →
               </button>
             </div>
           </div>
@@ -601,65 +601,110 @@ export default function StudentDashboard() {
         )}
 
         {viewMode === "list" && (
-          <div className="border rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-muted/50 text-left">
-                  <th className="px-4 py-3 font-semibold text-muted-foreground">Subject</th>
-                  <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Notes</th>
-                  <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Assignments</th>
-                  <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Practicals</th>
-                  <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Progress</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {subjects.map((subject) => {
-                  const assignTotal = assignmentCountBySubject[subject._id] || 0;
-                  const assignDone = completedBySubject[subject._id] || 0;
-                  const pracTotal = practicalCountBySubject[subject._id] || 0;
-                  const pracDone = practicalCompletedBySubject[subject._id] || 0;
-                  const totalTasks = assignTotal + pracTotal;
-                  const totalDone = assignDone + pracDone;
-                  const pct = totalTasks > 0 ? Math.round((totalDone / totalTasks) * 100) : 0;
+          <>
+            {/* Mobile: card-based list */}
+            <div className="space-y-2 sm:hidden">
+              {subjects.map((subject) => {
+                const assignTotal = assignmentCountBySubject[subject._id] || 0;
+                const assignDone = completedBySubject[subject._id] || 0;
+                const pracTotal = practicalCountBySubject[subject._id] || 0;
+                const pracDone = practicalCompletedBySubject[subject._id] || 0;
+                const totalTasks = assignTotal + pracTotal;
+                const totalDone = assignDone + pracDone;
+                const pct = totalTasks > 0 ? Math.round((totalDone / totalTasks) * 100) : 0;
 
-                  return (
-                    <tr
-                      key={subject._id}
-                      className="hover:bg-muted/30 cursor-pointer transition-colors"
-                      onClick={() => router.push(`/dashboard/notes?subject=${subject._id}`)}
-                    >
-                      <td className="px-4 py-3 font-medium flex items-center gap-2">
-                        <span className="text-lg">📚</span>
-                        {subject.name}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                          {noteCountBySubject[subject._id] || 0}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="text-purple-600 dark:text-purple-400">{assignDone}/{assignTotal}</span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="text-teal-600 dark:text-teal-400">{pracDone}/{pracTotal}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2 justify-center">
-                          <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-500" : "bg-primary"}`}
-                              style={{ width: `${pct}%` }}
-                            />
+                return (
+                  <div
+                    key={subject._id}
+                    className="flex items-center gap-3 p-3 border rounded-xl hover:bg-muted/30 cursor-pointer transition-colors"
+                    onClick={() => router.push(`/dashboard/notes?subject=${subject._id}`)}
+                  >
+                    <span className="text-lg shrink-0">📚</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{subject.name}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span className="text-emerald-600 dark:text-emerald-400">{noteCountBySubject[subject._id] || 0} notes</span>
+                        <span className="text-purple-600 dark:text-purple-400">{assignDone}/{assignTotal} assign</span>
+                        <span className="text-teal-600 dark:text-teal-400">{pracDone}/{pracTotal} prac</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-500" : "bg-primary"}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium w-7 text-right">{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop: table */}
+            <div className="border rounded-xl overflow-hidden hidden sm:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-muted/50 text-left">
+                    <th className="px-4 py-3 font-semibold text-muted-foreground">Subject</th>
+                    <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Notes</th>
+                    <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Assignments</th>
+                    <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Practicals</th>
+                    <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Progress</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {subjects.map((subject) => {
+                    const assignTotal = assignmentCountBySubject[subject._id] || 0;
+                    const assignDone = completedBySubject[subject._id] || 0;
+                    const pracTotal = practicalCountBySubject[subject._id] || 0;
+                    const pracDone = practicalCompletedBySubject[subject._id] || 0;
+                    const totalTasks = assignTotal + pracTotal;
+                    const totalDone = assignDone + pracDone;
+                    const pct = totalTasks > 0 ? Math.round((totalDone / totalTasks) * 100) : 0;
+
+                    return (
+                      <tr
+                        key={subject._id}
+                        className="hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() => router.push(`/dashboard/notes?subject=${subject._id}`)}
+                      >
+                        <td className="px-4 py-3 font-medium">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">📚</span>
+                            {subject.name}
                           </div>
-                          <span className="text-xs font-medium w-8">{pct}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                            {noteCountBySubject[subject._id] || 0}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-purple-600 dark:text-purple-400">{assignDone}/{assignTotal}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-teal-600 dark:text-teal-400">{pracDone}/{pracTotal}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2 justify-center">
+                            <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-500" : "bg-primary"}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-medium w-8">{pct}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {viewMode === "detail" && (

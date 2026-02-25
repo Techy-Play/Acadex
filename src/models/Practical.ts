@@ -3,6 +3,8 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface IPractical extends Document {
   _id: mongoose.Types.ObjectId;
   subject: mongoose.Types.ObjectId;
+  section: mongoose.Types.ObjectId | null;
+  uploadedBy: mongoose.Types.ObjectId | null;
   title: string;
   description: string;
   file_url: string;
@@ -16,6 +18,16 @@ const PracticalSchema = new Schema<IPractical>(
       type: Schema.Types.ObjectId,
       ref: "Subject",
       required: [true, "Subject is required"],
+    },
+    section: {
+      type: Schema.Types.ObjectId,
+      ref: "Section",
+      default: null,
+    },
+    uploadedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
     title: {
       type: String,

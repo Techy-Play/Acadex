@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import User from "@/models/User";
 import OTP from "@/models/OTP";
 import { sendMail, otpEmailHTML } from "@/lib/mail";
+import { isAllowedEmailDomain, ALLOWED_EMAIL_DOMAINS } from "@/lib/validations";
 import crypto from "crypto";
 
 export async function POST(request: Request) {
@@ -33,6 +34,13 @@ export async function POST(request: Request) {
       if (!newEmail || !newEmail.trim()) {
         return NextResponse.json(
           { error: "New email is required for email change" },
+          { status: 400 }
+        );
+      }
+      // Email domain validation
+      if (!isAllowedEmailDomain(newEmail.trim())) {
+        return NextResponse.json(
+          { error: `Email must be from one of: ${ALLOWED_EMAIL_DOMAINS.join(", ")}` },
           { status: 400 }
         );
       }

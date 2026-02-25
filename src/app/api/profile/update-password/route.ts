@@ -85,6 +85,30 @@ export async function POST(request: Request) {
     });
     await setAuthCookie(token);
 
+    // Notify user about password change
+    try {
+      const Notification = (await import("@/models/Notification")).default;
+      await Notification.create({
+        type: "profile_update",
+        title: "Password Changed",
+        message: "Your password was successfully updated. If you didn't do this, contact admin immediately.",
+        link: "/user/dashboard/profile",
+        targetUsers: [userId],
+      });
+    } catch { /* non-blocking */ }
+
+    // Send security email
+    try {
+      if (user.email) {
+        const { sendMail, profileUpdateEmailHTML } = await import("@/lib/mail");
+        await sendMail({
+          to: user.email,
+          subject: "🔒 Section C Hub — Password Changed",
+          html: profileUpdateEmailHTML(user.name, "password"),
+        });
+      }
+    } catch { /* non-blocking */ }
+
     return NextResponse.json({ message: "Password updated successfully" });
   } catch (error) {
     console.error("Update password error:", error);

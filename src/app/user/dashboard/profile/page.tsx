@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,17 +14,21 @@ import { Badge } from "@/components/ui/badge";
 interface UserData {
   id: string;
   name: string;
+  adminAlias?: string | null;
   college_id: string;
   email: string | null;
   role: "admin" | "student";
+  isSuperAdmin?: boolean;
   stream: { id: string; name: string } | null;
   createdAt: string;
+  mobileNavPosition?: "top" | "bottom" | "left";
 }
 
 type OTPStep = "idle" | "sending" | "sent" | "verifying" | "verified" | "submitting";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,6 +49,10 @@ export default function ProfilePage() {
   // Countdown timer for resend
   const [pwCooldown, setPwCooldown] = useState(0);
   const [emailCooldown, setEmailCooldown] = useState(0);
+
+  // Mobile nav position
+  const [navPosition, setNavPosition] = useState<"top" | "bottom" | "left">("bottom");
+  const [navSaving, setNavSaving] = useState(false);
 
   useEffect(() => {
     fetchUser();
@@ -73,6 +81,9 @@ export default function ProfilePage() {
       }
       const data = await res.json();
       setUser(data.user);
+      if (data.user.mobileNavPosition) {
+        setNavPosition(data.user.mobileNavPosition);
+      }
     } catch {
       router.push("/login");
     } finally {
@@ -251,6 +262,26 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
+  async function handleNavPositionChange(pos: "top" | "bottom" | "left") {
+    setNavPosition(pos);
+    setNavSaving(true);
+    try {
+      const res = await fetch("/api/profile/update-theme", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobileNavPosition: pos }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      toast.success(`Navigation set to ${pos === "bottom" ? "Bottom" : pos === "left" ? "Left Sidebar" : "Top"}`);
+      // Reload to apply the new layout immediately
+      setTimeout(() => window.location.reload(), 500);
+    } catch {
+      toast.error("Failed to save preference");
+    } finally {
+      setNavSaving(false);
+    }
+  }
+
   const initials = user.name
     .split(" ")
     .map((n) => n[0])
@@ -285,6 +316,11 @@ export default function ProfilePage() {
                 <h2 className="text-xl font-semibold">{user.name}</h2>
                 <Badge variant="secondary" className="capitalize">{user.role}</Badge>
               </div>
+              {user.adminAlias && (
+                <p className="text-sm text-muted-foreground">
+                  Admin alias: <span className="font-medium text-primary">{user.adminAlias}</span>
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">College ID: {user.college_id}</p>
               <p className="text-sm text-muted-foreground">
                 Email: {user.email || <span className="italic text-yellow-600 dark:text-yellow-400">Not set</span>}
@@ -297,6 +333,133 @@ export default function ProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Mobile Navigation Preference — only on user routes */}
+      {!pathname.startsWith("/admin") && (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            Mobile Navigation
+          </CardTitle>
+          <CardDescription>
+            Choose where the navigation bar appears on your mobile device. This preference is saved to your account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            {/* Bottom Nav Option */}
+            <button
+              onClick={() => handleNavPositionChange("bottom")}
+              disabled={navSaving}
+              className={`relative group flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                navPosition === "bottom"
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : "border-border hover:border-primary/40 hover:bg-muted/50"
+              }`}
+            >
+              {/* Mini phone mockup - bottom nav */}
+              <div className="w-12 h-20 rounded-lg border-2 border-current/20 relative overflow-hidden flex flex-col">
+                <div className="flex-1 p-1">
+                  <div className="w-full h-1 rounded bg-current/10 mb-0.5" />
+                  <div className="w-3/4 h-1 rounded bg-current/10 mb-0.5" />
+                  <div className="w-full h-1 rounded bg-current/10" />
+                </div>
+                <div className="h-3 border-t border-current/20 flex items-center justify-around px-1">
+                  <div className="w-1 h-1 rounded-full bg-primary" />
+                  <div className="w-1 h-1 rounded-full bg-current/30" />
+                  <div className="w-1 h-1 rounded-full bg-current/30" />
+                  <div className="w-1 h-1 rounded-full bg-current/30" />
+                </div>
+              </div>
+              <span className="text-xs font-medium">Bottom</span>
+              {navPosition === "bottom" && (
+                <span className="absolute top-1.5 right-1.5">
+                  <svg className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+              )}
+            </button>
+
+            {/* Left Nav Option */}
+            <button
+              onClick={() => handleNavPositionChange("left")}
+              disabled={navSaving}
+              className={`relative group flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                navPosition === "left"
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : "border-border hover:border-primary/40 hover:bg-muted/50"
+              }`}
+            >
+              {/* Mini phone mockup - left nav */}
+              <div className="w-12 h-20 rounded-lg border-2 border-current/20 relative overflow-hidden flex flex-col">
+                <div className="h-3 border-b border-current/20" />
+                <div className="flex flex-1">
+                  <div className="w-3 border-r border-current/20 flex flex-col items-center gap-1 py-1">
+                    <div className="w-1.5 h-1.5 rounded-sm bg-primary" />
+                    <div className="w-1.5 h-1.5 rounded-sm bg-current/20" />
+                    <div className="w-1.5 h-1.5 rounded-sm bg-current/20" />
+                  </div>
+                  <div className="flex-1 p-1">
+                    <div className="w-full h-1 rounded bg-current/10 mb-0.5" />
+                    <div className="w-3/4 h-1 rounded bg-current/10" />
+                  </div>
+                </div>
+              </div>
+              <span className="text-xs font-medium">Left</span>
+              {navPosition === "left" && (
+                <span className="absolute top-1.5 right-1.5">
+                  <svg className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+              )}
+            </button>
+
+            {/* Top Nav Option */}
+            <button
+              onClick={() => handleNavPositionChange("top")}
+              disabled={navSaving}
+              className={`relative group flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                navPosition === "top"
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : "border-border hover:border-primary/40 hover:bg-muted/50"
+              }`}
+            >
+              {/* Mini phone mockup - top nav (hamburger) */}
+              <div className="w-12 h-20 rounded-lg border-2 border-current/20 relative overflow-hidden flex flex-col">
+                <div className="h-3 border-b border-current/20 flex items-center px-1">
+                  <div className="flex flex-col gap-[1px]">
+                    <div className="w-2 h-[1px] bg-primary" />
+                    <div className="w-2 h-[1px] bg-primary" />
+                    <div className="w-2 h-[1px] bg-primary" />
+                  </div>
+                </div>
+                <div className="flex-1 p-1">
+                  <div className="w-full h-1 rounded bg-current/10 mb-0.5" />
+                  <div className="w-3/4 h-1 rounded bg-current/10 mb-0.5" />
+                  <div className="w-full h-1 rounded bg-current/10" />
+                </div>
+              </div>
+              <span className="text-xs font-medium">Top</span>
+              {navPosition === "top" && (
+                <span className="absolute top-1.5 right-1.5">
+                  <svg className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+              )}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            This only affects the mobile view. Desktop always uses the top + left sidebar layout.
+          </p>
+        </CardContent>
+      </Card>
+      )}
 
       {/* Change Email */}
       <Card>

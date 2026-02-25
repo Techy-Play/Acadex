@@ -217,87 +217,166 @@ export default function ManageSubjectsPage() {
         </Card>
       )}
 
-      {/* Subjects Table */}
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle className="text-lg">All Subjects</CardTitle>
-          <CardDescription>
-            Manage your subjects. Deleting requires your admin password for security.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {subjects.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
+      {/* Subjects Grouped by Type */}
+      {subjects.length === 0 ? (
+        <Card className="rounded-2xl">
+          <CardContent className="py-8">
+            <p className="text-center text-muted-foreground">
               No subjects yet. Click &ldquo;+ Add Subject&rdquo; above to get started.
             </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>#</TableHead>
-                    <TableHead>Subject Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {subjects.map((subject, index) => (
-                    <TableRow key={subject._id}>
-                      <TableCell className="text-muted-foreground">
-                        {index + 1}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="rounded-full text-sm px-3 py-1">
-                          {subject.type === "practical" ? "🧪" : "📚"} {subject.name}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <button
-                          onClick={async () => {
-                            const newType = subject.type === "practical" ? "theory" : "practical";
-                            try {
-                              const res = await fetch(`/api/subjects/${subject._id}`, {
-                                method: "PUT",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ type: newType }),
-                              });
-                              if (res.ok) {
-                                setSubjects(subjects.map(s =>
-                                  s._id === subject._id ? { ...s, type: newType } : s
-                                ));
-                                toast.success(`Changed to ${newType}`);
-                              }
-                            } catch { toast.error("Failed to update type"); }
-                          }}
-                          className="text-xs"
-                        >
-                          <Badge
-                            variant={subject.type === "practical" ? "default" : "outline"}
-                            className="rounded-full cursor-pointer hover:opacity-80 transition-opacity"
-                          >
-                            {subject.type === "practical" ? "🧪 Practical" : "📖 Theory"}
-                          </Badge>
-                        </button>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="rounded-lg"
-                          onClick={() => openDeleteDialog(subject)}
-                        >
-                          Delete
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Theory Subjects */}
+          {(() => {
+            const theorySubjects = subjects.filter(s => s.type !== "practical");
+            if (theorySubjects.length === 0) return null;
+            return (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-base">📖</span>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Theory</h3>
+                  <Badge variant="secondary" className="rounded-full text-xs">{theorySubjects.length}</Badge>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+                <Card className="rounded-2xl">
+                  <CardContent className="pt-4">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>#</TableHead>
+                            <TableHead>Subject Name</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {theorySubjects.map((subject, index) => (
+                            <TableRow key={subject._id}>
+                              <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                              <TableCell>
+                                <Badge variant="secondary" className="rounded-full text-sm px-3 py-1">
+                                  📚 {subject.name}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <button
+                                  onClick={async () => {
+                                    const newType = "practical";
+                                    try {
+                                      const res = await fetch(`/api/subjects/${subject._id}`, {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ type: newType }),
+                                      });
+                                      if (res.ok) {
+                                        setSubjects(subjects.map(s =>
+                                          s._id === subject._id ? { ...s, type: newType } : s
+                                        ));
+                                        toast.success(`Changed to ${newType}`);
+                                      }
+                                    } catch { toast.error("Failed to update type"); }
+                                  }}
+                                  className="text-xs"
+                                >
+                                  <Badge variant="outline" className="rounded-full cursor-pointer hover:opacity-80 transition-opacity">
+                                    📖 Theory
+                                  </Badge>
+                                </button>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button variant="destructive" size="sm" className="rounded-lg" onClick={() => openDeleteDialog(subject)}>
+                                  Delete
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
+
+          {/* Practical/Lab Subjects */}
+          {(() => {
+            const practicalSubjects = subjects.filter(s => s.type === "practical");
+            if (practicalSubjects.length === 0) return null;
+            return (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-base">🧪</span>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Practical / Lab</h3>
+                  <Badge variant="secondary" className="rounded-full text-xs">{practicalSubjects.length}</Badge>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+                <Card className="rounded-2xl">
+                  <CardContent className="pt-4">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>#</TableHead>
+                            <TableHead>Subject Name</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {practicalSubjects.map((subject, index) => (
+                            <TableRow key={subject._id}>
+                              <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                              <TableCell>
+                                <Badge variant="secondary" className="rounded-full text-sm px-3 py-1">
+                                  🧪 {subject.name}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <button
+                                  onClick={async () => {
+                                    const newType = "theory";
+                                    try {
+                                      const res = await fetch(`/api/subjects/${subject._id}`, {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ type: newType }),
+                                      });
+                                      if (res.ok) {
+                                        setSubjects(subjects.map(s =>
+                                          s._id === subject._id ? { ...s, type: newType } : s
+                                        ));
+                                        toast.success(`Changed to ${newType}`);
+                                      }
+                                    } catch { toast.error("Failed to update type"); }
+                                  }}
+                                  className="text-xs"
+                                >
+                                  <Badge variant="default" className="rounded-full cursor-pointer hover:opacity-80 transition-opacity">
+                                    🧪 Practical
+                                  </Badge>
+                                </button>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button variant="destructive" size="sm" className="rounded-lg" onClick={() => openDeleteDialog(subject)}>
+                                  Delete
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
+        </>
+      )}
 
       {/* Delete Confirmation Dialog with Password */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

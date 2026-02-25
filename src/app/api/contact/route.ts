@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import ContactMessage from "@/models/ContactMessage";
+import Notification from "@/models/Notification";
+import User from "@/models/User";
 
 // POST - public endpoint (no auth required) for submitting contact messages
 export async function POST(request: Request) {
@@ -34,6 +36,22 @@ export async function POST(request: Request) {
     await connectDB();
 
     await ContactMessage.create({ name, email, subject, message });
+
+    // Notify super admin about new contact message
+    try {
+      const superAdmin = await User.findOne({ isSuperAdmin: true }).lean();
+      if (superAdmin) {
+        await Notification.create({
+          type: "contact_message",
+          title: "New Contact Message",
+          message: `${name}: "${subject.slice(0, 80)}"`,
+          link: "/admin/messages",
+          targetUsers: [superAdmin._id],
+        });
+      }
+    } catch {
+      // Don't fail the request if notification fails
+    }
 
     return NextResponse.json(
       { success: true, message: "Message sent successfully!" },

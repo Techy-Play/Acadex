@@ -10,10 +10,12 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { theme, accentColor } = body;
+    const { theme, accentColor, mobileNavPosition, dashboardView } = body;
 
     const validThemes = ["light", "dark", "system"];
-    const validAccents = ["default", "pink", "magenta", "cyan", "navy", "emerald", "sunset", "purple"];
+    const validAccents = ["default", "rose", "ocean", "emerald", "violet", "sunset", "amoled", "pastel", "contrast"];
+    const validNavPositions = ["top", "bottom", "left"];
+    const validViews = ["grid", "list", "detail"];
 
     const update: Record<string, string> = {};
 
@@ -22,6 +24,12 @@ export async function PUT(request: Request) {
     }
     if (accentColor && validAccents.includes(accentColor)) {
       update.accentColor = accentColor;
+    }
+    if (mobileNavPosition && validNavPositions.includes(mobileNavPosition)) {
+      update.mobileNavPosition = mobileNavPosition;
+    }
+    if (dashboardView && validViews.includes(dashboardView)) {
+      update.dashboardView = dashboardView;
     }
 
     if (Object.keys(update).length === 0) {
