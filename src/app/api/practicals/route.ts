@@ -4,6 +4,7 @@ import { addPracticalSchema } from "@/lib/validations";
 import Subject from "@/models/Subject";
 import Practical from "@/models/Practical";
 import Section from "@/models/Section";
+import User from "@/models/User";
 import ActivityLog from "@/models/ActivityLog";
 import Notification from "@/models/Notification";
 
@@ -13,18 +14,35 @@ export async function GET(request: Request) {
     await connectDB();
     void Subject;
     void Section;
+    void User;
 
     const { searchParams } = new URL(request.url);
     const subjectId = searchParams.get("subject");
-    const sectionId = searchParams.get("section");
+    const sectionParam = searchParams.get("section");
+
+    const userRole = request.headers.get("x-user-role");
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const userSection = request.headers.get("x-user-section");
 
     const filter: Record<string, string> = {};
     if (subjectId) filter.subject = subjectId;
-    if (sectionId) filter.section = sectionId;
+
+    // Section filtering logic:
+    // - Super admins see all (unless they explicitly filter)
+    // - Sub-admins are hard-filtered to their own section
+    // - Students default to their section; can use ?section=all to see all
+    if (userRole === "admin" && !isSuperAdmin && userSection) {
+      filter.section = userSection;
+    } else if (sectionParam && sectionParam !== "all") {
+      filter.section = sectionParam;
+    } else if (userRole === "student" && userSection && sectionParam !== "all") {
+      filter.section = userSection;
+    }
 
     const practicals = await Practical.find(filter)
       .populate("subject", "name type")
       .populate("section", "name")
+      .populate("uploadedBy", "name")
       .sort({ createdAt: -1 });
 
     return NextResponse.json({ practicals });

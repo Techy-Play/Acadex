@@ -6,6 +6,8 @@ import User from "@/models/User";
 import Stream from "@/models/Stream";
 import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
+import AdminRequest from "@/models/AdminRequest";
+import Notification from "@/models/Notification";
 
 // GET /api/admin/students - List all students
 export async function GET(request: Request) {
@@ -20,7 +22,7 @@ export async function GET(request: Request) {
 
     await connectDB();
 
-    // Section admin only sees users in their section
+    // Sub-admins can only see users from their own section
     const filter: Record<string, unknown> = {};
     if (!isSuperAdmin && adminSection) {
       filter.section = adminSection;
@@ -117,19 +119,6 @@ export async function POST(request: Request) {
     const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
     const adminSection = request.headers.get("x-user-section");
 
-    // Only super admin can create admin users
-    if (role === "admin" && !isSuperAdmin) {
-      return NextResponse.json(
-        { error: "Only super admin can create admin users" },
-        { status: 403 }
-      );
-    }
-
-    // Section admin auto-fills their section
-    if (!isSuperAdmin) {
-      section = adminSection || null;
-    }
-
     await connectDB();
 
     // Check if college_id already exists
@@ -141,10 +130,54 @@ export async function POST(request: Request) {
       );
     }
 
+    // Sub-admin creating an admin → send approval request to super admin
+    if (role === "admin" && !isSuperAdmin) {
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      await AdminRequest.create({
+        type: "create_admin",
+        requestedBy: adminId!,
+        data: {
+          name,
+          college_id,
+          password_hash: passwordHash,
+          stream,
+          section,
+        },
+      });
+
+      // Notify super admins
+      const superAdmins = await User.find({ isSuperAdmin: true }).select("_id").lean();
+      if (superAdmins.length > 0) {
+        await Notification.create({
+          type: "new_access_request",
+          title: "Admin Creation Request",
+          message: `${request.headers.get("x-user-name") || "An admin"} requested to create admin: ${name} (${college_id})`,
+          link: "/admin/admin-requests",
+          targetUsers: superAdmins.map((sa) => sa._id),
+        });
+      }
+
+      await ActivityLog.create({
+        user: adminId!,
+        action: "ADMIN_REQUEST_CREATED",
+        details: `Requested admin creation: ${name} (${college_id})`,
+      });
+
+      return NextResponse.json(
+        {
+          success: true,
+          pending: true,
+          message: "Admin creation request sent to super admin for approval.",
+        },
+        { status: 201 }
+      );
+    }
+
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create user
+    // Create user directly (super admin or creating student)
     const user = await User.create({
       name,
       college_id,

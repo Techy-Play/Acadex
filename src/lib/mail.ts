@@ -21,7 +21,7 @@ export async function sendMail({ to, subject, html }: SendMailOptions) {
   }
 
   const info = await transporter.sendMail({
-    from: `"Section C Hub" <${process.env.EMAIL_USER}>`,
+    from: `"Acadex" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     html,
@@ -33,14 +33,14 @@ export async function sendMail({ to, subject, html }: SendMailOptions) {
 export function approvalEmailHTML(name: string, collegeId: string, tempPassword: string) {
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: linear-gradient(135deg, #6366f1, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">Section C Hub</h1>
+      <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Acadex</h1>
         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Account Access Granted</p>
       </div>
       <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
         <h2 style="color: #1f2937; margin: 0 0 16px 0;">Welcome, ${name}! 🎉</h2>
         <p style="color: #4b5563; line-height: 1.6;">
-          Your access request for <strong>Section C Hub</strong> has been approved! Here are your login credentials:
+          Your access request for <strong>Acadex</strong> has been approved! Here are your login credentials:
         </p>
         <div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
           <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 13px;">College ID</p>
@@ -55,8 +55,8 @@ export function approvalEmailHTML(name: string, collegeId: string, tempPassword:
           If you have any questions, contact your class admin.
         </p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-        <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-          This is an automated email from Section C Hub.
+        <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 0;">
+          Acadex &bull; Engineered by Mr Techie
         </p>
       </div>
     </div>
@@ -66,14 +66,14 @@ export function approvalEmailHTML(name: string, collegeId: string, tempPassword:
 export function denialEmailHTML(name: string, reason: string) {
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: linear-gradient(135deg, #6366f1, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">Section C Hub</h1>
+      <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Acadex</h1>
         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Access Request Update</p>
       </div>
       <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
         <h2 style="color: #1f2937; margin: 0 0 16px 0;">Hi ${name},</h2>
         <p style="color: #4b5563; line-height: 1.6;">
-          Unfortunately, your access request for <strong>Section C Hub</strong> has been denied.
+          Unfortunately, your access request for <strong>Acadex</strong> has been denied.
         </p>
         ${reason ? `
         <div style="background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 0 8px 8px 0; padding: 16px; margin: 20px 0;">
@@ -84,8 +84,8 @@ export function denialEmailHTML(name: string, reason: string) {
           If you believe this was a mistake, please contact your class admin for further assistance.
         </p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-        <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-          This is an automated email from Section C Hub.
+        <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 0;">
+          Acadex &bull; Engineered by Mr Techie
         </p>
       </div>
     </div>
@@ -95,8 +95,8 @@ export function denialEmailHTML(name: string, reason: string) {
 export function contactReplyEmailHTML(name: string, subject: string, reply: string) {
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: linear-gradient(135deg, #6366f1, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">Section C Hub</h1>
+      <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Acadex</h1>
         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Reply to Your Message</p>
       </div>
       <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
@@ -111,8 +111,8 @@ export function contactReplyEmailHTML(name: string, subject: string, reply: stri
           If you have a follow-up question, feel free to reach out again through our contact page.
         </p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-        <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-          This is an automated email from Section C Hub.
+        <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 0;">
+          Acadex &bull; Engineered by Mr Techie
         </p>
       </div>
     </div>
@@ -123,8 +123,8 @@ export function otpEmailHTML(name: string, otp: string, purpose: "password_chang
   const purposeText = purpose === "password_change" ? "change your password" : "update your email address";
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: linear-gradient(135deg, #6366f1, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">Section C Hub</h1>
+      <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Acadex</h1>
         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Verification Code</p>
       </div>
       <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
@@ -143,8 +143,8 @@ export function otpEmailHTML(name: string, otp: string, purpose: "password_chang
           If you did not request this, you can safely ignore this email.
         </p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-        <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-          This is an automated email from Section C Hub.
+        <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 0;">
+          Acadex &bull; Engineered by Mr Techie
         </p>
       </div>
     </div>
@@ -155,22 +155,23 @@ export function profileUpdateEmailHTML(name: string, changeType: "password" | "e
   const changeText = changeType === "password" ? "password was changed" : "email address was updated";
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: linear-gradient(135deg, #6366f1, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">Section C Hub</h1>
+      <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Acadex</h1>
         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Security Alert</p>
       </div>
       <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
         <h2 style="color: #1f2937; margin: 0 0 16px 0;">Hi ${name},</h2>
         <p style="color: #4b5563; line-height: 1.6;">
-          Your <strong>${changeText}</strong> on Section C Hub.
+          Your <strong>${changeText}</strong> on Acadex.
         </p>
         <div style="background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; padding: 16px; margin: 20px 0;">
           <p style="margin: 0; color: #92400e; font-size: 13px;">
             ⚠️ If you did not make this change, please contact your admin immediately to secure your account.
           </p>
         </div>
-        <p style="color: #9ca3af; font-size: 12px; text-align: center; margin-top: 24px;">
-          This is an automated security email from Section C Hub.
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+        <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 0;">
+          Acadex &bull; Engineered by Mr Techie
         </p>
       </div>
     </div>

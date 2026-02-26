@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { addNoteSchema } from "@/lib/validations";
 import Note from "@/models/Note";
 import Section from "@/models/Section";
+import User from "@/models/User";
 import ActivityLog from "@/models/ActivityLog";
 import Notification from "@/models/Notification";
 
@@ -11,18 +12,38 @@ export async function GET(request: Request) {
   try {
     await connectDB();
     void Section; // Ensure Section model is registered for populate
+    void User;
 
     const { searchParams } = new URL(request.url);
     const subjectId = searchParams.get("subject");
-    const sectionId = searchParams.get("section");
+    const sectionParam = searchParams.get("section");
+
+    const userRole = request.headers.get("x-user-role");
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const userSection = request.headers.get("x-user-section");
 
     const filter: Record<string, string> = {};
     if (subjectId) filter.subject = subjectId;
-    if (sectionId) filter.section = sectionId;
+
+    // Section filtering logic:
+    // - Super admins see all (unless they explicitly filter)
+    // - Sub-admins are hard-filtered to their own section
+    // - Students default to their section; can use ?section=all to see all
+    if (userRole === "admin" && !isSuperAdmin && userSection) {
+      // Sub-admin: always restricted to own section
+      filter.section = userSection;
+    } else if (sectionParam && sectionParam !== "all") {
+      // Explicit section filter from query param
+      filter.section = sectionParam;
+    } else if (userRole === "student" && userSection && sectionParam !== "all") {
+      // Student: default to own section
+      filter.section = userSection;
+    }
 
     const notes = await Note.find(filter)
       .populate("subject", "name type")
       .populate("section", "name")
+      .populate("uploadedBy", "name")
       .sort({ uploadedAt: -1 });
 
     return NextResponse.json({ notes });

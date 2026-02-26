@@ -4,6 +4,8 @@ import User from "@/models/User";
 import Stream from "@/models/Stream";
 import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
+import AdminRequest from "@/models/AdminRequest";
+import Notification from "@/models/Notification";
 
 // Ensure models are registered for populate
 void Stream;
@@ -77,12 +79,60 @@ export async function PATCH(
       );
     }
 
-    // Section admin can only update users in their section
-    if (!isSuperAdmin && user.section?.toString() !== adminSection) {
-      return NextResponse.json(
-        { error: "You can only edit users in your section" },
-        { status: 403 }
-      );
+    // Sub-admins can only modify users from their own section
+    if (!isSuperAdmin && adminSection) {
+      const userSection = user.section?.toString();
+      if (userSection !== adminSection) {
+        return NextResponse.json(
+          { error: "You can only modify users from your own section" },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Admin changing their OWN section/stream → requires super admin approval
+    const isChangingSectionStream =
+      body.stream !== undefined || body.section !== undefined;
+    const isEditingSelf = id === adminId;
+    const isTargetAdmin = user.role === "admin";
+
+    if (
+      !isSuperAdmin &&
+      isChangingSectionStream &&
+      isTargetAdmin &&
+      isEditingSelf
+    ) {
+      // Create approval request instead of applying directly
+      await AdminRequest.create({
+        type: "change_section_stream",
+        requestedBy: adminId!,
+        targetUser: user._id,
+        data: {
+          newStream: body.stream !== undefined ? body.stream || null : undefined,
+          newSection: body.section !== undefined ? body.section || null : undefined,
+        },
+      });
+
+      // Notify super admins
+      const superAdmins = await User.find({ isSuperAdmin: true })
+        .select("_id")
+        .lean();
+      if (superAdmins.length > 0) {
+        await Notification.create({
+          type: "new_access_request",
+          title: "Section/Stream Change Request",
+          message: `${user.name} requested to change their section/stream`,
+          link: "/admin/admin-requests",
+          targetUsers: superAdmins.map((sa) => sa._id),
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        pending: true,
+        message:
+          "Section/stream change request sent to super admin for approval.",
+      });
     }
 
     // Update stream if provided
@@ -90,9 +140,11 @@ export async function PATCH(
       user.stream = body.stream || null;
     }
 
-    // Update section if provided (only super admin can change sections)
-    if (body.section !== undefined && isSuperAdmin) {
-      user.section = body.section || null;
+    // Update section if provided (super admin can always; sub-admin can for non-self)
+    if (body.section !== undefined) {
+      if (isSuperAdmin || !isEditingSelf) {
+        user.section = body.section || null;
+      }
     }
 
     // Only super admin can change roles
@@ -179,12 +231,15 @@ export async function DELETE(
       );
     }
 
-    // Section admin can only delete users in their section
-    if (!isSuperAdmin && user.section?.toString() !== adminSection) {
-      return NextResponse.json(
-        { error: "You can only delete users in your section" },
-        { status: 403 }
-      );
+    // Sub-admins can only delete users from their own section
+    if (!isSuperAdmin && adminSection) {
+      const userSection = user.section?.toString();
+      if (userSection !== adminSection) {
+        return NextResponse.json(
+          { error: "You can only delete users from your own section" },
+          { status: 403 }
+        );
+      }
     }
 
     await User.findByIdAndDelete(id);

@@ -248,7 +248,7 @@ export default function StudentDashboard() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome to Section C Hub</p>
+        <p className="text-muted-foreground">Welcome to Acadex</p>
         {stream && (
           <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
             🎓 {stream.name}

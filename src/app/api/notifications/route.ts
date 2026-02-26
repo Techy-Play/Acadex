@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import Notification from "@/models/Notification";
 import Assignment from "@/models/Assignment";
+import User from "@/models/User";
 
 // GET /api/notifications — Fetch notifications for current user
 export async function GET(request: Request) {
@@ -59,16 +60,40 @@ export async function GET(request: Request) {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const userObjId = new mongoose.Types.ObjectId(userId);
 
+    // Build list of muted notification types from user preferences
+    const mutedTypes: string[] = [];
+    if (userRole === "student") {
+      const currentUser = await User.findById(userId).select("notificationPreferences").lean();
+      const prefs = currentUser?.notificationPreferences;
+      if (prefs) {
+        const prefMap: Record<string, boolean | undefined> = {
+          new_note: prefs.new_note,
+          new_assignment: prefs.new_assignment,
+          new_practical: prefs.new_practical,
+          deadline_alert: prefs.deadline_alert,
+          admin_message: prefs.admin_message,
+        };
+        for (const [type, enabled] of Object.entries(prefMap)) {
+          if (enabled === false) mutedTypes.push(type);
+        }
+      }
+    }
+
     // Fetch notifications for this role OR targeted to this specific user
-    // Exclude dismissed ones
-    const notifications = await Notification.find({
+    // Exclude dismissed ones and muted types
+    const query: Record<string, unknown> = {
       createdAt: { $gte: thirtyDaysAgo },
       dismissedBy: { $ne: userObjId },
       $or: [
         { targetRole: userRole },
         { targetUsers: userObjId },
       ],
-    })
+    };
+    if (mutedTypes.length > 0) {
+      query.type = { $nin: mutedTypes };
+    }
+
+    const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();

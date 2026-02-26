@@ -41,6 +41,14 @@ export function Navbar({ userName, userRole, onMenuToggle, isAdmin, isOnAdminRou
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevUnreadRef = useRef<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize audio element once on client
+  useEffect(() => {
+    audioRef.current = new Audio("/sounds/notification-alert.wav");
+    audioRef.current.volume = 0.5;
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -49,6 +57,17 @@ export function Navbar({ userName, userRole, onMenuToggle, isAdmin, isOnAdminRou
         const data = await notifRes.json();
         setNotifications(data.notifications);
         setUnreadCount(data.unreadCount);
+
+        // Play sound when new unread notifications arrive
+        if (
+          prevUnreadRef.current !== null &&
+          data.unreadCount > prevUnreadRef.current &&
+          audioRef.current
+        ) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch(() => {});
+        }
+        prevUnreadRef.current = data.unreadCount;
       }
     } catch {
       // silently fail
@@ -122,8 +141,11 @@ export function Navbar({ userName, userRole, onMenuToggle, isAdmin, isOnAdminRou
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
+      // Clear any cached client-side data
+      localStorage.removeItem("acadex-accent");
       toast.success("Logged out successfully");
       router.push("/login");
+      router.refresh();
     } catch {
       toast.error("Failed to logout");
     }
@@ -196,10 +218,10 @@ export function Navbar({ userName, userRole, onMenuToggle, isAdmin, isOnAdminRou
             className="flex items-center gap-2"
           >
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-white font-bold text-xs">SC</span>
+              <span className="text-white font-bold text-xs">AX</span>
             </div>
             <span className="font-semibold text-sm tracking-tight hidden sm:inline">
-              Section C Hub
+              Acadex
             </span>
           </Link>
         </div>

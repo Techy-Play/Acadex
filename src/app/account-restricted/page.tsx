@@ -63,7 +63,7 @@ export default function AccountRestrictedPage() {
               : "text-amber-800 dark:text-amber-300"
           }`}>
             {isBanned
-              ? "Your account has been permanently banned by an administrator. You can no longer access Section C Hub resources."
+              ? "Your account has been permanently banned by an administrator. You can no longer access Acadex resources."
               : "Your account has been temporarily suspended by an administrator. This may be due to a policy violation or pending review."}
           </p>
           <p className={`text-xs ${
@@ -116,7 +116,7 @@ export default function AccountRestrictedPage() {
         </div>
 
         <p className="text-xs text-muted-foreground opacity-50">
-          Section C Hub — Account Restricted
+          Acadex — Account Restricted
         </p>
       </div>
     </div>

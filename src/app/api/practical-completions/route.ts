@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     await PracticalCompletion.findOneAndUpdate(
       { user: userId, practical: practicalId },
       { user: userId, practical: practicalId, completedAt: new Date() },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     return NextResponse.json({ success: true });

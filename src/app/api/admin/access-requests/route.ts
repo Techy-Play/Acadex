@@ -123,6 +123,7 @@ export async function PATCH(request: Request) {
       await User.create({
         name: accessReq.name,
         college_id: accessReq.college_id,
+        email: accessReq.email,
         password_hash: passwordHash,
         role: "student",
         stream: accessReq.stream,
@@ -146,7 +147,7 @@ export async function PATCH(request: Request) {
       try {
         await sendMail({
           to: accessReq.email,
-          subject: "✅ Section C Hub — Account Approved!",
+          subject: "✅ Acadex — Account Approved!",
           html: approvalEmailHTML(accessReq.name, accessReq.college_id, tempPassword),
         });
       } catch (emailError) {
@@ -176,7 +177,7 @@ export async function PATCH(request: Request) {
       try {
         await sendMail({
           to: accessReq.email,
-          subject: "Section C Hub — Access Request Update",
+          subject: "Acadex — Access Request Update",
           html: denialEmailHTML(accessReq.name, admin_note || ""),
         });
       } catch (emailError) {

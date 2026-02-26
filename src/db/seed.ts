@@ -1,5 +1,5 @@
 /**
- * Seed script for Section C Hub
+ * Seed script for Acadex
  *
  * Run with: npx tsx src/db/seed.ts
  *
@@ -18,7 +18,7 @@ import bcrypt from "bcrypt";
 import { config } from "dotenv";
 config({ path: ".env.local", override: true });
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/section-c-hub";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/acadex";
 
 async function seed() {
   console.log("🔗 Connecting to MongoDB...");

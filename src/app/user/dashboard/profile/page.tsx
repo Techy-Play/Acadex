@@ -54,6 +54,16 @@ export default function ProfilePage() {
   const [navPosition, setNavPosition] = useState<"top" | "bottom" | "left">("bottom");
   const [navSaving, setNavSaving] = useState(false);
 
+  // Notification preferences
+  const [notifPrefs, setNotifPrefs] = useState({
+    new_note: true,
+    new_assignment: true,
+    new_practical: true,
+    deadline_alert: true,
+    admin_message: true,
+  });
+  const [notifSaving, setNotifSaving] = useState<string | null>(null);
+
   useEffect(() => {
     fetchUser();
   }, []);
@@ -83,6 +93,9 @@ export default function ProfilePage() {
       setUser(data.user);
       if (data.user.mobileNavPosition) {
         setNavPosition(data.user.mobileNavPosition);
+      }
+      if (data.user.notificationPreferences) {
+        setNotifPrefs((prev) => ({ ...prev, ...data.user.notificationPreferences }));
       }
     } catch {
       router.push("/login");
@@ -282,6 +295,26 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleNotifToggle(key: keyof typeof notifPrefs) {
+    const newVal = !notifPrefs[key];
+    setNotifPrefs((prev) => ({ ...prev, [key]: newVal }));
+    setNotifSaving(key);
+    try {
+      const res = await fetch("/api/profile/update-theme", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationPreferences: { [key]: newVal } }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      toast.success(newVal ? "Notifications enabled" : "Notifications muted");
+    } catch {
+      setNotifPrefs((prev) => ({ ...prev, [key]: !newVal }));
+      toast.error("Failed to save preference");
+    } finally {
+      setNotifSaving(null);
+    }
+  }
+
   const initials = user.name
     .split(" ")
     .map((n) => n[0])
@@ -457,6 +490,60 @@ export default function ProfilePage() {
           <p className="text-xs text-muted-foreground mt-3">
             This only affects the mobile view. Desktop always uses the top + left sidebar layout.
           </p>
+        </CardContent>
+      </Card>
+      )}
+
+      {/* Notification Preferences — students only */}
+      {user.role === "student" && (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            Notification Preferences
+          </CardTitle>
+          <CardDescription>
+            Choose which notifications you want to receive. Disabled notifications will be silently filtered out.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {([
+              { key: "new_note" as const, label: "New Notes", icon: "📄", desc: "When new notes are uploaded" },
+              { key: "new_assignment" as const, label: "New Assignments", icon: "📝", desc: "When new assignments are posted" },
+              { key: "new_practical" as const, label: "New Practicals", icon: "🧪", desc: "When new practicals are added" },
+              { key: "deadline_alert" as const, label: "Deadline Alerts", icon: "⏰", desc: "Assignment deadline reminders" },
+              { key: "admin_message" as const, label: "Admin Messages", icon: "💬", desc: "Direct messages from admins" },
+            ]).map((item) => (
+              <button
+                key={item.key}
+                onClick={() => handleNotifToggle(item.key)}
+                disabled={notifSaving === item.key}
+                className="w-full flex items-center justify-between p-3 rounded-xl border transition-all hover:bg-muted/50"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">{item.icon}</span>
+                  <div className="text-left">
+                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.desc}</p>
+                  </div>
+                </div>
+                <div
+                  className={`relative w-10 h-6 rounded-full transition-colors ${
+                    notifPrefs[item.key] ? "bg-primary" : "bg-muted-foreground/30"
+                  }`}
+                >
+                  <div
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                      notifPrefs[item.key] ? "translate-x-[18px]" : "translate-x-0.5"
+                    }`}
+                  />
+                </div>
+              </button>
+            ))}
+          </div>
         </CardContent>
       </Card>
       )}

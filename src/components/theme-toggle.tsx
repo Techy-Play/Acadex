@@ -87,7 +87,7 @@ export function useAccentColor() {
   const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
-    const saved = localStorage.getItem("section-c-accent") || "amoled";
+    const saved = localStorage.getItem("acadex-accent") || "amoled";
     setAccentState(saved);
     applyAccent(saved);
     setLoaded(true);
@@ -95,7 +95,7 @@ export function useAccentColor() {
 
   const setAccent = React.useCallback((value: string) => {
     setAccentState(value);
-    localStorage.setItem("section-c-accent", value);
+    localStorage.setItem("acadex-accent", value);
     applyAccent(value);
     saveThemeToServer(undefined, value);
   }, []);
@@ -103,7 +103,7 @@ export function useAccentColor() {
   const initFromServer = React.useCallback((serverAccent: string) => {
     if (serverAccent) {
       setAccentState(serverAccent);
-      localStorage.setItem("section-c-accent", serverAccent);
+      localStorage.setItem("acadex-accent", serverAccent);
       applyAccent(serverAccent);
     }
   }, []);

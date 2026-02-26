@@ -161,7 +161,7 @@ export default function NotFound() {
 
         {/* Subtle footer */}
         <p className="text-xs text-muted-foreground/60 pt-8">
-          Section C Hub &bull; Wrong turn, right attitude ✌️
+          Acadex &bull; Wrong turn, right attitude ✌️
         </p>
       </div>
     </div>

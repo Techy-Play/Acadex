@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+type DashboardLayout = "overview" | "compact" | "analytics";
+
 interface Stats {
   totalStudents: number;
   totalNotes: number;
@@ -13,6 +15,57 @@ interface Stats {
   totalSubjects: number;
   totalStreams: number;
   totalSections: number;
+}
+
+interface DashStats {
+  pendingRequests: number;
+  unreadMessages: number;
+}
+
+interface ActivityItem {
+  id: string;
+  action: string;
+  details: string;
+  user: { name: string; college_id: string } | null;
+  createdAt: string;
+}
+
+const actionLabels: Record<string, { label: string; icon: string; color: string }> = {
+  USER_LOGIN: { label: "User Login", icon: "🔑", color: "text-blue-500" },
+  PASSWORD_CHANGED: { label: "Password Changed", icon: "🔐", color: "text-amber-500" },
+  NOTE_CREATED: { label: "Note Added", icon: "📄", color: "text-indigo-500" },
+  NOTE_UPDATED: { label: "Note Updated", icon: "📝", color: "text-indigo-400" },
+  NOTE_DELETED: { label: "Note Deleted", icon: "🗑️", color: "text-red-400" },
+  ASSIGNMENT_CREATED: { label: "Assignment Added", icon: "📝", color: "text-purple-500" },
+  ASSIGNMENT_UPDATED: { label: "Assignment Updated", icon: "✏️", color: "text-purple-400" },
+  ASSIGNMENT_DELETED: { label: "Assignment Deleted", icon: "🗑️", color: "text-red-400" },
+  PRACTICAL_CREATED: { label: "Practical Added", icon: "🧪", color: "text-emerald-500" },
+  PRACTICAL_UPDATED: { label: "Practical Updated", icon: "🔬", color: "text-emerald-400" },
+  PRACTICAL_DELETED: { label: "Practical Deleted", icon: "🗑️", color: "text-red-400" },
+  ACCESS_REQUEST_APPROVED: { label: "Request Approved", icon: "✅", color: "text-green-500" },
+  ACCESS_REQUEST_DENIED: { label: "Request Denied", icon: "❌", color: "text-red-500" },
+  STUDENT_CREATED: { label: "Student Added", icon: "👤", color: "text-blue-500" },
+  STUDENT_UPDATED: { label: "Student Updated", icon: "✏️", color: "text-blue-400" },
+  STUDENT_DELETED: { label: "Student Deleted", icon: "🗑️", color: "text-red-400" },
+  ADMIN_REQUEST_CREATED: { label: "Admin Request", icon: "🛡️", color: "text-purple-500" },
+  ADMIN_REQUEST_APPROVED: { label: "Admin Request Approved", icon: "✅", color: "text-green-500" },
+  ADMIN_REQUEST_DENIED: { label: "Admin Request Denied", icon: "❌", color: "text-red-500" },
+};
+
+function getActionInfo(action: string) {
+  return actionLabels[action] || { label: action, icon: "📋", color: "text-muted-foreground" };
+}
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
 export default function AdminDashboard() {
@@ -25,12 +78,23 @@ export default function AdminDashboard() {
     totalStreams: 0,
     totalSections: 0,
   });
+  const [dashStats, setDashStats] = useState<DashStats>({
+    pendingRequests: 0,
+    unreadMessages: 0,
+  });
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [layout, setLayout] = useState<DashboardLayout>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("admin-dashboard-layout") as DashboardLayout) || "overview";
+    }
+    return "overview";
+  });
 
   useEffect(() => {
-    async function fetchStats() {
+    async function fetchAll() {
       try {
-        const [studentsRes, notesRes, assignmentsRes, practicalsRes, subjectsRes, streamsRes, sectionsRes] =
+        const [studentsRes, notesRes, assignmentsRes, practicalsRes, subjectsRes, streamsRes, sectionsRes, dashStatsRes, activityRes] =
           await Promise.all([
             fetch("/api/admin/students"),
             fetch("/api/notes"),
@@ -39,6 +103,8 @@ export default function AdminDashboard() {
             fetch("/api/subjects"),
             fetch("/api/streams"),
             fetch("/api/sections"),
+            fetch("/api/admin/dashboard-stats"),
+            fetch("/api/admin/activity"),
           ]);
 
         const studentsData = await studentsRes.json();
@@ -48,6 +114,8 @@ export default function AdminDashboard() {
         const subjectsData = await subjectsRes.json();
         const streamsData = await streamsRes.json();
         const sectionsData = await sectionsRes.json();
+        const dashStatsData = dashStatsRes.ok ? await dashStatsRes.json() : { pendingRequests: 0, unreadMessages: 0 };
+        const activityData = activityRes.ok ? await activityRes.json() : { activities: [] };
 
         setStats({
           totalStudents: studentsData.students?.filter(
@@ -60,242 +128,340 @@ export default function AdminDashboard() {
           totalStreams: streamsData.streams?.length || 0,
           totalSections: sectionsData.sections?.length || 0,
         });
+        setDashStats(dashStatsData);
+        setActivities(activityData.activities || []);
       } catch (error) {
         console.error("Failed to fetch stats:", error);
       } finally {
         setLoading(false);
       }
     }
-    fetchStats();
+    fetchAll();
   }, []);
 
+  const handleLayoutChange = (l: DashboardLayout) => {
+    setLayout(l);
+    localStorage.setItem("admin-dashboard-layout", l);
+  };
+
   const statCards = [
-    {
-      title: "Total Students",
-      value: stats.totalStudents,
-      icon: "👥",
-      color: "from-blue-500 to-blue-600",
-    },
-    {
-      title: "Total Notes",
-      value: stats.totalNotes,
-      icon: "📄",
-      color: "from-indigo-500 to-indigo-600",
-    },
-    {
-      title: "Assignments",
-      value: stats.totalAssignments,
-      icon: "📝",
-      color: "from-purple-500 to-purple-600",
-    },
-    {
-      title: "Practicals",
-      value: stats.totalPracticals,
-      icon: "🧪",
-      color: "from-emerald-500 to-emerald-600",
-    },
-    {
-      title: "Subjects",
-      value: stats.totalSubjects,
-      icon: "📚",
-      color: "from-pink-500 to-pink-600",
-    },
-    {
-      title: "Streams",
-      value: stats.totalStreams,
-      icon: "🎓",
-      color: "from-teal-500 to-teal-600",
-    },
-    {
-      title: "Sections",
-      value: stats.totalSections,
-      icon: "🏫",
-      color: "from-cyan-500 to-cyan-600",
-    },
+    { title: "Students", value: stats.totalStudents, icon: "👥", href: "/admin/users" },
+    { title: "Notes", value: stats.totalNotes, icon: "📄", href: "/admin/notes" },
+    { title: "Assignments", value: stats.totalAssignments, icon: "📝", href: "/admin/assignments" },
+    { title: "Practicals", value: stats.totalPracticals, icon: "🧪", href: "/admin/practicals" },
+    { title: "Subjects", value: stats.totalSubjects, icon: "📚", href: "/admin/subjects" },
+    { title: "Streams", value: stats.totalStreams, icon: "🎓", href: "/admin/streams" },
+    { title: "Sections", value: stats.totalSections, icon: "🏫", href: "/admin/sections" },
   ];
+
+  const quickLinks = [
+    { label: "Users", href: "/admin/users", icon: "👥" },
+    { label: "Notes", href: "/admin/notes", icon: "📄" },
+    { label: "Assignments", href: "/admin/assignments", icon: "📝" },
+    { label: "Practicals", href: "/admin/practicals", icon: "🧪" },
+    { label: "Subjects", href: "/admin/subjects", icon: "📚" },
+    { label: "Streams", href: "/admin/streams", icon: "🎓" },
+    { label: "Sections", href: "/admin/sections", icon: "🏫" },
+    { label: "Access Requests", href: "/admin/access-requests", icon: "🔔" },
+    { label: "Admin Requests", href: "/admin/admin-requests", icon: "🛡️" },
+    { label: "Messages", href: "/admin/messages", icon: "📬" },
+  ];
+
+  const layoutOptions: { key: DashboardLayout; label: string; icon: string }[] = [
+    { key: "overview", label: "Overview", icon: "📊" },
+    { key: "compact", label: "Compact", icon: "📋" },
+    { key: "analytics", label: "Activity", icon: "📈" },
+  ];
+
+  const activityLimit = layout === "analytics" ? 20 : 8;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Admin Dashboard</h1>
-        <p className="text-muted-foreground">
-          Overview of Section C Hub
-        </p>
+      {/* Header with layout toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Admin Dashboard</h1>
+          <p className="text-muted-foreground">Overview of Acadex</p>
+        </div>
+        <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
+          {layoutOptions.map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => handleLayoutChange(opt.key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                layout === opt.key
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span className="text-xs">{opt.icon}</span>
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      {/* Stats Grid — always shown */}
+      <div className={`grid gap-4 ${layout === "compact" ? "sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7" : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7"}`}>
         {statCards.map((stat) => (
-          <Card key={stat.title} className="rounded-2xl">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-                {stat.title}
-                <span className="text-lg">{stat.icon}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">
-                {loading ? (
-                  <span className="inline-block h-8 w-16 bg-muted rounded animate-pulse" />
-                ) : (
-                  stat.value
-                )}
-              </p>
-            </CardContent>
-          </Card>
+          <Link key={stat.title} href={stat.href}>
+            <Card className="rounded-2xl hover:shadow-lg transition-all hover:-translate-y-0.5 cursor-pointer">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
+                  {stat.title}
+                  <span className="text-lg">{stat.icon}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">
+                  {loading ? (
+                    <span className="inline-block h-8 w-16 bg-muted rounded animate-pulse" />
+                  ) : (
+                    stat.value
+                  )}
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <Link href="/admin/users">
-            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
-              <CardContent className="p-5 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
-                  <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Manage Users</p>
-                  <p className="text-xs text-muted-foreground">Add & manage</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+      {/* Layout-specific content */}
+      {layout === "overview" && (
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Left: Activity Feed (2/3 width) */}
+          <div className="lg:col-span-2 space-y-6">
+            <ActivityFeed
+              activities={activities.slice(0, activityLimit)}
+              loading={loading}
+            />
+          </div>
 
-          <Link href="/admin/notes">
-            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
-              <CardContent className="p-5 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-                  <svg className="h-5 w-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Notes</p>
-                  <p className="text-xs text-muted-foreground">Add & manage</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/admin/assignments">
-            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
-              <CardContent className="p-5 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center">
-                  <svg className="h-5 w-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Assignments</p>
-                  <p className="text-xs text-muted-foreground">Add & manage</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/admin/practicals">
-            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
-              <CardContent className="p-5 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-                  <svg className="h-5 w-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Practicals</p>
-                  <p className="text-xs text-muted-foreground">Add & manage</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/admin/subjects">
-            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
-              <CardContent className="p-5 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-pink-100 dark:bg-pink-900/50 flex items-center justify-center">
-                  <svg className="h-5 w-5 text-pink-600 dark:text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Subjects</p>
-                  <p className="text-xs text-muted-foreground">Add & remove</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/admin/streams">
-            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
-              <CardContent className="p-5 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-teal-100 dark:bg-teal-900/50 flex items-center justify-center">
-                  <svg className="h-5 w-5 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Streams</p>
-                  <p className="text-xs text-muted-foreground">Manage streams</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/admin/sections">
-            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
-              <CardContent className="p-5 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-cyan-100 dark:bg-cyan-900/50 flex items-center justify-center">
-                  <svg className="h-5 w-5 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Sections</p>
-                  <p className="text-xs text-muted-foreground">Manage sections</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/admin/access-requests">
-            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
-              <CardContent className="p-5 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
-                  <svg className="h-5 w-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Access Requests</p>
-                  <p className="text-xs text-muted-foreground">Review & approve</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/admin/messages">
-            <Card className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5">
-              <CardContent className="p-5 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-cyan-100 dark:bg-cyan-900/50 flex items-center justify-center">
-                  <svg className="h-5 w-5 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Messages</p>
-                  <p className="text-xs text-muted-foreground">View & reply</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+          {/* Right: Alerts + Quick Links (1/3 width) */}
+          <div className="space-y-6">
+            <AlertCards
+              pendingRequests={dashStats.pendingRequests}
+              unreadMessages={dashStats.unreadMessages}
+              loading={loading}
+            />
+            <QuickLinksCard links={quickLinks} />
+          </div>
         </div>
-      </div>
+      )}
+
+      {layout === "compact" && (
+        <div className="space-y-6">
+          <AlertCards
+            pendingRequests={dashStats.pendingRequests}
+            unreadMessages={dashStats.unreadMessages}
+            loading={loading}
+            horizontal
+          />
+          <QuickLinksCard links={quickLinks} grid />
+        </div>
+      )}
+
+      {layout === "analytics" && (
+        <div className="space-y-6">
+          <AlertCards
+            pendingRequests={dashStats.pendingRequests}
+            unreadMessages={dashStats.unreadMessages}
+            loading={loading}
+            horizontal
+          />
+          <ActivityFeed
+            activities={activities.slice(0, activityLimit)}
+            loading={loading}
+            expanded
+          />
+        </div>
+      )}
     </div>
+  );
+}
+
+/* ─── Sub-components ─── */
+
+function ActivityFeed({
+  activities,
+  loading,
+  expanded,
+}: {
+  activities: ActivityItem[];
+  loading: boolean;
+  expanded?: boolean;
+}) {
+  return (
+    <Card className="rounded-2xl">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Recent Activity
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3 w-3/4 bg-muted rounded animate-pulse" />
+                  <div className="h-2.5 w-1/2 bg-muted rounded animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : activities.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">No recent activity</p>
+        ) : (
+          <div className={`space-y-1 ${expanded ? "max-h-none" : "max-h-[400px] overflow-y-auto"}`}>
+            {activities.map((a) => {
+              const info = getActionInfo(a.action);
+              return (
+                <div
+                  key={a.id}
+                  className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <span className="text-base mt-0.5 shrink-0">{info.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-medium ${info.color}`}>{info.label}</span>
+                      <span className="text-xs text-muted-foreground">{timeAgo(a.createdAt)}</span>
+                    </div>
+                    {a.details && (
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {a.details}
+                      </p>
+                    )}
+                    {a.user && (
+                      <p className="text-xs text-muted-foreground/70 mt-0.5">
+                        by {a.user.name}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AlertCards({
+  pendingRequests,
+  unreadMessages,
+  loading,
+  horizontal,
+}: {
+  pendingRequests: number;
+  unreadMessages: number;
+  loading: boolean;
+  horizontal?: boolean;
+}) {
+  return (
+    <div className={horizontal ? "grid gap-4 sm:grid-cols-2" : "space-y-4"}>
+      {/* Pending Access Requests */}
+      <Link href="/admin/access-requests">
+        <Card className={`rounded-2xl hover:shadow-lg transition-all hover:-translate-y-0.5 cursor-pointer ${
+          pendingRequests > 0 ? "border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20" : ""
+        }`}>
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${
+              pendingRequests > 0
+                ? "bg-amber-100 dark:bg-amber-900/50"
+                : "bg-muted"
+            }`}>
+              <svg className={`h-6 w-6 ${pendingRequests > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">
+                {loading ? (
+                  <span className="inline-block h-7 w-10 bg-muted rounded animate-pulse" />
+                ) : (
+                  pendingRequests
+                )}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {pendingRequests === 1 ? "Pending Request" : "Pending Requests"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+
+      {/* Unread Messages */}
+      <Link href="/admin/messages">
+        <Card className={`rounded-2xl hover:shadow-lg transition-all hover:-translate-y-0.5 cursor-pointer ${
+          unreadMessages > 0 ? "border-blue-500/40 bg-blue-50/50 dark:bg-blue-950/20" : ""
+        }`}>
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${
+              unreadMessages > 0
+                ? "bg-blue-100 dark:bg-blue-900/50"
+                : "bg-muted"
+            }`}>
+              <svg className={`h-6 w-6 ${unreadMessages > 0 ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">
+                {loading ? (
+                  <span className="inline-block h-7 w-10 bg-muted rounded animate-pulse" />
+                ) : (
+                  unreadMessages
+                )}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {unreadMessages === 1 ? "Unread Message" : "Unread Messages"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    </div>
+  );
+}
+
+function QuickLinksCard({
+  links,
+  grid,
+}: {
+  links: { label: string; href: string; icon: string }[];
+  grid?: boolean;
+}) {
+  return (
+    <Card className="rounded-2xl">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          Quick Links
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className={grid ? "grid gap-2 sm:grid-cols-2 lg:grid-cols-3" : "space-y-1"}>
+          {links.map((link) => (
+            <Link key={link.href} href={link.href}>
+              <Button
+                variant="ghost"
+                className={`w-full justify-start gap-2.5 text-sm font-medium ${grid ? "h-11" : "h-9"}`}
+              >
+                <span>{link.icon}</span>
+                {link.label}
+              </Button>
+            </Link>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

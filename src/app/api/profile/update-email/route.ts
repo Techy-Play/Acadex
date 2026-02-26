@@ -109,7 +109,7 @@ export async function POST(request: Request) {
         const { sendMail, profileUpdateEmailHTML } = await import("@/lib/mail");
         await sendMail({
           to: updatedUser.email,
-          subject: "📧 Section C Hub — Email Updated",
+          subject: "📧 Acadex — Email Updated",
           html: profileUpdateEmailHTML(user.name, "email"),
         });
       }

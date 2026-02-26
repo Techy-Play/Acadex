@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
-const COOKIE_NAME = "section-c-token";
+const COOKIE_NAME = "acadex-token";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export interface JWTPayload {

@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     // Send email
     await sendMail({
       to: sendTo!,
-      subject: `Section C Hub — Your Verification Code`,
+      subject: `Acadex — Your Verification Code`,
       html: otpEmailHTML(user.name, code, purpose),
     });
 

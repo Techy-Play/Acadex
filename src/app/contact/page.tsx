@@ -64,9 +64,9 @@ export default function ContactPage() {
       <nav className="hidden md:flex items-center justify-between px-6 py-4 md:px-12 animate-slide-down relative z-10">
         <Link href="/" className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <span className="text-white font-bold text-sm">SC</span>
+            <span className="text-white font-bold text-sm">AX</span>
           </div>
-          <span className="font-bold text-lg tracking-tight">Section C Hub</span>
+          <span className="font-bold text-lg tracking-tight">Acadex</span>
         </Link>
         <div className="flex items-center gap-1">
           <Link href="/" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-accent">
@@ -94,9 +94,9 @@ export default function ContactPage() {
       <nav className="flex md:hidden items-center justify-between px-4 py-3 relative z-10">
         <Link href="/" className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-            <span className="text-white font-bold text-xs">SC</span>
+            <span className="text-white font-bold text-xs">AX</span>
           </div>
-          <span className="font-bold text-base tracking-tight">Section C Hub</span>
+          <span className="font-bold text-base tracking-tight">Acadex</span>
         </Link>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -319,13 +319,13 @@ export default function ContactPage() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <span className="text-white font-bold text-[10px]">SC</span>
+              <span className="text-white font-bold text-[10px]">AX</span>
             </div>
-            <span className="font-semibold text-sm">Section C Hub</span>
+            <span className="font-semibold text-sm">Acadex</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Created with the power of sleep 🥱 by{" "}
-            <span className="font-medium text-foreground">Mr. Techie</span>
+            Engineered by{" "}
+            <span className="font-medium text-foreground">Mr Techie</span>
           </p>
         </div>
       </footer>

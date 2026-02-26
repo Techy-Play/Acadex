@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import AccessRequest from "@/models/AccessRequest";
+import User from "@/models/User";
 import Stream from "@/models/Stream";
 import Section from "@/models/Section";
 import Notification from "@/models/Notification";
@@ -93,6 +94,43 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if a user with this college_id already exists (already approved)
+    const existingUser = await User.findOne({
+      college_id: college_id.trim(),
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "An account with this College ID already exists. Try logging in instead." },
+        { status: 409 }
+      );
+    }
+
+    // Check if email is already used by an existing user
+    const existingEmail = await User.findOne({
+      email: email.trim().toLowerCase(),
+    });
+
+    if (existingEmail) {
+      return NextResponse.json(
+        { error: "An account with this email already exists. Try logging in instead." },
+        { status: 409 }
+      );
+    }
+
+    // Check if email is already in a pending access request
+    const existingEmailRequest = await AccessRequest.findOne({
+      email: email.trim().toLowerCase(),
+      status: "pending",
+    });
+
+    if (existingEmailRequest) {
+      return NextResponse.json(
+        { error: "An access request with this email is already pending" },
+        { status: 409 }
+      );
+    }
+
     const accessRequest = await AccessRequest.create({
       name: name.trim(),
       college_id: college_id.trim(),
@@ -102,14 +140,33 @@ export async function POST(request: Request) {
       reason: (reason || "").trim().slice(0, 500),
     });
 
-    // Notify admins
-    await Notification.create({
-      type: "new_access_request",
-      title: "New Access Request",
-      message: `${name.trim()} (${college_id.trim()}) requested access`,
-      link: "/admin/access-requests",
-      targetRole: "admin",
-    });
+    // Notify only the admin(s) of that section + super admins
+    const sectionAdmins = await User.find({
+      role: "admin",
+      section: section,
+      isSuperAdmin: { $ne: true },
+    })
+      .select("_id")
+      .lean();
+
+    const superAdmins = await User.find({ isSuperAdmin: true })
+      .select("_id")
+      .lean();
+
+    const targetAdminIds = [
+      ...sectionAdmins.map((a) => a._id),
+      ...superAdmins.map((a) => a._id),
+    ];
+
+    if (targetAdminIds.length > 0) {
+      await Notification.create({
+        type: "new_access_request",
+        title: "New Access Request",
+        message: `${name.trim()} (${college_id.trim()}) requested access`,
+        link: "/admin/access-requests",
+        targetUsers: targetAdminIds,
+      });
+    }
 
     return NextResponse.json(
       {

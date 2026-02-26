@@ -18,17 +18,29 @@ export async function GET() {
   }
 }
 
-// POST /api/sections — create section (super admin only)
+// POST /api/sections — create section (super admin or admin with isAdminSection)
 export async function POST(request: Request) {
   try {
     const userRole = request.headers.get("x-user-role");
     const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
 
-    if (userRole !== "admin" || !isSuperAdmin) {
+    if (userRole !== "admin") {
       return NextResponse.json(
-        { error: "Only the main admin can manage sections" },
+        { error: "Only admins can manage sections" },
         { status: 403 }
       );
+    }
+
+    if (!isSuperAdmin) {
+      const userId = request.headers.get("x-user-id");
+      await connectDB();
+      const admin = await User.findById(userId).select("isAdminSection").lean();
+      if (!admin?.isAdminSection) {
+        return NextResponse.json(
+          { error: "You don't have permission to manage sections" },
+          { status: 403 }
+        );
+      }
     }
 
     const body = await request.json();

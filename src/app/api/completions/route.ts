@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     await Completion.findOneAndUpdate(
       { user: userId, assignment: assignmentId },
       { user: userId, assignment: assignmentId, completedAt: new Date() },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     return NextResponse.json({ success: true });

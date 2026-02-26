@@ -18,9 +18,9 @@ export default function AboutPage() {
       <nav className="hidden md:flex items-center justify-between px-6 py-4 md:px-12 animate-slide-down relative z-10">
         <Link href="/" className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <span className="text-white font-bold text-sm">SC</span>
+            <span className="text-white font-bold text-sm">AX</span>
           </div>
-          <span className="font-bold text-lg tracking-tight">Section C Hub</span>
+          <span className="font-bold text-lg tracking-tight">Acadex</span>
         </Link>
         <div className="flex items-center gap-1">
           <Link href="/" className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-accent">
@@ -48,9 +48,9 @@ export default function AboutPage() {
       <nav className="flex md:hidden items-center justify-between px-4 py-3 relative z-10">
         <Link href="/" className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-            <span className="text-white font-bold text-xs">SC</span>
+            <span className="text-white font-bold text-xs">AX</span>
           </div>
-          <span className="font-bold text-base tracking-tight">Section C Hub</span>
+          <span className="font-bold text-base tracking-tight">Acadex</span>
         </Link>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -72,18 +72,18 @@ export default function AboutPage() {
               </span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Section C Hub is built by students, for students — designed to solve the
+              Acadex is built by students, for students — designed to solve the
               real problems your college ERP never bothered to fix.
             </p>
           </div>
 
-          {/* What is Section C Hub */}
+          {/* What is Acadex */}
           <div className="space-y-6 animate-slide-up opacity-0 [animation-delay:0.3s]">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">What is Section C Hub?</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">What is Acadex?</h2>
             <div className="prose prose-gray dark:prose-invert max-w-none space-y-4 text-muted-foreground">
               <p className="text-base leading-relaxed">
-                Section C Hub is a centralized academic resource platform specifically built for the students of
-                Section C. It provides a clean, organized, and modern interface to access all your subject-wise
+                Acadex is a centralized academic resource platform specifically built for students of
+                your class. It provides a clean, organized, and modern interface to access all your subject-wise
                 notes, assignments, practicals, and academic resources in one place.
               </p>
               <p className="text-base leading-relaxed">
@@ -107,7 +107,7 @@ export default function AboutPage() {
                   erpTitle: "College ERP",
                   erpDesc: "Slow, clunky interfaces from 2005. Crashes during peak hours. Needs VPN sometimes.",
                   hubIcon: "⚡",
-                  hubTitle: "Section C Hub",
+                  hubTitle: "Acadex",
                   hubDesc: "Blazing fast, modern UI built with Next.js. Works anywhere, anytime.",
                 },
                 {
@@ -115,7 +115,7 @@ export default function AboutPage() {
                   erpTitle: "Generic for all",
                   erpDesc: "One size fits all approach. Contains features you'll never use. Confusing navigation.",
                   hubIcon: "🎯",
-                  hubTitle: "Built for Section C",
+                  hubTitle: "Built for you",
                   hubDesc: "Laser-focused on what you actually need — notes, assignments, and practicals. Nothing more, nothing less.",
                 },
                 {
@@ -166,7 +166,7 @@ export default function AboutPage() {
                 { icon: "🔔", title: "Smart Notifications", desc: "Get notified when new content is added or deadlines are approaching." },
                 { icon: "🎨", title: "Themes & Colors", desc: "Dark mode, light mode, 8 accent colors — make it yours." },
                 { icon: "📱", title: "Mobile First", desc: "Fully responsive. Works perfectly on phone, tablet, and desktop." },
-                { icon: "🔐", title: "Secure Access", desc: "Admin-controlled access. Only verified Section C students can join." },
+                { icon: "🔐", title: "Secure Access", desc: "Admin-controlled access. Only verified students can join." },
                 { icon: "📊", title: "Progress Dashboard", desc: "Visual progress bars, stats, and quick overview of your academic status." },
                 { icon: "🎓", title: "Stream Support", desc: "Subjects filtered automatically based on your assigned stream." },
               ].map((feature, i) => (
@@ -241,13 +241,13 @@ export default function AboutPage() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <span className="text-white font-bold text-[10px]">SC</span>
+              <span className="text-white font-bold text-[10px]">AX</span>
             </div>
-            <span className="font-semibold text-sm">Section C Hub</span>
+            <span className="font-semibold text-sm">Acadex</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Created with the power of sleep 🥱 by{" "}
-            <span className="font-medium text-foreground">Mr. Techie</span>
+            Engineered by{" "}
+            <span className="font-medium text-foreground">Mr Techie</span>
           </p>
         </div>
       </footer>

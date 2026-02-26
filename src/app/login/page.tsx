@@ -39,6 +39,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [collegeId, setCollegeId] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Apply form state
   const [showApplyForm, setShowApplyForm] = useState(false);
@@ -148,16 +149,60 @@ export default function LoginPage() {
       <nav className="relative z-10 flex items-center justify-between px-6 py-4 md:px-12">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 group-hover:shadow-indigo-500/50 transition-shadow">
-            <span className="text-white font-bold text-sm">SC</span>
+            <span className="text-white font-bold text-sm">AX</span>
           </div>
-          <span className="font-semibold text-lg tracking-tight">Section C Hub</span>
+          <span className="font-semibold text-lg tracking-tight">Acadex</span>
         </Link>
         <ThemeToggle />
       </nav>
 
       {/* Main Content */}
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-8">
-        <div className="w-full max-w-md rounded-2xl">
+        <div className="w-full max-w-5xl mx-auto grid md:grid-cols-2 gap-0 md:gap-8 lg:gap-12 items-center">
+          {/* Hero Panel — desktop only */}
+          <div className="hidden md:flex flex-col justify-center space-y-8">
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 dark:border-indigo-800 bg-indigo-50/80 dark:bg-indigo-950/50 px-4 py-1.5 text-sm font-medium text-indigo-700 dark:text-indigo-300 backdrop-blur-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                </span>
+                Academic Resource Platform
+              </div>
+              <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tighter leading-[1.1]">
+                Your academics,
+                <br />
+                <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+                  simplified.
+                </span>
+              </h1>
+              <p className="text-muted-foreground text-lg leading-relaxed max-w-md">
+                Notes, assignments, and practicals —
+                organized in one place. No more digging through WhatsApp groups.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { icon: "📚", label: "Organized Notes" },
+                { icon: "📝", label: "Assignment Tracker" },
+                { icon: "🧪", label: "Practicals & Code" },
+                { icon: "🔔", label: "Smart Notifications" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-xl border bg-card/50 backdrop-blur-sm p-3">
+                  <span className="text-xl">{item.icon}</span>
+                  <span className="text-sm font-medium">{item.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-muted-foreground/60">
+              Acadex &bull; Engineered by Mr Techie
+            </p>
+          </div>
+
+          {/* Form Panel */}
+          <div className="w-full max-w-md mx-auto md:max-w-none rounded-2xl">
           <MagicCard
             className="rounded-2xl"
             gradientSize={300}
@@ -172,7 +217,7 @@ export default function LoginPage() {
                   {/* ─── Login Form ─── */}
                   <CardHeader className="text-center space-y-2 pb-2 pt-8 px-8">
                     <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-3 shadow-lg shadow-indigo-500/30">
-                      <span className="text-white font-bold text-xl">SC</span>
+                      <span className="text-white font-bold text-xl">AX</span>
                     </div>
                     <CardTitle className="text-2xl font-bold tracking-tight">
                       Welcome back
@@ -202,16 +247,35 @@ export default function LoginPage() {
                         <Label htmlFor="password" className="text-sm font-medium">
                           Password
                         </Label>
-                        <Input
-                          id="password"
-                          type="password"
-                          placeholder="Enter your password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                          className="rounded-xl h-11 border-muted-foreground/20 focus:border-indigo-500 transition-colors"
-                          autoComplete="current-password"
-                        />
+                        <div className="relative">
+                          <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Enter your password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            className="rounded-xl h-11 pr-10 border-muted-foreground/20 focus:border-indigo-500 transition-colors"
+                            autoComplete="current-password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            tabIndex={-1}
+                          >
+                            {showPassword ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-5 0-9.27-3.11-11-7.5a11.72 11.72 0 013.168-4.477M6.343 6.343A9.97 9.97 0 0112 5c5 0 9.27 3.11 11 7.5a11.7 11.7 0 01-4.373 5.157M6.343 6.343L3 3m3.343 3.343l2.829 2.829m4.656 4.656l2.829 2.829M3 3l18 18M9.878 9.878a3 3 0 104.243 4.243" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
                       </div>
                       <Button
                         type="submit"
@@ -248,7 +312,7 @@ export default function LoginPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                         </svg>
                         <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
-                          Apply for access to website
+                          Apply for access to Acadex
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -323,7 +387,7 @@ export default function LoginPage() {
                         <Input
                           id="apply_name"
                           type="text"
-                          placeholder="e.g. John Doe"
+                          placeholder="eg. Deepak Negi"
                           value={applyName}
                           onChange={(e) => setApplyName(e.target.value)}
                           required
@@ -339,7 +403,7 @@ export default function LoginPage() {
                         <Input
                           id="apply_college_id"
                           type="text"
-                          placeholder="e.g. 2417003"
+                          placeholder="241XXXX"
                           value={applyCollegeId}
                           onChange={(e) => setApplyCollegeId(e.target.value)}
                           required
@@ -349,7 +413,7 @@ export default function LoginPage() {
                           className="rounded-xl h-11 border-muted-foreground/20 focus:border-indigo-500 transition-colors"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Format: 241/257/258/259 followed by 4 digits
+                          Enter it from your college ID card
                         </p>
                       </div>
 
@@ -367,9 +431,7 @@ export default function LoginPage() {
                           maxLength={255}
                           className="rounded-xl h-11 border-muted-foreground/20 focus:border-indigo-500 transition-colors"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          You&apos;ll receive login credentials here. Allowed: gmail.com, outlook.com, hotmail.com, yahoo.com, amrapali.ac.in
-                        </p>
+
                       </div>
 
                       <div className="space-y-2">
@@ -413,7 +475,7 @@ export default function LoginPage() {
                         </Label>
                         <Textarea
                           id="apply_reason"
-                          placeholder="e.g. I'm a student in Section C, Semester 4..."
+                          placeholder="I am student of section X, semester X ..."
                           value={applyReason}
                           onChange={(e) => setApplyReason(e.target.value)}
                           maxLength={500}
@@ -447,12 +509,25 @@ export default function LoginPage() {
                       >
                         ← Back to login
                       </button>
+
+                      <div className="text-center pt-1">
+                        <p className="text-xs text-muted-foreground">
+                          Facing any issues?{" "}
+                          <Link
+                            href="/contact"
+                            className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium hover:underline"
+                          >
+                            Contact Us
+                          </Link>
+                        </p>
+                      </div>
                     </form>
                   </CardContent>
                 </>
               )}
             </div>
           </MagicCard>
+        </div>
         </div>
       </main>
     </div>

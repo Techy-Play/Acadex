@@ -27,7 +27,7 @@ export async function POST(
     // Send the reply email
     await sendMail({
       to: email,
-      subject: `Re: ${subject || "Your message"} — Section C Hub`,
+      subject: `Re: ${subject || "Your message"} — Acadex`,
       html: contactReplyEmailHTML(name, subject, reply),
     });
 

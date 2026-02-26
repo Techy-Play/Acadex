@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Section C Hub",
-  description: "Centralized academic resource platform for Section C",
+  title: "Acadex",
+  description: "Centralized academic resource platform — Engineered by Mr Techie",
 };
 
 export default function RootLayout({
@@ -36,7 +36,7 @@ export default function RootLayout({
           defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
-          storageKey="section-c-theme"
+          storageKey="acadex-theme"
         >
           <Suspense>
             <RouteProgress />

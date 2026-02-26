@@ -4,7 +4,7 @@ export async function POST() {
   try {
     const response = NextResponse.json({ success: true });
 
-    response.cookies.set("section-c-token", "", {
+    response.cookies.set("acadex-token", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

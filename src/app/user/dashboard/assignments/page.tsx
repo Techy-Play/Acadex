@@ -18,6 +18,11 @@ interface Subject {
   name: string;
 }
 
+interface SectionItem {
+  _id: string;
+  name: string;
+}
+
 interface Assignment {
   _id: string;
   title: string;
@@ -26,6 +31,7 @@ interface Assignment {
   deadline: string | null;
   createdAt: string;
   subject: { _id: string; name: string };
+  section?: { _id: string; name: string } | null;
 }
 
 export default function AssignmentsPage() {
@@ -40,6 +46,10 @@ export default function AssignmentsPage() {
   const [loading, setLoading] = useState(true);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [streamSubjectIds, setStreamSubjectIds] = useState<Set<string> | null>(null);
+  const [sections, setSections] = useState<SectionItem[]>([]);
+  const [userSectionId, setUserSectionId] = useState<string | null>(null);
+  const [userSectionName, setUserSectionName] = useState<string | null>(null);
+  const [selectedSection, setSelectedSection] = useState<string>("my-section");
 
   // Fetch completions from server
   useEffect(() => {
@@ -92,12 +102,22 @@ export default function AssignmentsPage() {
   useEffect(() => {
     async function fetchInit() {
       try {
-        const [subjectsRes, meRes] = await Promise.all([
+        const [subjectsRes, meRes, sectionsRes] = await Promise.all([
           fetch("/api/subjects"),
           fetch("/api/auth/me"),
+          fetch("/api/sections"),
         ]);
         const subjectsData = await subjectsRes.json();
         const meData = meRes.ok ? await meRes.json() : { user: {} };
+        const sectionsData = sectionsRes.ok ? await sectionsRes.json() : { sections: [] };
+
+        setSections(sectionsData.sections || []);
+
+        // Set user's section
+        if (meData.user?.section?.id) {
+          setUserSectionId(meData.user.section.id);
+          setUserSectionName(meData.user.section.name);
+        }
 
         const allSubjects: Subject[] = subjectsData.subjects || [];
 
@@ -119,10 +139,17 @@ export default function AssignmentsPage() {
     async function fetchAssignments() {
       setLoading(true);
       try {
-        const url =
-          selectedSubject === "all"
-            ? "/api/assignments"
-            : `/api/assignments?subject=${selectedSubject}`;
+        const params = new URLSearchParams();
+        if (selectedSubject !== "all") params.set("subject", selectedSubject);
+
+        // Section filter
+        if (selectedSection === "all") {
+          params.set("section", "all");
+        } else if (selectedSection !== "my-section" && selectedSection) {
+          params.set("section", selectedSection);
+        }
+
+        const url = params.toString() ? `/api/assignments?${params}` : "/api/assignments";
         const res = await fetch(url);
         const data = await res.json();
         let allAssignments: Assignment[] = data.assignments || [];
@@ -140,7 +167,7 @@ export default function AssignmentsPage() {
       }
     }
     fetchAssignments();
-  }, [selectedSubject, streamSubjectIds]);
+  }, [selectedSubject, streamSubjectIds, selectedSection]);
 
   // Filter by status then sort
   const sortedAssignments = useMemo(() => {
@@ -240,13 +267,32 @@ export default function AssignmentsPage() {
               ))}
             </SelectContent>
           </Select>
-          {(statusFilter !== "all" || sortOrder !== "newest" || selectedSubject !== "all") && (
+          <Select value={selectedSection} onValueChange={setSelectedSection}>
+            <SelectTrigger className="w-full sm:w-[180px] rounded-xl">
+              <SelectValue placeholder="Filter by section" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="my-section">
+                🏫 {userSectionName || "My Section"}
+              </SelectItem>
+              <SelectItem value="all">All Sections</SelectItem>
+              {sections
+                .filter((s) => s._id !== userSectionId)
+                .map((s) => (
+                  <SelectItem key={s._id} value={s._id}>
+                    🏫 {s.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+          {(statusFilter !== "all" || sortOrder !== "newest" || selectedSubject !== "all" || selectedSection !== "my-section") && (
             <button
               className="text-xs text-primary hover:underline whitespace-nowrap"
               onClick={() => {
                 setStatusFilter("all");
                 setSortOrder("newest");
                 setSelectedSubject("all");
+                setSelectedSection("my-section");
               }}
             >
               Reset filters

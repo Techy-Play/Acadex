@@ -6,7 +6,7 @@ import { jwtVerify } from "jose";
 // Next.js Edge Runtime doesn't support Node.js crypto module.
 // jose is already included with Next.js.
 
-const COOKIE_NAME = "section-c-token";
+const COOKIE_NAME = "acadex-token";
 
 async function verifyJWT(token: string) {
   try {

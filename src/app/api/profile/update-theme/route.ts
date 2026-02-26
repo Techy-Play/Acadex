@@ -10,14 +10,15 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { theme, accentColor, mobileNavPosition, dashboardView } = body;
+    const { theme, accentColor, mobileNavPosition, dashboardView, notificationPreferences } = body;
 
     const validThemes = ["light", "dark", "system"];
     const validAccents = ["default", "rose", "ocean", "emerald", "violet", "sunset", "amoled", "pastel", "contrast"];
     const validNavPositions = ["top", "bottom", "left"];
     const validViews = ["grid", "list", "detail"];
+    const validNotifKeys = ["new_note", "new_assignment", "new_practical", "deadline_alert", "admin_message"];
 
-    const update: Record<string, string> = {};
+    const update: Record<string, unknown> = {};
 
     if (theme && validThemes.includes(theme)) {
       update.theme = theme;
@@ -30,6 +31,13 @@ export async function PUT(request: Request) {
     }
     if (dashboardView && validViews.includes(dashboardView)) {
       update.dashboardView = dashboardView;
+    }
+    if (notificationPreferences && typeof notificationPreferences === "object") {
+      for (const key of validNotifKeys) {
+        if (typeof notificationPreferences[key] === "boolean") {
+          update[`notificationPreferences.${key}`] = notificationPreferences[key];
+        }
+      }
     }
 
     if (Object.keys(update).length === 0) {

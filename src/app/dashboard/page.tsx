@@ -56,16 +56,16 @@ export default function StudentDashboard() {
   const [practicalCompletedIds, setPracticalCompletedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [stream, setStream] = useState<StreamData | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("dashboard-view") as ViewMode) || "grid";
-    }
-    return "grid";
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const handleViewChange = (mode: ViewMode) => {
     setViewMode(mode);
-    localStorage.setItem("dashboard-view", mode);
+    // Persist to DB
+    fetch("/api/profile/update-theme", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dashboardView: mode }),
+    }).catch(() => {});
   };
 
   useEffect(() => {
@@ -92,6 +92,11 @@ export default function StudentDashboard() {
         // Set stream info
         if (meData.user?.stream) {
           setStream(meData.user.stream);
+        }
+
+        // Set dashboard view preference from DB
+        if (meData.user?.dashboardView) {
+          setViewMode(meData.user.dashboardView as ViewMode);
         }
 
         // Get stream subject IDs for filtering
@@ -236,7 +241,7 @@ export default function StudentDashboard() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome to Section C Hub</p>
+        <p className="text-muted-foreground">Welcome to Acadex</p>
         {stream && (
           <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
             🎓 {stream.name}

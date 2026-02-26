@@ -57,6 +57,7 @@ interface Assignment {
   createdAt: string;
   subject: { _id: string; name: string };
   section?: { _id: string; name: string } | null;
+  uploadedBy?: { _id: string; name: string } | null;
 }
 
 export default function ManageAssignmentsPage() {
@@ -419,6 +420,7 @@ export default function ManageAssignmentsPage() {
                         <TableRow>
                           <TableHead>Title</TableHead>
                           <TableHead>Section</TableHead>
+                          <TableHead>Uploaded By</TableHead>
                           <TableHead>Deadline</TableHead>
                           <TableHead>PDF</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
@@ -442,6 +444,9 @@ export default function ManageAssignmentsPage() {
                                 ) : (
                                   <span className="text-xs text-muted-foreground">—</span>
                                 )}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {a.uploadedBy?.name || <span className="text-muted-foreground">—</span>}
                               </TableCell>
                               <TableCell>
                                 {a.deadline ? (

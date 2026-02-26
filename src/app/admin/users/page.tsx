@@ -194,7 +194,11 @@ export default function UsersPage() {
         return;
       }
 
-      toast.success(`${addName} added successfully!`);
+      if (data.pending) {
+        toast.success(data.message || "Request sent to super admin for approval.");
+      } else {
+        toast.success(`${addName} added successfully!`);
+      }
       setAddName("");
       setAddCollegeId("");
       setAddPassword("");
@@ -296,7 +300,11 @@ export default function UsersPage() {
         return;
       }
 
-      toast.success(`Stream updated for ${streamUser.name}!`);
+      if (data.pending) {
+        toast.success(data.message || "Change request sent to super admin for approval.");
+      } else {
+        toast.success(`Stream updated for ${streamUser.name}!`);
+      }
       setStreamDialogOpen(false);
       fetchUsers();
     } catch {
@@ -396,7 +404,8 @@ export default function UsersPage() {
     .filter((u) => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        if (!u.name.toLowerCase().includes(q) && !u.college_id.toLowerCase().includes(q)) return false;
+        const emailMatch = u.email ? u.email.toLowerCase().includes(q) : false;
+        if (!u.name.toLowerCase().includes(q) && !u.college_id.toLowerCase().includes(q) && !emailMatch) return false;
       }
       if (filterRole !== "all" && u.role !== filterRole) return false;
       if (filterStatus !== "all") {
@@ -603,7 +612,7 @@ export default function UsersPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <Input
-                placeholder="Search by name or college ID..."
+                placeholder="Search by name, college ID, or email..."
                 className="rounded-xl pl-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

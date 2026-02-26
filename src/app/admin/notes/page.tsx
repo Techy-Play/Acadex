@@ -55,6 +55,7 @@ interface Note {
   uploadedAt: string;
   subject: { _id: string; name: string };
   section?: { _id: string; name: string } | null;
+  uploadedBy?: { _id: string; name: string } | null;
 }
 
 export default function ManageNotesPage() {
@@ -384,6 +385,7 @@ export default function ManageNotesPage() {
                       <TableRow>
                         <TableHead>Title</TableHead>
                         <TableHead>Section</TableHead>
+                        <TableHead>Uploaded By</TableHead>
                         <TableHead>Uploaded</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -402,6 +404,9 @@ export default function ManageNotesPage() {
                             ) : (
                               <span className="text-xs text-muted-foreground">—</span>
                             )}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {note.uploadedBy?.name || <span className="text-muted-foreground">—</span>}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {new Date(note.uploadedAt).toLocaleDateString("en-IN", {

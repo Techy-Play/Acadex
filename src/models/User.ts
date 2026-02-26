@@ -1,5 +1,13 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+export interface INotificationPreferences {
+  new_note: boolean;
+  new_assignment: boolean;
+  new_practical: boolean;
+  deadline_alert: boolean;
+  admin_message: boolean;
+}
+
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
@@ -16,7 +24,11 @@ export interface IUser extends Document {
   accentColor: string;
   mobileNavPosition: "top" | "bottom" | "left";
   dashboardView: "grid" | "list" | "detail";
+  notificationPreferences: INotificationPreferences;
   status: "active" | "banned" | "suspended";
+  isAdminSubject: boolean;
+  isAdminStream: boolean;
+  isAdminSection: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -96,16 +108,38 @@ const UserSchema = new Schema<IUser>(
       enum: ["grid", "list", "detail"],
       default: "list",
     },
+    notificationPreferences: {
+      new_note: { type: Boolean, default: true },
+      new_assignment: { type: Boolean, default: true },
+      new_practical: { type: Boolean, default: true },
+      deadline_alert: { type: Boolean, default: true },
+      admin_message: { type: Boolean, default: true },
+    },
     status: {
       type: String,
       enum: ["active", "banned", "suspended"],
       default: "active",
+    },
+    isAdminSubject: {
+      type: Boolean,
+      default: false,
+    },
+    isAdminStream: {
+      type: Boolean,
+      default: false,
+    },
+    isAdminSection: {
+      type: Boolean,
+      default: false,
     },
   },
   {
     timestamps: true,
   }
 );
+
+// Sparse unique index — allows multiple null emails but enforces uniqueness for non-null
+UserSchema.index({ email: 1 }, { unique: true, sparse: true });
 
 // Prevent model recompilation in development (hot reload)
 const User: Model<IUser> =
