@@ -4,7 +4,7 @@ import Subject from "@/models/Subject";
 import Note from "@/models/Note";
 import Assignment from "@/models/Assignment";
 import User from "@/models/User";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 // DELETE /api/subjects/[id] — delete a subject (requires admin password + isAdminSubject or super admin)
 export async function DELETE(

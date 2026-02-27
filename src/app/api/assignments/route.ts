@@ -103,6 +103,7 @@ export async function POST(request: Request) {
       user: adminId!,
       action: "ASSIGNMENT_ADDED",
       details: `Added assignment: ${parsed.data.title}`,
+      section: sectionId || null,
     });
 
     // Notify students

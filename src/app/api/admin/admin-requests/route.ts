@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import AdminRequest from "@/models/AdminRequest";
 import User from "@/models/User";
@@ -167,6 +167,7 @@ export async function PATCH(request: Request) {
           user: adminId!,
           action: "ADMIN_REQUEST_APPROVED",
           details: `Approved admin creation: ${data.name} (${data.college_id})`,
+          section: (data.section as string) || null,
         });
 
         // Notify the requesting admin
@@ -202,6 +203,7 @@ export async function PATCH(request: Request) {
           user: adminId!,
           action: "ADMIN_REQUEST_APPROVED",
           details: `Approved section/stream change for ${user.name} (${user.college_id})`,
+          section: (data.newSection as string) || user.section || null,
         });
 
         // Notify the requesting admin
@@ -232,6 +234,7 @@ export async function PATCH(request: Request) {
         user: adminId!,
         action: "ADMIN_REQUEST_DENIED",
         details: `Denied admin request: ${adminReq.type} by ${adminReq.requestedBy}`,
+        section: (data.section as string) || (data.newSection as string) || null,
       });
 
       // Notify the requesting admin

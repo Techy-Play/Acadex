@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import { addStudentSchema } from "@/lib/validations";
 import User from "@/models/User";
@@ -162,6 +162,7 @@ export async function POST(request: Request) {
         user: adminId!,
         action: "ADMIN_REQUEST_CREATED",
         details: `Requested admin creation: ${name} (${college_id})`,
+        section: section || null,
       });
 
       return NextResponse.json(
@@ -193,6 +194,7 @@ export async function POST(request: Request) {
       user: adminId!,
       action: "STUDENT_ADDED",
       details: `Added ${role}: ${name} (${college_id})`,
+      section: section || null,
     });
 
     return NextResponse.json(

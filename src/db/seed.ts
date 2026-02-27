@@ -12,7 +12,7 @@
 
 import "dotenv/config";
 import mongoose from "mongoose";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 // dotenv/config loads .env — but we need .env.local for Next.js convention
 import { config } from "dotenv";

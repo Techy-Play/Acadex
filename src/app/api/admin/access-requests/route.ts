@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import AccessRequest from "@/models/AccessRequest";
 import User from "@/models/User";
@@ -141,6 +141,7 @@ export async function PATCH(request: Request) {
         user: adminId!,
         action: "ACCESS_REQUEST_APPROVED",
         details: `Approved access for ${accessReq.name} (${accessReq.college_id})`,
+        section: accessReq.section || null,
       });
 
       // Send approval email
@@ -171,6 +172,7 @@ export async function PATCH(request: Request) {
         user: adminId!,
         action: "ACCESS_REQUEST_DENIED",
         details: `Denied access for ${accessReq.name} (${accessReq.college_id})`,
+        section: accessReq.section || null,
       });
 
       // Send denial email

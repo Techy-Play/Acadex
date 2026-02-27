@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
+import { signToken, setAuthCookie } from "@/lib/auth";
 import User from "@/models/User";
 import Stream from "@/models/Stream";
 import Subject from "@/models/Subject";
@@ -18,6 +19,21 @@ export async function GET(request: Request) {
     const user = await User.findById(userId).select("-password_hash");
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Detect if section in JWT differs from DB — refresh token if so
+    const jwtSection = request.headers.get("x-user-section") || null;
+    const dbSection = user.section ? user.section.toString() : null;
+    if (jwtSection !== dbSection) {
+      const token = signToken({
+        userId: user._id.toString(),
+        collegeId: user.college_id,
+        role: user.role,
+        name: user.name,
+        isSuperAdmin: user.isSuperAdmin || false,
+        section: dbSection,
+      });
+      await setAuthCookie(token);
     }
 
     // Fetch stream info if assigned

@@ -10,9 +10,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
+
     await connectDB();
 
-    const activities = await ActivityLog.find()
+    // Sub-admins only see activity from their own section
+    const filter: Record<string, unknown> = {};
+    if (!isSuperAdmin && adminSection) {
+      filter.section = adminSection;
+    }
+
+    const activities = await ActivityLog.find(filter)
       .sort({ createdAt: -1 })
       .limit(20)
       .populate("user", "name college_id role")

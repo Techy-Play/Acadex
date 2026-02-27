@@ -2,9 +2,10 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IOTP extends Document {
   _id: mongoose.Types.ObjectId;
-  user: mongoose.Types.ObjectId;
+  user: mongoose.Types.ObjectId | null;
   code: string;
-  purpose: "password_change" | "email_change";
+  purpose: "password_change" | "email_change" | "forgot_password" | "signup_verification";
+  email?: string;
   newEmail?: string;
   expiresAt: Date;
   verified: boolean;
@@ -16,7 +17,7 @@ const OTPSchema = new Schema<IOTP>(
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      default: null,
     },
     code: {
       type: String,
@@ -24,8 +25,12 @@ const OTPSchema = new Schema<IOTP>(
     },
     purpose: {
       type: String,
-      enum: ["password_change", "email_change"],
+      enum: ["password_change", "email_change", "forgot_password", "signup_verification"],
       required: true,
+    },
+    email: {
+      type: String,
+      default: null,
     },
     newEmail: {
       type: String,

@@ -5,6 +5,7 @@ export interface IActivityLog extends Document {
   user: mongoose.Types.ObjectId;
   action: string;
   details: string;
+  section: mongoose.Types.ObjectId | null;
   createdAt: Date;
 }
 
@@ -23,6 +24,11 @@ const ActivityLogSchema = new Schema<IActivityLog>(
     details: {
       type: String,
       default: "",
+    },
+    section: {
+      type: Schema.Types.ObjectId,
+      ref: "Section",
+      default: null,
     },
   },
   {

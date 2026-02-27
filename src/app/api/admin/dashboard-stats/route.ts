@@ -11,10 +11,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const userSection = request.headers.get("x-user-section");
+
     await connectDB();
 
+    // Sub-admins only see pending requests for their own section
+    const pendingFilter: Record<string, unknown> = { status: "pending" };
+    if (!isSuperAdmin && userSection) {
+      pendingFilter.section = userSection;
+    }
+
     const [pendingRequests, unreadMessages] = await Promise.all([
-      AccessRequest.countDocuments({ status: "pending" }),
+      AccessRequest.countDocuments(pendingFilter),
       ContactMessage.countDocuments({ read: false }),
     ]);
 

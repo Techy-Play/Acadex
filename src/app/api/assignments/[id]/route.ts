@@ -84,6 +84,7 @@ export async function PUT(
       user: adminId!,
       action: "ASSIGNMENT_UPDATED",
       details: `Updated assignment: ${assignment.title}`,
+      section: assignment.section || null,
     });
 
     return NextResponse.json({ success: true, assignment: populated });
@@ -133,6 +134,7 @@ export async function DELETE(
       user: adminId!,
       action: "ASSIGNMENT_DELETED",
       details: `Deleted assignment: ${assignment.title}`,
+      section: assignment.section || null,
     });
 
     return NextResponse.json({ success: true, message: "Assignment deleted" });

@@ -171,6 +171,7 @@ export async function PATCH(
       user: adminId!,
       action: "STUDENT_UPDATED",
       details: `Updated student: ${user.name} (${user.college_id})`,
+      section: user.section || null,
     });
 
     return NextResponse.json({ success: true });
@@ -249,6 +250,7 @@ export async function DELETE(
       user: adminId!,
       action: "STUDENT_DELETED",
       details: `Deleted user: ${user.name} (${user.college_id})`,
+      section: user.section || null,
     });
 
     return NextResponse.json({ success: true });

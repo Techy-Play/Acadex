@@ -105,6 +105,7 @@ export async function POST(request: Request) {
       user: adminId!,
       action: "PRACTICAL_ADDED",
       details: `Added practical: ${parsed.data.title}`,
+      section: sectionId || null,
     });
 
     // Notify students

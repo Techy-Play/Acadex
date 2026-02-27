@@ -104,6 +104,7 @@ export async function POST(request: Request) {
       user: adminId!,
       action: "NOTE_ADDED",
       details: `Added note: ${parsed.data.title}`,
+      section: sectionId || null,
     });
 
     // Notify students

@@ -1,5 +1,11 @@
 import nodemailer from "nodemailer";
 
+function getAppUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -34,6 +40,7 @@ export function approvalEmailHTML(name: string, collegeId: string, tempPassword:
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <img src="${getAppUrl()}/images/logo.png" alt="Acadex" width="48" height="48" style="display: block; margin: 0 auto 8px auto;" />
         <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Acadex</h1>
         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Account Access Granted</p>
       </div>
@@ -67,6 +74,7 @@ export function denialEmailHTML(name: string, reason: string) {
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <img src="${getAppUrl()}/images/logo.png" alt="Acadex" width="48" height="48" style="display: block; margin: 0 auto 8px auto;" />
         <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Acadex</h1>
         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Access Request Update</p>
       </div>
@@ -96,6 +104,7 @@ export function contactReplyEmailHTML(name: string, subject: string, reply: stri
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <img src="${getAppUrl()}/images/logo.png" alt="Acadex" width="48" height="48" style="display: block; margin: 0 auto 8px auto;" />
         <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Acadex</h1>
         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Reply to Your Message</p>
       </div>
@@ -119,11 +128,18 @@ export function contactReplyEmailHTML(name: string, subject: string, reply: stri
   `;
 }
 
-export function otpEmailHTML(name: string, otp: string, purpose: "password_change" | "email_change") {
-  const purposeText = purpose === "password_change" ? "change your password" : "update your email address";
+export function otpEmailHTML(name: string, otp: string, purpose: "password_change" | "email_change" | "forgot_password" | "signup_verification") {
+  const purposeMap = {
+    password_change: "change your password",
+    email_change: "update your email address",
+    forgot_password: "reset your password",
+    signup_verification: "verify your email for account registration",
+  };
+  const purposeText = purposeMap[purpose];
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <img src="${getAppUrl()}/images/logo.png" alt="Acadex" width="48" height="48" style="display: block; margin: 0 auto 8px auto;" />
         <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Acadex</h1>
         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Verification Code</p>
       </div>
@@ -156,6 +172,7 @@ export function profileUpdateEmailHTML(name: string, changeType: "password" | "e
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+        <img src="${getAppUrl()}/images/logo.png" alt="Acadex" width="48" height="48" style="display: block; margin: 0 auto 8px auto;" />
         <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Acadex</h1>
         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">Security Alert</p>
       </div>

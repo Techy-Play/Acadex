@@ -1,5 +1,5 @@
 /**
- * Seed Script — Section C Hub
+ * Seed Script — Acadex
  *
  * Sets up:
  * 1. Default sections (A, B, C, ME)

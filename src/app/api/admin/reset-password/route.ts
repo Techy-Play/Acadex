@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import { resetPasswordSchema } from "@/lib/validations";
 import User from "@/models/User";
@@ -51,6 +51,7 @@ export async function POST(request: Request) {
       user: adminId!,
       action: "PASSWORD_RESET",
       details: `Reset password for: ${user.name} (${user.college_id})`,
+      section: user.section || null,
     });
 
     return NextResponse.json({

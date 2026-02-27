@@ -90,6 +90,7 @@ export async function PUT(
       user: adminId!,
       action: "PRACTICAL_UPDATED",
       details: `Updated practical: ${practical.title}`,
+      section: practical.section || null,
     });
 
     return NextResponse.json({ success: true, practical: populated });
@@ -142,6 +143,7 @@ export async function DELETE(
       user: adminId!,
       action: "PRACTICAL_DELETED",
       details: `Deleted practical: ${practical.title}`,
+      section: practical.section || null,
     });
 
     return NextResponse.json({ success: true, message: "Practical deleted" });

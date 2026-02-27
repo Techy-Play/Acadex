@@ -70,6 +70,11 @@ const icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
     </svg>
   ),
+  library: (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+    </svg>
+  ),
 };
 
 const studentLinks = [
@@ -77,6 +82,7 @@ const studentLinks = [
   { href: "/user/dashboard/notes", label: "Notes", icon: icons.notes },
   { href: "/user/dashboard/assignments", label: "Assignments", icon: icons.assignments },
   { href: "/user/dashboard/practicals", label: "Practicals", icon: icons.practicals },
+  { href: "/library", label: "Library", icon: icons.library },
 ];
 
 const adminLinks = [
@@ -91,6 +97,7 @@ const adminLinks = [
   { href: "/admin/subjects", label: "Subjects", icon: icons.subjects },
   { href: "/admin/streams", label: "Streams", icon: icons.streams },
   { href: "/admin/sections", label: "Sections", icon: icons.sections },
+  { href: "/library", label: "Library", icon: icons.library },
 ];
 
 interface UserData {

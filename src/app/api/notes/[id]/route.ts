@@ -80,6 +80,7 @@ export async function PUT(
       user: adminId!,
       action: "NOTE_UPDATED",
       details: `Updated note: ${note.title}`,
+      section: note.section || null,
     });
 
     return NextResponse.json({ success: true, note: populated });
@@ -129,6 +130,7 @@ export async function DELETE(
       user: adminId!,
       action: "NOTE_DELETED",
       details: `Deleted note: ${note.title}`,
+      section: note.section || null,
     });
 
     return NextResponse.json({ success: true, message: "Note deleted" });

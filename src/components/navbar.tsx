@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -217,9 +218,7 @@ export function Navbar({ userName, userRole, onMenuToggle, isAdmin, isOnAdminRou
             href={isOnAdminRoute ? "/admin" : "/user/dashboard"}
             className="flex items-center gap-2"
           >
-            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-white font-bold text-xs">AX</span>
-            </div>
+            <Image src="/images/logo.svg" alt="Acadex" width={28} height={28} className="h-7 w-7 object-contain" />
             <span className="font-semibold text-sm tracking-tight hidden sm:inline">
               Acadex
             </span>

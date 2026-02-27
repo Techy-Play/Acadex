@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import { signToken } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations";
@@ -70,6 +70,7 @@ export async function POST(request: Request) {
       user: user._id,
       action: "LOGIN",
       details: `User ${user.name} (${user.college_id}) logged in`,
+      section: user.section || null,
     });
 
     // Set HTTP-only cookie

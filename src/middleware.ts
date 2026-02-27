@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Public routes - check if user is already logged in and redirect
-  const publicPaths = ["/", "/login"];
+  const publicPaths = ["/", "/login", "/apply", "/forgot-password"];
   if (publicPaths.includes(pathname)) {
     const token = request.cookies.get(COOKIE_NAME)?.value;
     if (token) {
@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // API auth routes are public
-  if (pathname.startsWith("/api/auth/login")) {
+  if (pathname.startsWith("/api/auth/login") || pathname.startsWith("/api/auth/forgot-password") || pathname.startsWith("/api/auth/signup-otp")) {
     return NextResponse.next();
   }
 
@@ -146,6 +146,8 @@ export const config = {
   matcher: [
     "/",
     "/login",
+    "/apply",
+    "/forgot-password",
     "/about",
     "/contact",
     "/user/dashboard/:path*",
@@ -158,6 +160,8 @@ export const config = {
     "/api/auth/change-password",
     "/api/auth/send-otp",
     "/api/auth/verify-otp",
+    "/api/auth/forgot-password",
+    "/api/auth/signup-otp",
     "/api/profile/:path*",
     "/api/notifications/:path*",
     "/api/subjects/:path*",

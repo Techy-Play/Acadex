@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import { signToken } from "@/lib/auth";
 import User from "@/models/User";
@@ -52,6 +52,7 @@ export async function POST(request: Request) {
       user: user._id,
       action: "PASSWORD_CHANGED",
       details: `User ${user.name} changed their password`,
+      section: user.section || null,
     });
 
     // Issue new token (must_change_password is now false)
