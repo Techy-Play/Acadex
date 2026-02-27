@@ -366,8 +366,8 @@ export default function ApplyPage() {
                             onChange={(e) => setApplyCollegeId(e.target.value)}
                             required
                             maxLength={50}
-                            pattern="^(241|257|258|259)\d{4}$"
-                            title="Must start with 241, 257, 258, or 259 followed by 4 digits"
+                            pattern="^(241|257|258|259)\d{3,4}$"
+                            title="Must start with 241, 257, 258, or 259 followed by 3-4 digits"
                             className="rounded-xl h-11 border-muted-foreground/20 focus:border-indigo-500 transition-colors"
                           />
                           <p className="text-xs text-muted-foreground">

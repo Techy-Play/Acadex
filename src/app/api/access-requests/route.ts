@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     // College ID format validation
     if (!STUDENT_COLLEGE_ID_REGEX.test(college_id.trim())) {
       return NextResponse.json(
-        { error: "Invalid College ID format. Must start with 241, 257, 258, or 259 followed by 4 digits" },
+        { error: "Invalid College ID format. Must start with 241, 257, 258, or 259 followed by 3-4 digits" },
         { status: 400 }
       );
     }

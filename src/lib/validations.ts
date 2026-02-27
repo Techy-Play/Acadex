@@ -10,7 +10,7 @@ export const ALLOWED_EMAIL_DOMAINS = [
 ];
 
 // College ID format: 7 digits starting with 241/257/258/259
-export const STUDENT_COLLEGE_ID_REGEX = /^(241|257|258|259)\d{4}$/;
+export const STUDENT_COLLEGE_ID_REGEX = /^(241|257|258|259)\d{3,4}$/;
 
 export function isAllowedEmailDomain(email: string): boolean {
   const domain = email.split("@")[1]?.toLowerCase();
@@ -129,7 +129,7 @@ export const accessRequestSchema = z.object({
     .max(50, "College ID too long")
     .refine(
       (id) => STUDENT_COLLEGE_ID_REGEX.test(id),
-      "College ID must be 7 digits starting with 241, 257, 258, or 259"
+      "College ID must be 6 or 7 digits starting with 241, 257, 258, or 259"
     ),
   email: z
     .string()
