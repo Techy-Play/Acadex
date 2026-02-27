@@ -3,13 +3,50 @@ import { connectDB } from "@/lib/db";
 import Subject from "@/models/Subject";
 
 // GET /api/subjects - List all subjects
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await connectDB();
 
-    const subjects = await Subject.find().sort({ name: 1 });
+    const userId = request.headers.get("x-user-id");
+    const isSuperAdmin =
+      request.headers.get("x-user-is-super-admin") === "true";
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const UserModel = (await import("@/models/User")).default;
+    const StreamModel = (await import("@/models/Stream")).default;
+
+    const user = await UserModel.findById(userId).select("stream isSuperAdmin");
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // 👑 Super Admin → return all subjects (no change in behavior)
+    if (user.isSuperAdmin) {
+      const subjects = await Subject.find().sort({ name: 1 });
+      return NextResponse.json({ subjects });
+    }
+
+    // 🧑‍💼 Sub Admin → return only subjects from their stream
+    if (!user.stream) {
+      return NextResponse.json({ subjects: [] });
+    }
+
+    const stream = await StreamModel.findById(user.stream).select("subjects");
+
+    if (!stream || !stream.subjects.length) {
+      return NextResponse.json({ subjects: [] });
+    }
+
+    const subjects = await Subject.find({
+      _id: { $in: stream.subjects },
+    }).sort({ name: 1 });
 
     return NextResponse.json({ subjects });
+
   } catch (error) {
     console.error("List subjects error:", error);
     return NextResponse.json(
