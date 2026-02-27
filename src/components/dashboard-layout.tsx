@@ -82,7 +82,7 @@ const studentLinks = [
   { href: "/user/dashboard/notes", label: "Notes", icon: icons.notes },
   { href: "/user/dashboard/assignments", label: "Assignments", icon: icons.assignments },
   { href: "/user/dashboard/practicals", label: "Practicals", icon: icons.practicals },
-  { href: "/library", label: "Library", icon: icons.library },
+  { href: "/user/dashboard/library", label: "Library", icon: icons.library },
 ];
 
 const adminLinks = [
@@ -97,7 +97,7 @@ const adminLinks = [
   { href: "/admin/subjects", label: "Subjects", icon: icons.subjects },
   { href: "/admin/streams", label: "Streams", icon: icons.streams },
   { href: "/admin/sections", label: "Sections", icon: icons.sections },
-  { href: "/library", label: "Library", icon: icons.library },
+  { href: "/admin/library", label: "Library", icon: icons.library },
 ];
 
 interface UserData {

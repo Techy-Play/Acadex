@@ -95,6 +95,29 @@ export const addPracticalSchema = z.object({
   section: z.string().optional().nullable(),
 });
 
+export const addLibraryResourceSchema = z.object({
+  title: z
+    .string()
+    .min(1, "Title is required")
+    .max(255, "Title too long"),
+  description: z.string().max(1000, "Description too long").optional().default(""),
+  subject: z.string().min(1, "Subject is required"),
+  semester: z.number().int().min(1, "Min semester is 1").max(8, "Max semester is 8"),
+  academicYear: z
+    .string()
+    .min(1, "Academic year is required")
+    .max(20, "Academic year too long"),
+  resourceType: z.enum(["notes", "assignments", "practicals", "oldyearpapers", "reference"], {
+    message: "Resource type is required",
+  }),
+  tags: z.array(z.string().max(50)).optional().default([]),
+  fileUrl: z
+    .string()
+    .url("Must be a valid URL")
+    .min(1, "File URL is required"),
+  section: z.string().optional().nullable(),
+});
+
 export const accessRequestSchema = z.object({
   name: z
     .string()
@@ -136,4 +159,5 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type AddNoteInput = z.infer<typeof addNoteSchema>;
 export type AddAssignmentInput = z.infer<typeof addAssignmentSchema>;
 export type AddPracticalInput = z.infer<typeof addPracticalSchema>;
+export type AddLibraryResourceInput = z.infer<typeof addLibraryResourceSchema>;
 export type AccessRequestInput = z.infer<typeof accessRequestSchema>;
