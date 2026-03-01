@@ -105,6 +105,7 @@ export const metadata: Metadata = {
 
   icons: {
     icon: [
+      { url: "/favicon.ico", sizes: "any" },
       { url: "/images/favicon.ico", sizes: "any" },
       { url: "/images/favicon-16x16.png", sizes: "16x16", type: "image/png" },
       { url: "/images/favicon-32x32.png", sizes: "32x32", type: "image/png" },
@@ -137,6 +138,17 @@ const jsonLd = {
       url: siteUrl,
       description:
         "Structured academic resource management system designed to replace WhatsApp-based academic sharing.",
+    },
+    {
+      "@type": "SiteNavigationElement",
+      name: ["Home", "About", "Login", "Apply for Access", "Dashboard"],
+      url: [
+        `${siteUrl}/`,
+        `${siteUrl}/about`,
+        `${siteUrl}/login`,
+        `${siteUrl}/apply`,
+        `${siteUrl}/dashboard`,
+      ],
     },
     {
       "@type": "SoftwareApplication",

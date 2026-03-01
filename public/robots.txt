@@ -3,11 +3,8 @@ Allow: /
 Disallow: /api/
 Disallow: /admin/
 Disallow: /user/
-Disallow: /login
-Disallow: /apply
 Disallow: /forgot-password
 Disallow: /change-password
 Disallow: /account-restricted
-Disallow: /dashboard
 
 Sitemap: https://au-acadex.com/sitemap.xml
