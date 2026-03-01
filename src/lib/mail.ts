@@ -40,7 +40,7 @@ export async function sendMail({ to, subject, html }: SendMailOptions) {
     return null;
   }
 
-  const logoPath = path.join(process.cwd(), "public", "images", "site-logo.png");
+  const logoPath = path.join(process.cwd(), "public", "site-logo.png");
   const attachments = fs.existsSync(logoPath)
     ? [
         {
