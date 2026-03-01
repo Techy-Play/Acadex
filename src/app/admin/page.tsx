@@ -1,3 +1,8 @@
+/**
+ * @page AdminDashboard (/admin)
+ * @description Admin dashboard home — shows quick stats, pending counts,
+ * and switchable layout views (overview / compact / analytics).
+ */
 "use client";
 
 import { useEffect, useState } from "react";

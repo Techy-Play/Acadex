@@ -1,3 +1,8 @@
+/**
+ * @page Viewer (/user/dashboard/viewer)
+ * @description Google Drive file viewer/embed page.
+ * Converts Drive share links to embeddable preview URLs.
+ */
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";

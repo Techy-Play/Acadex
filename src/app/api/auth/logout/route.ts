@@ -1,3 +1,7 @@
+/**
+ * @module API/Auth/Logout
+ * @description Clears the `acadex-token` cookie, logging the user out.
+ */
 import { NextResponse } from "next/server";
 
 export async function POST() {

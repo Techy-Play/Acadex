@@ -1,3 +1,4 @@
+/** Radix DropdownMenu with all sub-parts (trigger, content, item, checkbox/radio items, sub-menu). */
 "use client"
 
 import * as React from "react"

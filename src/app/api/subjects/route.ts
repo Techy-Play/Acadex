@@ -1,3 +1,9 @@
+/**
+ * @module API/Subjects
+ * @description Subject management.
+ * - GET  → lists subjects (super admin: all; others: user's stream + semester).
+ * - POST → creates a new subject (admin with `isAdminSubject` or super admin).
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Subject from "@/models/Subject";
@@ -8,8 +14,6 @@ export async function GET(request: Request) {
     await connectDB();
 
     const userId = request.headers.get("x-user-id");
-    const isSuperAdmin =
-      request.headers.get("x-user-is-super-admin") === "true";
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -18,19 +22,21 @@ export async function GET(request: Request) {
     const UserModel = (await import("@/models/User")).default;
     const StreamModel = (await import("@/models/Stream")).default;
 
-    const user = await UserModel.findById(userId).select("stream isSuperAdmin");
+    const user = await UserModel.findById(userId).select(
+      "role stream isSuperAdmin semester"
+    );
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // 👑 Super Admin → return all subjects (no change in behavior)
+    // 👑 Super Admin → return all subjects
     if (user.isSuperAdmin) {
-      const subjects = await Subject.find().sort({ name: 1 });
+      const subjects = await Subject.find().sort({ semester: 1, name: 1 });
       return NextResponse.json({ subjects });
     }
 
-    // 🧑‍💼 Sub Admin → return only subjects from their stream
+    // Non-super users must have a stream to receive subjects
     if (!user.stream) {
       return NextResponse.json({ subjects: [] });
     }
@@ -41,9 +47,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ subjects: [] });
     }
 
-    const subjects = await Subject.find({
+    const filter: Record<string, unknown> = {
       _id: { $in: stream.subjects },
-    }).sort({ name: 1 });
+    };
+
+    // Non-super users: Stream + Semester visibility when semester is available
+    if (user.semester && user.semester >= 1 && user.semester <= 8) {
+      filter.semester = user.semester;
+    }
+
+    const subjects = await Subject.find(filter).sort({ semester: 1, name: 1 });
 
     return NextResponse.json({ subjects });
 
@@ -77,7 +90,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, type } = body;
+    const { name, type, semester } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -86,15 +99,23 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!semester || semester < 1 || semester > 8) {
+      return NextResponse.json(
+        { error: "Semester is required and must be between 1 and 8" },
+        { status: 400 }
+      );
+    }
+
     await connectDB();
 
-    // Check for duplicate
+    // Check for duplicate (same name + same semester)
     const existing = await Subject.findOne({
       name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
+      semester: Number(semester),
     });
     if (existing) {
       return NextResponse.json(
-        { error: "A subject with this name already exists" },
+        { error: "A subject with this name already exists for this semester" },
         { status: 409 }
       );
     }
@@ -102,6 +123,7 @@ export async function POST(request: Request) {
     const subject = await Subject.create({
       name: name.trim(),
       type: type === "practical" ? "practical" : "theory",
+      semester: Number(semester),
     });
 
     return NextResponse.json({ subject }, { status: 201 });

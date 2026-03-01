@@ -1,3 +1,9 @@
+/**
+ * @module API/Streams/[id]
+ * @description Single stream operations.
+ * - PUT   → updates the stream's name/subjects (admin with `isAdminStream` or super admin).
+ * - DELETE → removes the stream.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Stream from "@/models/Stream";

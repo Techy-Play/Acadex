@@ -1,3 +1,7 @@
+/**
+ * @module API/Contact/[id]
+ * @description Admin-only. Deletes a contact message by ID.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import ContactMessage from "@/models/ContactMessage";

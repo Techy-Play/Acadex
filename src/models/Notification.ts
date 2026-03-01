@@ -1,5 +1,12 @@
+/**
+ * @module Notification
+ * @description In-app notification system supporting role-based and user-targeted delivery.
+ * Notifications auto-expire after 30 days via a TTL index.
+ * Types include: new content alerts, deadline warnings, request status updates, admin messages.
+ */
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+/** All supported notification event types */
 export type NotificationType =
   | "new_note"
   | "new_assignment"
@@ -8,7 +15,9 @@ export type NotificationType =
   | "new_access_request"
   | "contact_message"
   | "profile_update"
-  | "admin_message";
+  | "admin_message"
+  | "request_approved"
+  | "request_denied";
 
 export interface INotification extends Document {
   _id: mongoose.Types.ObjectId;
@@ -37,6 +46,8 @@ const NotificationSchema = new Schema<INotification>(
         "contact_message",
         "profile_update",
         "admin_message",
+        "request_approved",
+        "request_denied",
       ],
       required: true,
     },
@@ -88,6 +99,9 @@ const NotificationSchema = new Schema<INotification>(
 // Index for efficient querying
 NotificationSchema.index({ targetRole: 1, createdAt: -1 });
 NotificationSchema.index({ targetUsers: 1, createdAt: -1 });
+
+// TTL index — auto-delete notifications older than 30 days
+NotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
 
 // Prevent model recompilation in development (hot reload)
 const Notification: Model<INotification> =

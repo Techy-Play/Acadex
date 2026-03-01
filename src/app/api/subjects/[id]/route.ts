@@ -1,3 +1,9 @@
+/**
+ * @module API/Subjects/[id]
+ * @description Single subject operations.
+ * - PUT   → updates subject fields (admin with `isAdminSubject` or super admin).
+ * - DELETE → removes the subject (requires admin password confirmation).
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Subject from "@/models/Subject";
@@ -109,15 +115,16 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, type } = body;
+    const { name, type, semester } = body;
 
     const { id } = await params;
 
     await connectDB();
 
-    const update: Record<string, string> = {};
+    const update: Record<string, string | number> = {};
     if (name && name.trim()) update.name = name.trim();
     if (type && ["theory", "practical"].includes(type)) update.type = type;
+    if (semester !== undefined && semester >= 1 && semester <= 8) update.semester = Number(semester);
 
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });

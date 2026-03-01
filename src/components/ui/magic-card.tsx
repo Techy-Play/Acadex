@@ -1,3 +1,4 @@
+/** Animated card with pointer-following gradient spotlight effect (uses motion/react). */
 "use client"
 
 import React, { useCallback, useEffect } from "react"

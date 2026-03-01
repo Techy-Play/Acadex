@@ -1,3 +1,7 @@
+/**
+ * @page UserNotes (/user/dashboard/notes)
+ * @description Lists notes with subject/search filters and download links.
+ */
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -16,6 +20,7 @@ import {
 interface Subject {
   _id: string;
   name: string;
+  semester?: number;
 }
 
 interface SectionItem {
@@ -69,14 +74,16 @@ export default function NotesPage() {
 
         const allSubjects: Subject[] = subjectsData.subjects || [];
 
-        let ssIds: Set<string> | null = null;
-        if (meData.user?.stream?.subjects?.length) {
-          ssIds = new Set(meData.user.stream.subjects.map((s: { _id: string }) => s._id));
-          setStreamSubjectIds(ssIds);
-          setSubjects(allSubjects.filter((s) => ssIds!.has(s._id)));
-        } else {
-          setSubjects(allSubjects);
-        }
+        // Filter subjects by user's semester (super admin gets all subjects from API)
+        const userSemester: number | null = meData.user?.semester || null;
+        const semesterSubjects = allSubjects.filter((s) => {
+          if (userSemester && s.semester && s.semester !== userSemester) return false;
+          return true;
+        });
+
+        const visibleSubjectIds = new Set(semesterSubjects.map((s) => s._id));
+        setStreamSubjectIds(visibleSubjectIds);
+        setSubjects(semesterSubjects);
       } catch (error) {
         console.error("Failed to fetch subjects:", error);
       }

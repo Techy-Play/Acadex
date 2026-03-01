@@ -1,3 +1,9 @@
+/**
+ * @module AccessRequest
+ * @description Stores access requests from prospective students wanting to join Acadex.
+ * When a student submits the /apply form, a record is created here with status "pending".
+ * Admins can approve (creating a User account) or deny the request.
+ */
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IAccessRequest extends Document {
@@ -7,6 +13,7 @@ export interface IAccessRequest extends Document {
   email: string;
   stream: mongoose.Types.ObjectId | null;
   section: mongoose.Types.ObjectId | null;
+  semester: number | null;
   reason: string;
   status: "pending" | "approved" | "denied";
   admin_note: string;
@@ -44,6 +51,12 @@ const AccessRequestSchema = new Schema<IAccessRequest>(
       type: Schema.Types.ObjectId,
       ref: "Section",
       default: null,
+    },
+    semester: {
+      type: Number,
+      default: null,
+      min: [1, "Semester must be between 1 and 8"],
+      max: [8, "Semester must be between 1 and 8"],
     },
     reason: {
       type: String,

@@ -1,3 +1,8 @@
+/**
+ * @module API/Auth/VerifyOTP
+ * @description Authenticated. Verifies an OTP code for password_change
+ * or email_change purposes.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import OTP from "@/models/OTP";

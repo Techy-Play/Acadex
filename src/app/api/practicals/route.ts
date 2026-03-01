@@ -1,3 +1,9 @@
+/**
+ * @module API/Practicals
+ * @description Practical list & creation.
+ * - GET  → lists practicals with optional subject/section/semester filters.
+ * - POST → creates a new practical (admin only, validated with `addPracticalSchema`).
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { addPracticalSchema } from "@/lib/validations";
@@ -19,20 +25,98 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const subjectId = searchParams.get("subject");
     const sectionParam = searchParams.get("section");
+    const semesterParam = searchParams.get("semester");
 
+    const userId = request.headers.get("x-user-id");
     const userRole = request.headers.get("x-user-role");
     const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
     const userSection = request.headers.get("x-user-section");
 
-    const filter: Record<string, string> = {};
-    if (subjectId) filter.subject = subjectId;
+    const filter: Record<string, unknown> = {};
+
+    if (subjectId) {
+      filter.subject = subjectId;
+    }
+
+    // Optional super-admin semester filter
+    if (isSuperAdmin && semesterParam) {
+      const semesterNum = Number(semesterParam);
+      if (!Number.isNaN(semesterNum) && semesterNum >= 1 && semesterNum <= 8) {
+        const semSubjects = await Subject.find({ semester: semesterNum })
+          .select("_id")
+          .lean();
+        const semSubjectIds = semSubjects.map((s) => s._id.toString());
+        if (semSubjectIds.length === 0) {
+          return NextResponse.json({ practicals: [] });
+        }
+
+        if (subjectId) {
+          if (!semSubjectIds.includes(subjectId)) {
+            return NextResponse.json({ practicals: [] });
+          }
+        } else {
+          filter.subject = { $in: semSubjectIds };
+        }
+      }
+    }
+
+    // Non-super admin/student visibility: subjects must match own stream and (if set) own semester
+    if (!isSuperAdmin && (userRole === "student" || userRole === "admin")) {
+      if (!userId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      const StreamModel = (await import("@/models/Stream")).default;
+
+      const student = await User.findById(userId).select("stream semester").lean();
+
+      if (!student?.stream) {
+        return NextResponse.json({ practicals: [] });
+      }
+
+      const stream = await StreamModel.findById(student.stream).select("subjects").lean();
+
+      if (!stream?.subjects?.length) {
+        return NextResponse.json({ practicals: [] });
+      }
+
+      const subjectFilter: Record<string, unknown> = {
+        _id: { $in: stream.subjects },
+      };
+
+      if (student.semester && student.semester >= 1 && student.semester <= 8) {
+        subjectFilter.semester = student.semester;
+      }
+
+      const allowedSubjects = await Subject.find(subjectFilter)
+        .select("_id")
+        .lean();
+
+      const allowedSubjectIds = allowedSubjects.map((s) => s._id.toString());
+
+      if (allowedSubjectIds.length === 0) {
+        return NextResponse.json({ practicals: [] });
+      }
+
+      if (subjectId) {
+        if (!allowedSubjectIds.includes(subjectId)) {
+          return NextResponse.json({ practicals: [] });
+        }
+      } else {
+        filter.subject = { $in: allowedSubjectIds };
+      }
+    }
 
     // Section filtering logic:
     // - Super admins see all (unless they explicitly filter)
     // - Sub-admins are hard-filtered to their own section
     // - Students default to their section; can use ?section=all to see all
     if (userRole === "admin" && !isSuperAdmin && userSection) {
-      filter.section = userSection;
+      if (sectionParam && sectionParam !== "all") {
+        filter.section = sectionParam;
+      } else if (sectionParam !== "all") {
+        filter.section = userSection;
+      }
     } else if (sectionParam && sectionParam !== "all") {
       filter.section = sectionParam;
     } else if (userRole === "student" && userSection && sectionParam !== "all") {
@@ -40,7 +124,7 @@ export async function GET(request: Request) {
     }
 
     const practicals = await Practical.find(filter)
-      .populate("subject", "name type")
+      .populate("subject", "name type semester")
       .populate("section", "name")
       .populate("uploadedBy", "name")
       .sort({ createdAt: -1 });

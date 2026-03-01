@@ -1,3 +1,7 @@
+/**
+ * @page UserPracticals (/user/dashboard/practicals)
+ * @description Lists practicals with subject/search filters and completion toggles.
+ */
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -16,6 +20,7 @@ import {
 interface Subject {
   _id: string;
   name: string;
+  semester?: number;
 }
 
 interface SectionItem {
@@ -127,15 +132,16 @@ export default function PracticalsPage() {
 
         const allSubjects: Subject[] = subjectsData.subjects || [];
 
-        if (meData.user?.stream?.subjects?.length) {
-          const ssIds = new Set<string>(
-            meData.user.stream.subjects.map((s: { _id: string }) => s._id)
-          );
-          setStreamSubjectIds(ssIds);
-          setSubjects(allSubjects.filter((s) => ssIds.has(s._id)));
-        } else {
-          setSubjects(allSubjects);
-        }
+        // Filter subjects by user's semester (super admin gets all subjects from API)
+        const userSemester: number | null = meData.user?.semester || null;
+        const semesterSubjects = allSubjects.filter((s) => {
+          if (userSemester && s.semester && s.semester !== userSemester) return false;
+          return true;
+        });
+
+        const visibleSubjectIds = new Set(semesterSubjects.map((s) => s._id));
+        setStreamSubjectIds(visibleSubjectIds);
+        setSubjects(semesterSubjects);
       } catch (error) {
         console.error("Failed to fetch subjects:", error);
       }

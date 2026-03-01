@@ -1,3 +1,9 @@
+/**
+ * @module API/Sections/[id]
+ * @description Single section operations.
+ * - PUT   → renames the section (super admin or admin with `isAdminSection`).
+ * - DELETE → removes the section and reassigns related resources.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Section from "@/models/Section";

@@ -1,3 +1,9 @@
+/**
+ * @component DashboardLayout
+ * @description Shell layout for all dashboard pages. Composes Navbar,
+ * Sidebar, and BottomNav. Handles auth session fetching, sidebar
+ * toggle state, and role-based navigation link generation.
+ */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -75,6 +81,11 @@ const icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
     </svg>
   ),
+  upload: (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+    </svg>
+  ),
 };
 
 const studentLinks = [
@@ -82,6 +93,7 @@ const studentLinks = [
   { href: "/user/dashboard/notes", label: "Notes", icon: icons.notes },
   { href: "/user/dashboard/assignments", label: "Assignments", icon: icons.assignments },
   { href: "/user/dashboard/practicals", label: "Practicals", icon: icons.practicals },
+  { href: "/user/dashboard/requests", label: "My Requests", icon: icons.upload },
   { href: "/user/dashboard/library", label: "Library", icon: icons.library },
 ];
 
@@ -97,6 +109,7 @@ const adminLinks = [
   { href: "/admin/subjects", label: "Subjects", icon: icons.subjects },
   { href: "/admin/streams", label: "Streams", icon: icons.streams },
   { href: "/admin/sections", label: "Sections", icon: icons.sections },
+  { href: "/admin/user-requests", label: "User Requests", icon: icons.upload },
   { href: "/admin/library", label: "Library", icon: icons.library },
 ];
 

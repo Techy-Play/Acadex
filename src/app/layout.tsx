@@ -1,3 +1,8 @@
+/**
+ * @module RootLayout
+ * @description Root server layout. Loads Geist fonts, ThemeProvider,
+ * Toaster, RouteProgress, and global CSS. Wraps all pages.
+ */
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -77,10 +82,10 @@ export const metadata: Metadata = {
     description: siteDescription,
     images: [
       {
-        url: `${siteUrl}/og-image.png`,
-        width: 1200,
-        height: 630,
-        alt: "Acadex Academic Platform Preview",
+        url: `${siteUrl}/images/site-logo.png`,
+        width: 512,
+        height: 512,
+        alt: "Acadex Logo",
       },
     ],
   },
@@ -91,16 +96,20 @@ export const metadata: Metadata = {
     description: siteDescription,
     creator: "@mrtechie",
     images: {
-      url: `${siteUrl}/og-image.png`,
-      alt: "Acadex Academic Platform Preview",
+      url: `${siteUrl}/images/site-logo.png`,
+      alt: "Acadex Logo",
     },
   },
 
   manifest: "/manifest.json",
 
   icons: {
-    icon: "/images/logo.svg",
-    apple: "/images/logo.png",
+    icon: [
+      { url: "/images/favicon.ico", sizes: "any" },
+      { url: "/images/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/images/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/images/apple-touch-icon.png",
   },
 };
 

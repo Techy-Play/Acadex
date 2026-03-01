@@ -1,3 +1,10 @@
+/**
+ * @module API/Assignments/[id]
+ * @description Single assignment operations.
+ * - GET   → fetches one assignment by ID.
+ * - PUT   → updates the assignment (admin only).
+ * - DELETE → removes the assignment (admin only).
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Assignment from "@/models/Assignment";

@@ -1,3 +1,9 @@
+/**
+ * @module API/Admin/Students
+ * @description Admin student management.
+ * - GET  → lists students (section-scoped for sub-admins).
+ * - POST → creates a new student account (validated with `addStudentSchema`).
+ */
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
@@ -112,7 +118,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, college_id, password, role } = parsed.data;
+    const { name, college_id, password, role, semester } = parsed.data;
     const stream = body.stream || null;
     let section = body.section || null;
 
@@ -143,6 +149,7 @@ export async function POST(request: Request) {
           password_hash: passwordHash,
           stream,
           section,
+          semester: semester || null,
         },
       });
 
@@ -186,6 +193,7 @@ export async function POST(request: Request) {
       role,
       stream,
       section,
+      semester: semester || null,
       must_change_password: true,
     });
 

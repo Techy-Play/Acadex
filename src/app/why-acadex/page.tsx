@@ -1,4 +1,7 @@
-import Link from "next/link";
+/**
+ * @page WhyAcadex (/why-acadex)
+ * @description Marketing page comparing Acadex to WhatsApp groups and ERP portals.
+ */import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -7,6 +10,30 @@ export const metadata: Metadata = {
   title: "Why Acadex – WhatsApp & ERP Alternative for Students",
   description:
     "Discover why Acadex replaces chaotic WhatsApp groups and outdated ERP systems with a structured, modern academic resource platform.",
+  openGraph: {
+    title: "Why Acadex – WhatsApp & ERP Alternative for Students | Acadex",
+    description:
+      "Discover why Acadex replaces chaotic WhatsApp groups and outdated ERP systems with a structured, modern academic resource platform.",
+    url: "https://au-acadex.com/why-acadex",
+    images: [
+      {
+        url: "https://au-acadex.com/images/site-logo.png",
+        width: 512,
+        height: 512,
+        alt: "Acadex Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Why Acadex – WhatsApp & ERP Alternative for Students | Acadex",
+    description:
+      "Discover why Acadex replaces chaotic WhatsApp groups and outdated ERP systems with a structured, modern academic resource platform.",
+    images: {
+      url: "https://au-acadex.com/images/site-logo.png",
+      alt: "Acadex Logo",
+    },
+  },
 };
 
 export default function WhyAcadexPage() {
@@ -23,7 +50,7 @@ export default function WhyAcadexPage() {
       />
 
       {/* Desktop Navbar */}
-      <nav className="hidden md:flex items-center justify-between px-6 py-4 md:px-12 animate-slide-down relative z-10">
+      <nav aria-label="Desktop navigation" className="hidden md:flex items-center justify-between px-6 py-4 md:px-12 animate-slide-down relative z-10">
         <Link href="/" className="flex items-center">
           <Image src="/images/site-logo.svg" alt="Acadex" width={220} height={56} className="h-14 w-auto object-contain" priority />
         </Link>
@@ -56,7 +83,7 @@ export default function WhyAcadexPage() {
       </nav>
 
       {/* Mobile top bar */}
-      <nav className="flex md:hidden items-center justify-between px-4 py-3 relative z-10">
+      <nav aria-label="Mobile navigation" className="flex md:hidden items-center justify-between px-4 py-3 relative z-10">
         <Link href="/" className="flex items-center">
           <Image src="/images/site-logo.svg" alt="Acadex" width={180} height={48} className="h-12 w-auto object-contain" priority />
         </Link>
@@ -69,7 +96,7 @@ export default function WhyAcadexPage() {
       <main className="flex-1 px-6 md:px-12 py-12 pb-28 md:pb-12">
         <div className="max-w-4xl mx-auto space-y-12">
           {/* Hero */}
-          <div className="text-center space-y-4 animate-slide-up opacity-0 [animation-delay:0.1s]">
+          <div className="text-center space-y-4 animate-slide-up [animation-delay:0.1s]">
             <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 dark:border-indigo-800 bg-indigo-50/80 dark:bg-indigo-950/50 px-4 py-1.5 text-sm font-medium text-indigo-700 dark:text-indigo-300 backdrop-blur-sm">
               Why Acadex?
             </span>
@@ -86,7 +113,7 @@ export default function WhyAcadexPage() {
           </div>
 
           {/* The Problem */}
-          <div className="space-y-6 animate-slide-up opacity-0 [animation-delay:0.3s]">
+          <div className="space-y-6 animate-slide-up [animation-delay:0.3s]">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">The Problem</h2>
             <div className="prose prose-gray dark:prose-invert max-w-none space-y-4 text-muted-foreground">
               <p className="text-base leading-relaxed">
@@ -103,7 +130,7 @@ export default function WhyAcadexPage() {
           </div>
 
           {/* Acadex vs WhatsApp */}
-          <div className="space-y-6 animate-slide-up opacity-0 [animation-delay:0.4s]">
+          <div className="space-y-6 animate-slide-up [animation-delay:0.4s]">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Acadex vs. WhatsApp Groups
             </h2>
@@ -163,7 +190,7 @@ export default function WhyAcadexPage() {
           </div>
 
           {/* Acadex vs College ERP */}
-          <div className="space-y-6 animate-slide-up opacity-0 [animation-delay:0.5s]">
+          <div className="space-y-6 animate-slide-up [animation-delay:0.5s]">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Acadex vs. College ERP
             </h2>
@@ -223,7 +250,7 @@ export default function WhyAcadexPage() {
           </div>
 
           {/* CTA */}
-          <div className="text-center space-y-4 animate-slide-up opacity-0 [animation-delay:0.7s]">
+          <div className="text-center space-y-4 animate-slide-up [animation-delay:0.7s]">
             <h2 className="text-2xl font-bold tracking-tight">Convinced yet?</h2>
             <p className="text-muted-foreground">Join your classmates and stop hunting for resources.</p>
             <div className="flex items-center justify-center gap-4">
@@ -251,25 +278,25 @@ export default function WhyAcadexPage() {
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
-            <span className="text-[10px] font-medium">Home</span>
+            <span className="text-xs font-medium">Home</span>
           </Link>
           <Link href="/why-acadex" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-foreground">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
-            <span className="text-[10px] font-medium">Why</span>
+            <span className="text-xs font-medium">Why</span>
           </Link>
           <Link href="/contact" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            <span className="text-[10px] font-medium">Contact</span>
+            <span className="text-xs font-medium">Contact</span>
           </Link>
           <Link href="/login" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
             </svg>
-            <span className="text-[10px] font-medium">Login</span>
+            <span className="text-xs font-medium">Login</span>
           </Link>
         </div>
       </div>

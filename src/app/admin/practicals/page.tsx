@@ -1,8 +1,11 @@
+/**
+ * @page AdminPracticals (/admin/practicals)
+ * @description Admin CRUD for practicals (create, edit, delete).
+ */
 "use client";
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +44,7 @@ import { Badge } from "@/components/ui/badge";
 interface Subject {
   _id: string;
   name: string;
+  semester: number;
 }
 
 interface SectionItem {
@@ -54,7 +58,7 @@ interface Practical {
   description: string;
   file_url: string;
   createdAt: string;
-  subject: { _id: string; name: string };
+  subject: { _id: string; name: string; semester?: number };
   section?: { _id: string; name: string } | null;
   uploadedBy?: { _id: string; name: string } | null;
 }
@@ -64,6 +68,11 @@ export default function ManagePracticalsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [semesterFilter, setSemesterFilter] = useState<string>("all");
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>("all");
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>("all");
+  const [userSectionId, setUserSectionId] = useState<string>("");
 
   // Add form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -93,7 +102,23 @@ export default function ManagePracticalsPage() {
 
   const fetchPracticals = async () => {
     try {
-      const res = await fetch("/api/practicals");
+      const params = new URLSearchParams();
+      if (selectedSubjectFilter !== "all") {
+        params.set("subject", selectedSubjectFilter);
+      }
+      if (selectedSectionFilter === "all") {
+        params.set("section", "all");
+      } else if (selectedSectionFilter !== "my-section" && selectedSectionFilter) {
+        params.set("section", selectedSectionFilter);
+      }
+      if (isSuperAdmin && semesterFilter !== "all") {
+        params.set("semester", semesterFilter);
+      }
+
+      const url = params.toString()
+        ? `/api/practicals?${params.toString()}`
+        : "/api/practicals";
+      const res = await fetch(url);
       const data = await res.json();
       if (res.ok) setPracticals(data.practicals || []);
     } catch {
@@ -123,15 +148,41 @@ export default function ManagePracticalsPage() {
     }
   };
 
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (res.ok) {
+        const superAdmin = Boolean(data.user?.isSuperAdmin);
+        setIsSuperAdmin(superAdmin);
+        const sectionId = data.user?.section?.id || "";
+        setUserSectionId(sectionId);
+        setSelectedSectionFilter(superAdmin ? "all" : "my-section");
+      }
+    } catch {
+      setIsSuperAdmin(false);
+    }
+  };
+
   useEffect(() => {
-    fetchPracticals();
     fetchSubjects();
     fetchSections();
+    fetchCurrentUser();
   }, []);
+
+  useEffect(() => {
+    fetchPracticals();
+  }, [selectedSubjectFilter, selectedSectionFilter, semesterFilter, isSuperAdmin]);
 
   // ─── Add Practical ──────────────────────────────
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!addFileUrl.trim()) {
+      toast.error("PDF / File URL is required");
+      return;
+    }
+
     setAddLoading(true);
 
     try {
@@ -142,8 +193,8 @@ export default function ManagePracticalsPage() {
           subject: addSubject,
           title: addTitle,
           description: addDescription || undefined,
-          file_url: addFileUrl || undefined,
-          ...(addSection && { section: addSection }),
+          file_url: addFileUrl.trim(),
+          ...(isSuperAdmin && addSection && { section: addSection }),
         }),
       });
 
@@ -258,7 +309,7 @@ export default function ManagePracticalsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Practicals</h1>
           <p className="text-muted-foreground">
@@ -266,12 +317,63 @@ export default function ManagePracticalsPage() {
             created
           </p>
         </div>
-        <Button
-          className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={() => setShowAddForm(!showAddForm)}
-        >
-          {showAddForm ? "Cancel" : "+ Add Practical"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={selectedSubjectFilter} onValueChange={setSelectedSubjectFilter}>
+            <SelectTrigger className="w-[170px] rounded-xl">
+              <SelectValue placeholder="Subject" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="all">All Subjects</SelectItem>
+              {subjects.map((s) => (
+                <SelectItem key={s._id} value={s._id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedSectionFilter} onValueChange={setSelectedSectionFilter}>
+            <SelectTrigger className="w-[170px] rounded-xl">
+              <SelectValue placeholder="Section" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              {!isSuperAdmin && userSectionId && (
+                <SelectItem value="my-section">My Section</SelectItem>
+              )}
+              <SelectItem value="all">All Sections</SelectItem>
+              {sections
+                .filter((s) => !userSectionId || s._id !== userSectionId)
+                .map((s) => (
+                  <SelectItem key={s._id} value={s._id}>
+                    🏫 {s.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+
+          {isSuperAdmin && (
+            <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+              <SelectTrigger className="w-[160px] rounded-xl">
+                <SelectValue placeholder="Semester" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">All Semesters</SelectItem>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                  <SelectItem key={s} value={String(s)}>
+                    Semester {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Button
+            className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={() => setShowAddForm(!showAddForm)}
+          >
+            {showAddForm ? "Cancel" : "+ Add Practical"}
+          </Button>
+        </div>
       </div>
 
       {/* Add Practical Form (collapsible) */}
@@ -333,22 +435,23 @@ export default function ManagePracticalsPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="addFileUrl">PDF / File URL (Optional)</Label>
+                  <Label htmlFor="addFileUrl">PDF / File URL</Label>
                   <Input
                     id="addFileUrl"
                     type="url"
                     placeholder="https://drive.google.com/..."
                     value={addFileUrl}
                     onChange={(e) => setAddFileUrl(e.target.value)}
+                    required
                     className="rounded-xl"
                   />
                 </div>
-                {sections.length > 0 && (
+                {isSuperAdmin && sections.length > 0 ? (
                   <div className="space-y-2">
-                    <Label>Section (Optional)</Label>
+                    <Label>Section</Label>
                     <Select value={addSection} onValueChange={setAddSection}>
                       <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="Auto (your section)" />
+                        <SelectValue placeholder="Select section (optional)" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
                         {sections.map((s) => (
@@ -359,13 +462,22 @@ export default function ManagePracticalsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label>Section</Label>
+                    <Input
+                      value="Auto (your section)"
+                      disabled
+                      className="rounded-xl"
+                    />
+                  </div>
                 )}
               </div>
 
               <Button
                 type="submit"
                 className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={addLoading || !addSubject}
+                disabled={addLoading || !addSubject || !addFileUrl.trim()}
               >
                 {addLoading ? "Adding..." : "Add Practical"}
               </Button>
@@ -385,8 +497,22 @@ export default function ManagePracticalsPage() {
         </Card>
       ) : (
         (() => {
+          const filtered = practicals;
+
+          if (filtered.length === 0) {
+            return (
+              <Card className="rounded-2xl">
+                <CardContent className="py-8">
+                  <p className="text-center text-muted-foreground">
+                    No practicals found for selected filters.
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          }
+
           const grouped: Record<string, Practical[]> = {};
-          for (const p of practicals) {
+          for (const p of filtered) {
             const subjectName = p.subject?.name || "Unknown";
             if (!grouped[subjectName]) grouped[subjectName] = [];
             grouped[subjectName].push(p);
@@ -409,7 +535,7 @@ export default function ManagePracticalsPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Title</TableHead>
-                          <TableHead>PDF</TableHead>
+                          <TableHead>Section</TableHead>
                           <TableHead>Uploaded By</TableHead>
                           <TableHead>Created</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
@@ -417,9 +543,23 @@ export default function ManagePracticalsPage() {
                       </TableHeader>
                       <TableBody>
                         {items.map((p) => (
-                          <TableRow key={p._id}>
+                          <TableRow
+                            key={p._id}
+                            className={p.file_url ? "cursor-pointer hover:bg-muted/50" : ""}
+                            onClick={() => {
+                              if (p.file_url) {
+                                window.open(
+                                  `/user/dashboard/viewer?url=${encodeURIComponent(p.file_url)}&title=${encodeURIComponent(p.title)}`,
+                                  "_blank"
+                                );
+                              }
+                            }}
+                          >
                             <TableCell className="font-medium max-w-[200px] truncate">
                               {p.title}
+                              {p.file_url && (
+                                <span className="ml-2 text-xs text-primary">📄</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               {p.section ? (
@@ -428,24 +568,6 @@ export default function ManagePracticalsPage() {
                                 </Badge>
                               ) : (
                                 <span className="text-xs text-muted-foreground">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {p.file_url ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-lg text-xs"
-                                  asChild
-                                >
-                                  <Link href={`/user/dashboard/viewer?url=${encodeURIComponent(p.file_url)}&title=${encodeURIComponent(p.title)}`} target="_blank">
-                                    Open
-                                  </Link>
-                                </Button>
-                              ) : (
-                                <span className="text-sm text-muted-foreground">
-                                  —
-                                </span>
                               )}
                             </TableCell>
                             <TableCell className="text-sm">
@@ -463,7 +585,7 @@ export default function ManagePracticalsPage() {
                                 variant="outline"
                                 size="sm"
                                 className="rounded-lg"
-                                onClick={() => openEditDialog(p)}
+                                onClick={(e) => { e.stopPropagation(); openEditDialog(p); }}
                               >
                                 Edit
                               </Button>
@@ -471,7 +593,7 @@ export default function ManagePracticalsPage() {
                                 variant="destructive"
                                 size="sm"
                                 className="rounded-lg"
-                                onClick={() => openDeleteDialog(p)}
+                                onClick={(e) => { e.stopPropagation(); openDeleteDialog(p); }}
                               >
                                 Delete
                               </Button>

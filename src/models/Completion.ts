@@ -1,3 +1,8 @@
+/**
+ * @module Completion
+ * @description Tracks which assignments a student has marked as completed.
+ * Uses a unique compound index on (user, assignment) to prevent duplicates.
+ */
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface ICompletion extends Document {

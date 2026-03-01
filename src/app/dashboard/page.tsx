@@ -1,3 +1,9 @@
+/**
+ * @page Dashboard (/dashboard)
+ * @description Role-based redirect dashboard. Detects the user's role
+ * and redirects to /admin or /user/dashboard accordingly.
+ * Also renders subject cards and quick stats while loading.
+ */
 "use client";
 
 import { useEffect, useState } from "react";

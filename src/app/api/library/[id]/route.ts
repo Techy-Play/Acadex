@@ -1,3 +1,10 @@
+/**
+ * @module API/Library/[id]
+ * @description Single library resource operations.
+ * - GET   → fetches one resource by ID.
+ * - PUT   → updates the resource (admin only).
+ * - DELETE → removes the resource (admin only).
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import LibraryResource from "@/models/LibraryResource";

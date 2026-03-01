@@ -1,3 +1,8 @@
+/**
+ * @module PracticalCompletion
+ * @description Tracks which practicals a student has marked as completed.
+ * Uses a unique compound index on (user, practical) to prevent duplicates.
+ */
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IPracticalCompletion extends Document {

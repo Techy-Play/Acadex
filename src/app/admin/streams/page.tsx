@@ -1,6 +1,10 @@
+/**
+ * @page AdminStreams (/admin/streams)
+ * @description Admin CRUD for academic streams (create, edit subjects, delete).
+ */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +38,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 interface Subject {
   _id: string;
   name: string;
+  semester?: number;
 }
 
 interface StreamItem {
@@ -201,6 +206,25 @@ export default function ManageStreamsPage() {
     }
   };
 
+  const groupedSubjects = useMemo(() => {
+    const groups = new Map<number, Subject[]>();
+
+    subjects.forEach((subject) => {
+      const sem = subject.semester && subject.semester >= 1 && subject.semester <= 8
+        ? subject.semester
+        : 0;
+      if (!groups.has(sem)) groups.set(sem, []);
+      groups.get(sem)!.push(subject);
+    });
+
+    return Array.from(groups.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([semester, semSubjects]) => ({
+        semester,
+        subjects: [...semSubjects].sort((a, b) => a.name.localeCompare(b.name)),
+      }));
+  }, [subjects]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -257,20 +281,29 @@ export default function ManageStreamsPage() {
                     No subjects available. Add subjects first.
                   </p>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-xl bg-muted/30">
-                    {subjects.map((subject) => (
-                      <label
-                        key={subject._id}
-                        className="flex items-center gap-2 cursor-pointer text-sm p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <Checkbox
-                          checked={addSubjects.includes(subject._id)}
-                          onCheckedChange={() =>
-                            toggleSubject(subject._id, addSubjects, setAddSubjects)
-                          }
-                        />
-                        {subject.name}
-                      </label>
+                  <div className="space-y-3 p-3 border rounded-xl bg-muted/30 max-h-72 overflow-y-auto">
+                    {groupedSubjects.map((group) => (
+                      <div key={group.semester || -1} className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {group.semester ? `Semester ${group.semester}` : "No Semester"}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {group.subjects.map((subject) => (
+                            <label
+                              key={subject._id}
+                              className="flex items-center gap-2 cursor-pointer text-sm p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                            >
+                              <Checkbox
+                                checked={addSubjects.includes(subject._id)}
+                                onCheckedChange={() =>
+                                  toggleSubject(subject._id, addSubjects, setAddSubjects)
+                                }
+                              />
+                              {subject.name}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -327,23 +360,43 @@ export default function ManageStreamsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {stream.subjects.length > 0 ? (
-                            stream.subjects.map((s) => (
-                              <Badge
-                                key={s._id}
-                                variant="outline"
-                                className="rounded-full text-xs"
-                              >
-                                {s.name}
-                              </Badge>
-                            ))
-                          ) : (
-                            <span className="text-sm text-muted-foreground">
-                              No subjects assigned
-                            </span>
-                          )}
-                        </div>
+                        {stream.subjects.length > 0 ? (
+                          <div className="space-y-2">
+                            {Array.from(
+                              stream.subjects.reduce((acc, subject) => {
+                                const sem = subject.semester && subject.semester >= 1 && subject.semester <= 8
+                                  ? subject.semester
+                                  : 0;
+                                if (!acc.has(sem)) acc.set(sem, [] as Subject[]);
+                                acc.get(sem)!.push(subject);
+                                return acc;
+                              }, new Map<number, Subject[]>())
+                            )
+                              .sort((a, b) => a[0] - b[0])
+                              .map(([semester, semSubjects]) => (
+                                <div key={`${stream._id}-${semester}`} className="space-y-1">
+                                  <p className="text-xs text-muted-foreground">
+                                    {semester ? `Semester ${semester}` : "No Semester"}
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {semSubjects.map((s) => (
+                                      <Badge
+                                        key={s._id}
+                                        variant="outline"
+                                        className="rounded-full text-xs"
+                                      >
+                                        {s.name}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            No subjects assigned
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button
@@ -393,20 +446,29 @@ export default function ManageStreamsPage() {
             </div>
             <div className="space-y-2">
               <Label>Subjects</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-xl bg-muted/30 max-h-60 overflow-y-auto">
-                {subjects.map((subject) => (
-                  <label
-                    key={subject._id}
-                    className="flex items-center gap-2 cursor-pointer text-sm p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <Checkbox
-                      checked={editSubjects.includes(subject._id)}
-                      onCheckedChange={() =>
-                        toggleSubject(subject._id, editSubjects, setEditSubjects)
-                      }
-                    />
-                    {subject.name}
-                  </label>
+              <div className="space-y-3 p-3 border rounded-xl bg-muted/30 max-h-60 overflow-y-auto">
+                {groupedSubjects.map((group) => (
+                  <div key={`edit-${group.semester || -1}`} className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {group.semester ? `Semester ${group.semester}` : "No Semester"}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {group.subjects.map((subject) => (
+                        <label
+                          key={subject._id}
+                          className="flex items-center gap-2 cursor-pointer text-sm p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <Checkbox
+                            checked={editSubjects.includes(subject._id)}
+                            onCheckedChange={() =>
+                              toggleSubject(subject._id, editSubjects, setEditSubjects)
+                            }
+                          />
+                          {subject.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>

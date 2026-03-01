@@ -1,3 +1,8 @@
+/**
+ * @module API/Auth/Login
+ * @description Public. Authenticates a user by college_id + password
+ * (validated with `loginSchema`), issues a JWT cookie on success.
+ */
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
@@ -63,6 +68,7 @@ export async function POST(request: Request) {
       name: user.name,
       isSuperAdmin: user.isSuperAdmin || false,
       section: user.section ? user.section.toString() : null,
+      semester: user.semester || null,
     });
 
     // Log activity

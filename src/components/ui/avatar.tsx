@@ -1,3 +1,4 @@
+/** Radix Avatar primitive with size variants (default / sm / lg). */
 "use client"
 
 import * as React from "react"

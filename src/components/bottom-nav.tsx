@@ -1,3 +1,9 @@
+/**
+ * @component BottomNav
+ * @description Mobile bottom navigation bar with role-aware links
+ * (student vs admin). Admins get an expandable “Manage” sub-menu.
+ * Includes profile avatar shortcut.
+ */
 "use client";
 
 import { useState } from "react";
@@ -60,6 +66,16 @@ const manageSubItems = [
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/user-requests",
+    label: "User Requests",
+    superAdminOnly: false,
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
       </svg>
     ),
   },
@@ -142,6 +158,7 @@ export function BottomNav({ links, profileHref, userInitials, variant = "student
     const isManageActive =
       pathname.startsWith("/admin/users") ||
       pathname.startsWith("/admin/access-requests") ||
+      pathname.startsWith("/admin/user-requests") ||
       pathname.startsWith("/admin/messages") ||
       pathname.startsWith("/admin/subjects") ||
       pathname.startsWith("/admin/sections") ||
@@ -161,11 +178,11 @@ export function BottomNav({ links, profileHref, userInitials, variant = "student
           />
         )}
 
-        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-md md:hidden">
+        <nav aria-label="Admin navigation" className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-md md:hidden">
           {/* Manage sub-menu popup */}
           {manageOpen && (
             <div className="absolute bottom-full left-4 mb-2 w-52 rounded-2xl border bg-background shadow-xl p-2 animate-in slide-in-from-bottom-2 fade-in duration-200">
-              <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1.5">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1.5">
                 Manage
               </div>
               {filteredManageItems.map((item) => (
@@ -190,7 +207,7 @@ export function BottomNav({ links, profileHref, userInitials, variant = "student
           {/* Upload sub-menu popup */}
           {uploadOpen && (
             <div className="absolute bottom-full right-4 mb-2 w-48 rounded-2xl border bg-background shadow-xl p-2 animate-in slide-in-from-bottom-2 fade-in duration-200">
-              <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1.5">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1.5">
                 Upload Content
               </div>
               {uploadSubItems.map((item) => (
@@ -232,7 +249,7 @@ export function BottomNav({ links, profileHref, userInitials, variant = "student
                     <span className="absolute top-1 h-1 w-1 rounded-full bg-primary" />
                   )}
                   {item.icon}
-                  <span className="text-[10px] font-medium leading-none">{item.label}</span>
+                  <span className="text-xs font-medium leading-none">{item.label}</span>
                 </Link>
               );
             })}
@@ -252,7 +269,7 @@ export function BottomNav({ links, profileHref, userInitials, variant = "student
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span className="text-[10px] font-medium leading-none">Manage</span>
+              <span className="text-xs font-medium leading-none">Manage</span>
             </button>
 
             {/* Upload button with popup */}
@@ -269,7 +286,7 @@ export function BottomNav({ links, profileHref, userInitials, variant = "student
               <svg className="h-[22px] w-[22px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-[10px] font-medium leading-none">Upload</span>
+              <span className="text-xs font-medium leading-none">Upload</span>
             </button>
 
             {/* Profile tab */}
@@ -293,7 +310,7 @@ export function BottomNav({ links, profileHref, userInitials, variant = "student
               >
                 {userInitials}
               </div>
-              <span className="text-[10px] font-medium leading-none">Profile</span>
+              <span className="text-xs font-medium leading-none">Profile</span>
             </Link>
           </div>
         </nav>
@@ -305,7 +322,7 @@ export function BottomNav({ links, profileHref, userInitials, variant = "student
   const navItems = links.slice(0, 4);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur-md md:hidden">
+    <nav aria-label="Student navigation" className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur-md md:hidden">
       <div className="flex items-center justify-around h-14 px-1">
         {navItems.map((link) => {
           const isActive =
@@ -329,7 +346,7 @@ export function BottomNav({ links, profileHref, userInitials, variant = "student
               <span className="[&>svg]:h-[22px] [&>svg]:w-[22px]">
                 {link.icon}
               </span>
-              <span className="text-[10px] font-medium leading-none">
+              <span className="text-xs font-medium leading-none">
                 {link.label}
               </span>
             </Link>
@@ -357,7 +374,7 @@ export function BottomNav({ links, profileHref, userInitials, variant = "student
           >
             {userInitials}
           </div>
-          <span className="text-[10px] font-medium leading-none">
+          <span className="text-xs font-medium leading-none">
             Profile
           </span>
         </Link>

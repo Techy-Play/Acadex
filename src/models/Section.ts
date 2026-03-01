@@ -1,3 +1,8 @@
+/**
+ * @module Section
+ * @description Represents a class section (e.g., "Section C").
+ * Users and resources are scoped to sections for content isolation.
+ */
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface ISection extends Document {

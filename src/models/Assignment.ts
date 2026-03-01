@@ -1,3 +1,8 @@
+/**
+ * @module Assignment
+ * @description Represents an assignment uploaded by an admin for a specific subject.
+ * Students can view assignments and mark them as completed via the Completion model.
+ */
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IAssignment extends Document {

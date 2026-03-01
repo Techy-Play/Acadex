@@ -1,3 +1,10 @@
+/**
+ * @module API/Notes/[id]
+ * @description Single note operations.
+ * - GET   → fetches one note by ID.
+ * - PUT   → updates the note (admin only).
+ * - DELETE → removes the note (admin only).
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Note from "@/models/Note";

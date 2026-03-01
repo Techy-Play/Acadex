@@ -1,3 +1,8 @@
+/**
+ * @module API/Profile/UpdateEmail
+ * @description Authenticated. Updates the user's email address
+ * after verifying a pre-verified OTP. Re-issues the JWT cookie.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";

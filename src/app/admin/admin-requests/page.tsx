@@ -1,3 +1,7 @@
+/**
+ * @page AdminAdminRequests (/admin/admin-requests)
+ * @description Admin panel for reviewing admin-role promotion requests.
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -68,6 +72,7 @@ export default function AdminRequestsPage() {
   );
   const [adminNote, setAdminNote] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [clearingOlder, setClearingOlder] = useState(false);
 
   const fetchRequests = async () => {
     try {
@@ -152,6 +157,29 @@ export default function AdminRequestsPage() {
     setDetailRequest(req);
     setAdminNote(req.admin_note || "");
     setDetailOpen(true);
+  };
+
+  const handleClearOlder = async () => {
+    if (!confirm("Clear older processed requests (approved/denied)? Pending requests will be kept.")) {
+      return;
+    }
+    setClearingOlder(true);
+    try {
+      const res = await fetch("/api/admin/admin-requests?mode=clear-older", {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to clear older requests");
+        return;
+      }
+      toast.success(`Cleared ${data.deletedCount || 0} older request(s)`);
+      fetchRequests();
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setClearingOlder(false);
+    }
   };
 
   const filteredRequests = requests.filter((r) => {
@@ -325,6 +353,16 @@ export default function AdminRequestsPage() {
                 <SelectItem value="denied">❌ Denied</SelectItem>
               </SelectContent>
             </Select>
+            {isSuperAdmin && (
+              <Button
+                variant="outline"
+                className="rounded-xl text-xs h-9"
+                onClick={handleClearOlder}
+                disabled={clearingOlder}
+              >
+                {clearingOlder ? "Clearing..." : "Clear Older Requests"}
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -474,6 +512,14 @@ export default function AdminRequestsPage() {
                         </span>
                       </div>
                     )}
+                    {!!detailRequest.data.semester && (
+                      <div>
+                        <span className="text-muted-foreground">Semester:</span>{" "}
+                        <span className="font-medium">
+                          Semester {String(detailRequest.data.semester)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -529,6 +575,18 @@ export default function AdminRequestsPage() {
                           <span className="font-medium italic">None</span>
                         </div>
                       )}
+                    {detailRequest.data.newSemester !== undefined && (
+                      <div>
+                        <span className="text-muted-foreground">
+                          New Semester:
+                        </span>{" "}
+                        <span className="font-medium">
+                          {detailRequest.data.newSemester
+                            ? `Semester ${String(detailRequest.data.newSemester)}`
+                            : <span className="italic">None</span>}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -1,3 +1,9 @@
+/**
+ * @component ThemeToggle
+ * @description Dropdown toggle for light/dark/system theme and accent-color
+ * switching (9 palettes). Also exports a `useAccentColor` hook that
+ * reads stored preferences and applies CSS custom properties.
+ */
 "use client";
 
 import * as React from "react";

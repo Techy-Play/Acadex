@@ -1,3 +1,4 @@
+/** Styled `<textarea>` element with focus ring and auto field-sizing. */
 import * as React from "react"
 
 import { cn } from "@/lib/utils"

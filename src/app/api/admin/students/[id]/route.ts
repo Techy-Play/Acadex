@@ -1,3 +1,10 @@
+/**
+ * @module API/Admin/Students/[id]
+ * @description Admin operations on a single student.
+ * - GET   → full user details.
+ * - PATCH → update user fields.
+ * - DELETE → remove the student account.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";
@@ -90,9 +97,9 @@ export async function PATCH(
       }
     }
 
-    // Admin changing their OWN section/stream → requires super admin approval
+    // Admin changing their OWN section/stream/semester → requires super admin approval
     const isChangingSectionStream =
-      body.stream !== undefined || body.section !== undefined;
+      body.stream !== undefined || body.section !== undefined || body.semester !== undefined;
     const isEditingSelf = id === adminId;
     const isTargetAdmin = user.role === "admin";
 
@@ -110,6 +117,7 @@ export async function PATCH(
         data: {
           newStream: body.stream !== undefined ? body.stream || null : undefined,
           newSection: body.section !== undefined ? body.section || null : undefined,
+          newSemester: body.semester !== undefined ? (body.semester ? Number(body.semester) : null) : undefined,
         },
       });
 
@@ -120,8 +128,8 @@ export async function PATCH(
       if (superAdmins.length > 0) {
         await Notification.create({
           type: "new_access_request",
-          title: "Section/Stream Change Request",
-          message: `${user.name} requested to change their section/stream`,
+          title: "Section/Stream/Semester Change Request",
+          message: `${user.name} requested to change their section/stream/semester`,
           link: "/admin/admin-requests",
           targetUsers: superAdmins.map((sa) => sa._id),
         });
@@ -131,7 +139,7 @@ export async function PATCH(
         success: true,
         pending: true,
         message:
-          "Section/stream change request sent to super admin for approval.",
+          "Section/stream/semester change request sent to super admin for approval.",
       });
     }
 
@@ -145,6 +153,11 @@ export async function PATCH(
       if (isSuperAdmin || !isEditingSelf) {
         user.section = body.section || null;
       }
+    }
+
+    // Update semester if provided
+    if (body.semester !== undefined) {
+      user.semester = body.semester ? Number(body.semester) : null;
     }
 
     // Only super admin can change roles

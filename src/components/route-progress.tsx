@@ -1,3 +1,9 @@
+/**
+ * @component RouteProgress
+ * @description Thin animated progress bar displayed at the top of the
+ * viewport during client-side route transitions. Listens to
+ * pathname / searchParams changes via Next.js hooks.
+ */
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -41,6 +47,8 @@ export function RouteProgress() {
 
     if (currentPath !== prevPathStr) {
       completeProgress();
+      // Auto-scroll to top on route change
+      window.scrollTo({ top: 0, behavior: "instant" });
     }
 
     prevPath.current = currentPath;

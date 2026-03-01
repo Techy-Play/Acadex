@@ -1,3 +1,8 @@
+/**
+ * @module API/Profile/UpdateTheme
+ * @description Authenticated. Updates user preferences: theme, accentColor,
+ * mobileNavPosition, dashboardView, and notificationPreferences.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";

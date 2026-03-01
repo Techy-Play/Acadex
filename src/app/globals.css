@@ -1,3 +1,6 @@
+/* Global stylesheet — imports Tailwind CSS, tw-animate-css,
+   and the shadcn theme layer. Custom properties for the design
+   system (colors, radius, shadows) are defined below. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -46,31 +49,26 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
 
-  --animate-fade-in: fade-in 0.6s ease-out forwards;
-  --animate-slide-up: slide-up 0.6s ease-out forwards;
-  --animate-slide-down: slide-down 0.4s ease-out forwards;
-  --animate-scale-in: scale-in 0.5s ease-out forwards;
-  --animate-float: float 6s ease-in-out infinite;
+  --animate-fade-in: fade-in 0.5s ease-out both;
+  --animate-slide-up: slide-up 0.5s ease-out both;
+  --animate-slide-down: slide-down 0.35s ease-out both;
+  --animate-scale-in: scale-in 0.4s ease-out both;
 
   @keyframes fade-in {
-    from { opacity: 0; }
+    from { opacity: 0.4; }
     to { opacity: 1; }
   }
   @keyframes slide-up {
-    from { opacity: 0; transform: translateY(30px); }
+    from { opacity: 0.4; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
   }
   @keyframes slide-down {
-    from { opacity: 0; transform: translateY(-10px); }
+    from { opacity: 0.4; transform: translateY(-6px); }
     to { opacity: 1; transform: translateY(0); }
   }
   @keyframes scale-in {
-    from { opacity: 0; transform: scale(0.95); }
+    from { opacity: 0.4; transform: scale(0.97); }
     to { opacity: 1; transform: scale(1); }
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-20px); }
   }
 }
 
@@ -532,4 +530,24 @@
 }
 .dark ::-webkit-scrollbar-thumb {
   background: oklch(0.4 0 0);
+}
+
+/* Thin scrollbar utility for sidebars */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

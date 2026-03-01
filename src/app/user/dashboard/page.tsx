@@ -1,3 +1,8 @@
+/**
+ * @page UserDashboard (/user/dashboard)
+ * @description Student dashboard home — displays subjects, quick stats,
+ * and per-subject note/assignment/practical counts.
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,6 +14,7 @@ interface Subject {
   _id: string;
   name: string;
   type?: "theory" | "practical";
+  semester?: number;
 }
 
 interface NoteItem {
@@ -35,6 +41,11 @@ interface StreamData {
   subjects: Subject[];
 }
 
+interface SectionData {
+  id: string;
+  name: string;
+}
+
 interface StatsData {
   subjects: Subject[];
   notes: NoteItem[];
@@ -56,6 +67,8 @@ export default function StudentDashboard() {
   const [practicalCompletedIds, setPracticalCompletedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [stream, setStream] = useState<StreamData | null>(null);
+  const [section, setSection] = useState<SectionData | null>(null);
+  const [semester, setSemester] = useState<number | null>(null);
   const [subjectPopup, setSubjectPopup] = useState<{ id: string; name: string; type: string } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
@@ -100,6 +113,10 @@ export default function StudentDashboard() {
         if (meData.user?.stream) {
           setStream(meData.user.stream);
         }
+        if (meData.user?.section) {
+          setSection(meData.user.section);
+        }
+        setSemester(meData.user?.semester || null);
 
         // Set dashboard view preference from DB
         if (meData.user?.dashboardView) {
@@ -113,26 +130,33 @@ export default function StudentDashboard() {
 
         // Filter subjects by stream (if assigned)
         const allSubjects: Subject[] = subjectsData.subjects || [];
-        const filteredSubjects = streamSubjectIds
-          ? allSubjects.filter((s) => streamSubjectIds.has(s._id))
-          : allSubjects;
+        const userSemester: number | null = meData.user?.semester || null;
+        const filteredSubjects = allSubjects.filter((s) => {
+          // Filter by stream
+          if (streamSubjectIds && !streamSubjectIds.has(s._id)) return false;
+          // Filter by semester
+          if (userSemester && s.semester && s.semester !== userSemester) return false;
+          return true;
+        });
 
-        // Filter notes, assignments, and practicals by stream subjects
+        // Filter notes, assignments, and practicals by semester-aware subject IDs
         const allNotes: NoteItem[] = notesData.notes || [];
         const allAssignments: AssignmentItem[] = assignmentsData.assignments || [];
         const allPracticals: PracticalItem[] = practicalsData.practicals || [];
 
-        const filteredNotes = streamSubjectIds
-          ? allNotes.filter((n) => n.subject && streamSubjectIds.has(n.subject._id))
-          : allNotes;
+        const filteredSubjectIds = new Set(filteredSubjects.map((s) => s._id));
 
-        const filteredAssignments = streamSubjectIds
-          ? allAssignments.filter((a) => a.subject && streamSubjectIds.has(a.subject._id))
-          : allAssignments;
+        const filteredNotes = allNotes.filter(
+          (n) => n.subject && filteredSubjectIds.has(n.subject._id)
+        );
 
-        const filteredPracticals = streamSubjectIds
-          ? allPracticals.filter((p) => p.subject && streamSubjectIds.has(p.subject._id))
-          : allPracticals;
+        const filteredAssignments = allAssignments.filter(
+          (a) => a.subject && filteredSubjectIds.has(a.subject._id)
+        );
+
+        const filteredPracticals = allPracticals.filter(
+          (p) => p.subject && filteredSubjectIds.has(p.subject._id)
+        );
 
         setData({
           subjects: filteredSubjects,
@@ -249,9 +273,9 @@ export default function StudentDashboard() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">Welcome to Acadex</p>
-        {stream && (
+        {(stream || semester || section) && (
           <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-            🎓 {stream.name}
+            🎓 {stream?.name || "No Stream"} - Section: {section?.name || "No Section"}
           </div>
         )}
       </div>

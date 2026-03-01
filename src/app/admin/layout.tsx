@@ -1,3 +1,4 @@
+/** Admin dashboard shell — wraps children in the DashboardLayout (sidebar + nav). */
 "use client";
 
 import { DashboardLayout } from "@/components/dashboard-layout";

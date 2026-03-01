@@ -1,3 +1,10 @@
+/**
+ * @module API/Completions
+ * @description Assignment completion tracking.
+ * - GET   → returns IDs of assignments the user has completed.
+ * - POST  → marks an assignment as complete.
+ * - DELETE → un-marks a completion.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Completion from "@/models/Completion";

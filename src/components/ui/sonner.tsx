@@ -1,3 +1,4 @@
+/** Themed Toaster wrapper around the `sonner` toast library with Lucide icons. */
 "use client"
 
 import {

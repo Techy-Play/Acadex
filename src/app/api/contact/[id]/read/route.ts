@@ -1,3 +1,7 @@
+/**
+ * @module API/Contact/[id]/Read
+ * @description Admin-only. Marks a contact message as read.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import ContactMessage from "@/models/ContactMessage";

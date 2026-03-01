@@ -1,3 +1,4 @@
+/** Feature card with icon, title, description, and animated hover glow border. */
 interface LibraryFeatureCardProps {
   icon: React.ReactNode;
   title: string;

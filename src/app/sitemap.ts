@@ -1,3 +1,8 @@
+/**
+ * @module sitemap
+ * @description Generates the XML sitemap for SEO (`/sitemap.xml`).
+ * Lists all public pages with their change frequency and priority.
+ */
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -28,5 +33,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.7,
     },
+    {
+      url: `${baseUrl}/library`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+
   ];
 }

@@ -1,3 +1,9 @@
+/**
+ * @module API/AccessRequests
+ * @description Public endpoint for the Apply form.
+ * - GET  → returns available streams & sections for the form.
+ * - POST → submits a new student access request.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import AccessRequest from "@/models/AccessRequest";
@@ -37,7 +43,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, college_id, email, stream, section, reason } = body;
+    const { name, college_id, email, stream, section, semester, reason } = body;
 
     // Basic validation
     if (!name || !college_id || !email || !section) {
@@ -137,6 +143,7 @@ export async function POST(request: Request) {
       email: email.trim().toLowerCase(),
       stream: stream || null,
       section: section,
+      semester: semester ? Number(semester) : null,
       reason: (reason || "").trim().slice(0, 500),
     });
 

@@ -1,3 +1,8 @@
+/**
+ * @module ActivityLog
+ * @description Tracks admin and system actions for audit purposes.
+ * Logs events like user creation, content uploads, request approvals, etc.
+ */
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IActivityLog extends Document {

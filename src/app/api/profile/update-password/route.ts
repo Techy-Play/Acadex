@@ -1,3 +1,8 @@
+/**
+ * @module API/Profile/UpdatePassword
+ * @description Authenticated. Changes the user's password after verifying
+ * current password + a pre-verified OTP. Re-issues the JWT cookie.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";

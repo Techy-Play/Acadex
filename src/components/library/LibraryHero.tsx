@@ -1,8 +1,9 @@
+/** Hero section for the Library page: gradient heading and coming-soon badge. */
 import { LibraryComingSoonBadge } from "./LibraryComingSoonBadge";
 
 export function LibraryHero() {
   return (
-    <div className="text-center space-y-6 animate-slide-up opacity-0 [animation-delay:0.1s]">
+    <div className="text-center space-y-6 animate-slide-up">
       <LibraryComingSoonBadge />
 
       <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter leading-[0.9]">

@@ -1,3 +1,4 @@
+/** Redirect stub — immediately redirects to /admin/users. */
 "use client";
 
 import { useEffect } from "react";

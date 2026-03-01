@@ -1,3 +1,7 @@
+/**
+ * @page AdminLibrary (/admin/library)
+ * @description Admin library resource management (create, edit, filter, delete).
+ */
 "use client";
 
 import { useEffect, useState } from "react";

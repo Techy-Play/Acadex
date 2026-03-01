@@ -1,3 +1,8 @@
+/**
+ * @component AssignmentCard
+ * @description Renders a single assignment card with title, subject badge,
+ * deadline countdown, Google Drive download link, and completion toggle.
+ */
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

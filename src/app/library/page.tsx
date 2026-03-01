@@ -1,3 +1,7 @@
+/**
+ * @page Library (/library)
+ * @description Public library landing page with feature cards (coming soon).
+ */
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
@@ -12,6 +16,25 @@ export const metadata: Metadata = {
     title: "Library | Acadex",
     description:
       "Acadex Library will provide centralized academic indexing with advanced search and filtering for notes, assignments, practicals, and old year papers.",
+    url: "https://au-acadex.com/library",
+    images: [
+      {
+        url: "https://au-acadex.com/images/site-logo.png",
+        width: 512,
+        height: 512,
+        alt: "Acadex Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Library | Acadex",
+    description:
+      "Acadex Library will provide centralized academic indexing with advanced search and filtering for notes, assignments, practicals, and old year papers.",
+    images: {
+      url: "https://au-acadex.com/images/site-logo.png",
+      alt: "Acadex Logo",
+    },
   },
 };
 
@@ -84,11 +107,11 @@ export default function LibraryPage() {
           backgroundSize: "60px 60px",
         }}
       />
-      <div className="absolute top-20 left-10 w-72 h-72 bg-indigo-300/20 dark:bg-indigo-500/10 rounded-full blur-3xl animate-float" />
-      <div className="absolute bottom-40 right-10 w-96 h-96 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl animate-float [animation-delay:3s]" />
+      <div className="absolute top-20 left-10 w-72 h-72 bg-indigo-300/20 dark:bg-indigo-500/10 rounded-full blur-3xl" aria-hidden="true" />
+      <div className="absolute bottom-40 right-10 w-96 h-96 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl" aria-hidden="true" />
 
       {/* Desktop Navbar */}
-      <nav className="hidden md:flex items-center justify-between px-6 py-4 md:px-12 animate-slide-down sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-transparent [&:not(:first-child)]:border-border/50">
+      <nav className="hidden md:flex items-center justify-between px-6 py-4 md:px-12 sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-transparent [&:not(:first-child)]:border-border/50" aria-label="Main navigation">
         <Link href="/" className="flex items-center">
           <Image src="/images/site-logo.svg" alt="Acadex" width={220} height={56} className="h-14 w-auto object-contain" priority />
         </Link>
@@ -121,7 +144,7 @@ export default function LibraryPage() {
       </nav>
 
       {/* Mobile top bar */}
-      <nav className="flex md:hidden items-center justify-between px-4 py-3 relative z-10 animate-slide-down">
+      <nav className="flex md:hidden items-center justify-between px-4 py-3 relative z-10" aria-label="Main navigation">
         <Link href="/" className="flex items-center">
           <Image src="/images/site-logo.svg" alt="Acadex" width={180} height={48} className="h-12 w-auto object-contain" priority />
         </Link>
@@ -137,7 +160,7 @@ export default function LibraryPage() {
           <LibraryHero />
 
           {/* Planned Features Grid */}
-          <div className="animate-scale-in [animation-delay:0.4s] opacity-0">
+          <div className="animate-scale-in">
             <div className="text-center mb-8">
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Planned Features</h2>
               <p className="text-muted-foreground mt-2">Here&apos;s what the Library will offer</p>
@@ -155,7 +178,7 @@ export default function LibraryPage() {
           </div>
 
           {/* Notify CTA */}
-          <div className="animate-scale-in [animation-delay:0.8s] opacity-0">
+          <div className="animate-scale-in">
             <div className="rounded-2xl border bg-gradient-to-br from-gray-900 to-gray-800 dark:from-gray-800 dark:to-gray-900 p-8 text-center text-white relative overflow-hidden">
               <div className="absolute inset-0 opacity-5">
                 <div
@@ -208,34 +231,34 @@ export default function LibraryPage() {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t bg-background/90 backdrop-blur-md">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t bg-background/90 backdrop-blur-md" aria-label="Mobile navigation">
         <div className="flex items-center justify-around py-2">
-          <Link href="/" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <Link href="/" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground" aria-label="Home">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
-            <span className="text-[10px] font-medium">Home</span>
+            <span className="text-xs font-medium">Home</span>
           </Link>
-          <Link href="/library" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-foreground">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <Link href="/library" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-foreground" aria-label="Library">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
-            <span className="text-[10px] font-medium">Library</span>
+            <span className="text-xs font-medium">Library</span>
           </Link>
-          <Link href="/contact" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <Link href="/contact" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground" aria-label="Contact">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            <span className="text-[10px] font-medium">Contact</span>
+            <span className="text-xs font-medium">Contact</span>
           </Link>
-          <Link href="/login" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <Link href="/login" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground" aria-label="Login">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
             </svg>
-            <span className="text-[10px] font-medium">Login</span>
+            <span className="text-xs font-medium">Login</span>
           </Link>
         </div>
-      </div>
+      </nav>
 
       {/* Footer */}
       <footer className="hidden md:block py-8 px-6 md:px-12 mt-12 border-t bg-card/30 backdrop-blur-sm">

@@ -1,3 +1,8 @@
+/**
+ * @module LibraryResource
+ * @description Stores academic library resources (notes, assignments, practicals,
+ * old year papers, reference material) organized by subject, semester, and academic year.
+ */
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface ILibraryResource extends Document {

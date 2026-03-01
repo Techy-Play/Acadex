@@ -1,3 +1,7 @@
+/**
+ * @page AdminSubjects (/admin/subjects)
+ * @description Admin CRUD for subjects (create, edit, delete with password confirmation).
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -41,17 +45,26 @@ interface Subject {
   _id: string;
   name: string;
   type: "theory" | "practical";
+  semester: number;
 }
 
 export default function ManageSubjectsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   // Add form state
   const [showAddForm, setShowAddForm] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [addName, setAddName] = useState("");
   const [addType, setAddType] = useState<"theory" | "practical">("theory");
+  const [addSemester, setAddSemester] = useState("");
+
+  // Edit semester state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editSubject, setEditSubject] = useState<Subject | null>(null);
+  const [editSemester, setEditSemester] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
 
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -73,7 +86,57 @@ export default function ManageSubjectsPage() {
 
   useEffect(() => {
     fetchSubjects();
+    fetchCurrentUser();
   }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (res.ok) setIsSuperAdmin(Boolean(data.user?.isSuperAdmin));
+    } catch {
+      setIsSuperAdmin(false);
+    }
+  };
+
+  const openEditDialog = (subject: Subject) => {
+    setEditSubject(subject);
+    setEditSemester(String(subject.semester));
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSemester = async () => {
+    if (!editSubject || !editSemester) return;
+    setEditLoading(true);
+
+    try {
+      const res = await fetch(`/api/subjects/${editSubject._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ semester: Number(editSemester) }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to update semester");
+        return;
+      }
+
+      setSubjects((prev) =>
+        prev.map((s) =>
+          s._id === editSubject._id ? { ...s, semester: Number(editSemester) } : s
+        )
+      );
+      toast.success("Semester updated successfully");
+      setEditDialogOpen(false);
+      setEditSubject(null);
+      setEditSemester("");
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   // ─── Add Subject ────────────────────────────────
   const handleAdd = async (e: React.FormEvent) => {
@@ -84,7 +147,7 @@ export default function ManageSubjectsPage() {
       const res = await fetch("/api/subjects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: addName.trim(), type: addType }),
+        body: JSON.stringify({ name: addName.trim(), type: addType, semester: Number(addSemester) }),
       });
 
       const data = await res.json();
@@ -97,6 +160,7 @@ export default function ManageSubjectsPage() {
       toast.success("Subject added successfully!");
       setAddName("");
       setAddType("theory");
+      setAddSemester("");
       setShowAddForm(false);
       fetchSubjects();
     } catch {
@@ -180,7 +244,7 @@ export default function ManageSubjectsPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAdd} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="addName">Subject Name</Label>
                   <Input
@@ -204,11 +268,24 @@ export default function ManageSubjectsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label>Semester</Label>
+                  <Select value={addSemester} onValueChange={setAddSemester} required>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Select semester" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                        <SelectItem key={n} value={String(n)}>Semester {n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <Button
                 type="submit"
                 className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={addLoading || !addName.trim()}
+                disabled={addLoading || !addName.trim() || !addSemester}
               >
                 {addLoading ? "Adding..." : "Add Subject"}
               </Button>
@@ -248,6 +325,7 @@ export default function ManageSubjectsPage() {
                           <TableRow>
                             <TableHead>#</TableHead>
                             <TableHead>Subject Name</TableHead>
+                            <TableHead>Semester</TableHead>
                             <TableHead>Type</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                           </TableRow>
@@ -259,6 +337,11 @@ export default function ManageSubjectsPage() {
                               <TableCell>
                                 <Badge variant="secondary" className="rounded-full text-sm px-3 py-1">
                                   📚 {subject.name}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="rounded-full text-xs">
+                                  Sem {subject.semester}
                                 </Badge>
                               </TableCell>
                               <TableCell>
@@ -287,9 +370,16 @@ export default function ManageSubjectsPage() {
                                 </button>
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button variant="destructive" size="sm" className="rounded-lg" onClick={() => openDeleteDialog(subject)}>
-                                  Delete
-                                </Button>
+                                <div className="flex items-center justify-end gap-2">
+                                  {isSuperAdmin && (
+                                    <Button variant="outline" size="sm" className="rounded-lg" onClick={() => openEditDialog(subject)}>
+                                      Edit Semester
+                                    </Button>
+                                  )}
+                                  <Button variant="destructive" size="sm" className="rounded-lg" onClick={() => openDeleteDialog(subject)}>
+                                    Delete
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -322,6 +412,7 @@ export default function ManageSubjectsPage() {
                           <TableRow>
                             <TableHead>#</TableHead>
                             <TableHead>Subject Name</TableHead>
+                            <TableHead>Semester</TableHead>
                             <TableHead>Type</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                           </TableRow>
@@ -333,6 +424,11 @@ export default function ManageSubjectsPage() {
                               <TableCell>
                                 <Badge variant="secondary" className="rounded-full text-sm px-3 py-1">
                                   🧪 {subject.name}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="rounded-full text-xs">
+                                  Sem {subject.semester}
                                 </Badge>
                               </TableCell>
                               <TableCell>
@@ -361,9 +457,16 @@ export default function ManageSubjectsPage() {
                                 </button>
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button variant="destructive" size="sm" className="rounded-lg" onClick={() => openDeleteDialog(subject)}>
-                                  Delete
-                                </Button>
+                                <div className="flex items-center justify-end gap-2">
+                                  {isSuperAdmin && (
+                                    <Button variant="outline" size="sm" className="rounded-lg" onClick={() => openEditDialog(subject)}>
+                                      Edit Semester
+                                    </Button>
+                                  )}
+                                  <Button variant="destructive" size="sm" className="rounded-lg" onClick={() => openDeleteDialog(subject)}>
+                                    Delete
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -377,6 +480,45 @@ export default function ManageSubjectsPage() {
           })()}
         </>
       )}
+
+      {/* Delete Confirmation Dialog with Password */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Subject Semester</DialogTitle>
+            <DialogDescription>
+              Update semester for &ldquo;{editSubject?.name}&rdquo;.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label>Semester</Label>
+            <Select value={editSemester} onValueChange={setEditSemester}>
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder="Select semester" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    Semester {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="rounded-xl" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={handleEditSemester}
+              disabled={editLoading || !editSemester}
+            >
+              {editLoading ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog with Password */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

@@ -1,3 +1,10 @@
+/**
+ * @module API/Admin/AccessRequests
+ * @description Admin management of student access requests.
+ * - GET   → lists pending/reviewed requests (section-scoped for sub-admins).
+ * - PATCH → approves or denies a request; sends email with temp password on approval.
+ * - DELETE → removes access-request records.
+ */
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
@@ -128,6 +135,7 @@ export async function PATCH(request: Request) {
         role: "student",
         stream: accessReq.stream,
         section: accessReq.section,
+        semester: accessReq.semester || null,
         must_change_password: true,
       });
 
@@ -208,7 +216,24 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
+
     const { searchParams } = new URL(request.url);
+    const mode = searchParams.get("mode");
+
+    if (mode === "clear-older") {
+      await connectDB();
+      const filter: Record<string, unknown> = {
+        status: { $in: ["approved", "denied"] },
+      };
+      if (!isSuperAdmin && adminSection) {
+        filter.section = adminSection;
+      }
+      const result = await AccessRequest.deleteMany(filter);
+      return NextResponse.json({ success: true, deletedCount: result.deletedCount || 0 });
+    }
+
     const requestId = searchParams.get("id");
 
     if (!requestId) {

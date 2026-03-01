@@ -1,3 +1,8 @@
+/**
+ * @module ContactMessage
+ * @description Stores messages submitted through the public /contact page.
+ * Admins can read, reply (sends email via mail.ts), and manage these messages.
+ */
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IContactMessage extends Document {
@@ -9,6 +14,7 @@ export interface IContactMessage extends Document {
   replied: boolean;
   adminReply?: string;
   repliedAt?: Date;
+  repliedBy?: mongoose.Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +29,7 @@ const ContactMessageSchema = new Schema<IContactMessage>(
     replied: { type: Boolean, default: false },
     adminReply: { type: String, default: "" },
     repliedAt: { type: Date },
+    repliedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
   },
   { timestamps: true }
 );

@@ -1,3 +1,9 @@
+/**
+ * @module API/Auth/SignupOTP
+ * @description Public. Email verification during the apply / sign-up flow.
+ * - POST → sends an OTP to the provided email.
+ * - PUT  → verifies the OTP code.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";

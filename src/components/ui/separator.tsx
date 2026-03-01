@@ -1,3 +1,4 @@
+/** Radix Separator (horizontal/vertical divider line). */
 "use client"
 
 import * as React from "react"

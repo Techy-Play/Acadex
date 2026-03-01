@@ -1,3 +1,8 @@
+/**
+ * @module API/Admin/SendNotification
+ * @description Admin-only. Sends a notification (title + body)
+ * to an individual user.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Notification from "@/models/Notification";

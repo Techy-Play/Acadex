@@ -1,3 +1,4 @@
+/** Radix Checkbox primitive with check-icon indicator. */
 "use client"
 
 import * as React from "react"

@@ -1,3 +1,10 @@
+/**
+ * @module API/Practicals/[id]
+ * @description Single practical operations.
+ * - GET   → fetches one practical by ID.
+ * - PUT   → updates the practical (admin only).
+ * - DELETE → removes the practical (admin only).
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Subject from "@/models/Subject";

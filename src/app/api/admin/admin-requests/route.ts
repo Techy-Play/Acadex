@@ -1,3 +1,10 @@
+/**
+ * @module API/Admin/AdminRequests
+ * @description Manage admin-role requests (promote / revoke).
+ * - GET   → lists admin requests (super admin sees all; sub-admin sees own).
+ * - PATCH → approves or denies an admin request.
+ * - DELETE → removes admin-request records.
+ */
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
@@ -160,6 +167,7 @@ export async function PATCH(request: Request) {
           role: "admin",
           stream: (data.stream as string) || null,
           section: (data.section as string) || null,
+          semester: (data.semester as number) || null,
           must_change_password: true,
         });
 
@@ -196,6 +204,9 @@ export async function PATCH(request: Request) {
           user.section = data.newSection
             ? new mongoose.Types.ObjectId(data.newSection as string)
             : null;
+        }
+        if (data.newSemester !== undefined) {
+          user.semester = data.newSemester ? Number(data.newSemester) : null;
         }
         await user.save();
 
@@ -280,6 +291,14 @@ export async function DELETE(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
+    const mode = searchParams.get("mode");
+
+    if (mode === "clear-older") {
+      await connectDB();
+      const result = await AdminRequest.deleteMany({ status: { $in: ["approved", "denied"] } });
+      return NextResponse.json({ success: true, deletedCount: result.deletedCount || 0 });
+    }
+
     const requestId = searchParams.get("id");
 
     if (!requestId) {

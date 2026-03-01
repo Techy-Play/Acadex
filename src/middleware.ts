@@ -1,3 +1,10 @@
+/**
+ * @module middleware
+ * @description Edge middleware for JWT-based route protection.
+ * Uses `jose` (Edge-compatible) to verify the `acadex-token` cookie.
+ * Injects user info via `x-user-*` request headers for downstream API routes.
+ * Public routes (landing, login, apply, etc.) bypass auth.
+ */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
@@ -19,6 +26,7 @@ async function verifyJWT(token: string) {
       name: string;
       isSuperAdmin?: boolean;
       section?: string | null;
+      semester?: number | null;
       mustChangePassword?: boolean;
     };
   } catch {
@@ -134,6 +142,9 @@ export async function middleware(request: NextRequest) {
   if (payload.section) {
     requestHeaders.set("x-user-section", payload.section);
   }
+  if (payload.semester) {
+    requestHeaders.set("x-user-semester", String(payload.semester));
+  }
 
   return NextResponse.next({
     request: {
@@ -174,5 +185,7 @@ export const config = {
     "/api/sections/:path*",
     "/api/access-requests/:path*",
     "/api/contact/:path*",
+    "/api/user-uploads/:path*",
+    "/api/user-requests/:path*",
   ],
 };

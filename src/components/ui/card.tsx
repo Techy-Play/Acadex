@@ -1,3 +1,4 @@
+/** Compound card component: Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction, CardFooter. */
 import * as React from "react"
 
 import { cn } from "@/lib/utils"

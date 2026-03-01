@@ -1,3 +1,9 @@
+/**
+ * @module API/Sections
+ * @description Section management.
+ * - GET  → lists all sections (public).
+ * - POST → creates a new section (super admin or admin with `isAdminSection`).
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Section from "@/models/Section";

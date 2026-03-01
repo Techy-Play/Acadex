@@ -1,3 +1,8 @@
+/**
+ * @page AccountRestricted (/account-restricted)
+ * @description Displayed when a user's account is banned or restricted.
+ * Shows the restriction reason and a logout option.
+ */
 "use client";
 
 import { useEffect, useState } from "react";

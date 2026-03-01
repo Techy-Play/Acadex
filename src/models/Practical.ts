@@ -1,3 +1,8 @@
+/**
+ * @module Practical
+ * @description Represents a practical/lab exercise uploaded by an admin for a subject.
+ * Students can track completion via the PracticalCompletion model.
+ */
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IPractical extends Document {

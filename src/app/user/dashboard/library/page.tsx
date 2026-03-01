@@ -1,3 +1,7 @@
+/**
+ * @page UserLibrary (/user/dashboard/library)
+ * @description Library page for students (coming soon — shows rotating jokes).
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -84,67 +88,108 @@ const jokes = [
     headline: "Gears are turning (slowly)",
     punchline: "If you listen closely you can hear the server room crying.",
   },
+  {
+    emoji: "🧲",
+    headline: "Attracting features, one magnet at a time",
+    punchline: "The library is pulling in resources. Slowly. Very slowly.",
+  },
+  {
+    emoji: "🏋️",
+    headline: "Heavy lifting in progress",
+    punchline: "Our devs are bench-pressing 200 lines of code right now.",
+  },
+  {
+    emoji: "🧬",
+    headline: "Still in the DNA stage",
+    punchline: "This feature is evolving. Give it a few million... milliseconds.",
+  },
+  {
+    emoji: "🎪",
+    headline: "The big reveal is coming!",
+    punchline: "Step right up! The library will appear... eventually.",
+  },
+  {
+    emoji: "🗿",
+    headline: "As patient as a statue",
+    punchline: "This page has been waiting so long it turned to stone.",
+  },
+  {
+    emoji: "🧑‍🍳",
+    headline: "Still cooking!",
+    punchline: "The library is in the oven. Don't open it or the soufflé will collapse.",
+  },
+  {
+    emoji: "🪄",
+    headline: "Abracadabra... nope, not yet",
+    punchline: "Our wizards are still learning the spell to summon this page.",
+  },
+  {
+    emoji: "🧊",
+    headline: "Feature frozen... on purpose",
+    punchline: "It's in the deep freeze of our backlog. Thawing soon™.",
+  },
+  {
+    emoji: "🐌",
+    headline: "Slow and steady builds the library",
+    punchline: "We're on snail-powered servers. Please understand.",
+  },
+  {
+    emoji: "🎬",
+    headline: "Take 47... and ACTION!",
+    punchline: "The library scene keeps getting rewritten. The director is very picky.",
+  },
+  {
+    emoji: "🗂️",
+    headline: "Filing the paperwork",
+    punchline: "Turns out building a library requires an actual library of paperwork.",
+  },
+  {
+    emoji: "🔬",
+    headline: "Under the microscope",
+    punchline: "We're examining every pixel. This page must be *perfect*.",
+  },
+  {
+    emoji: "🪴",
+    headline: "Growing organically",
+    punchline: "We planted the seed. Now we water it with coffee and prayers.",
+  },
+  {
+    emoji: "🛸",
+    headline: "Beam me up, library!",
+    punchline: "This feature is coming from another galaxy. ETA: unknown.",
+  },
 ];
 
 export default function UserLibraryPage() {
   const [joke, setJoke] = useState(jokes[0]);
-  const [glitch, setGlitch] = useState(false);
 
   useEffect(() => {
     setJoke(jokes[Math.floor(Math.random() * jokes.length)]);
   }, []);
-
-  const shuffle = () => {
-    setGlitch(true);
-    setTimeout(() => {
-      let next;
-      do {
-        next = jokes[Math.floor(Math.random() * jokes.length)];
-      } while (next.headline === joke.headline);
-      setJoke(next);
-      setGlitch(false);
-    }, 300);
-  };
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center p-4">
       <div className="text-center max-w-md w-full space-y-8">
         {/* Animated WIP badge */}
         <div className="relative">
-          <h1
-            className={`text-[8rem] font-black leading-none tracking-tighter text-primary/10 select-none transition-all duration-300 ${
-              glitch
-                ? "scale-95 opacity-40 blur-sm"
-                : "scale-100 opacity-100 blur-0"
-            }`}
-          >
+          <h1 className="text-[8rem] font-black leading-none tracking-tighter text-primary/10 select-none">
             WIP
           </h1>
-          <div
-            className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${
-              glitch ? "scale-110 opacity-0" : "scale-100 opacity-100"
-            }`}
-          >
+          <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-7xl animate-bounce">{joke.emoji}</span>
           </div>
         </div>
 
         {/* Joke content */}
-        <div
-          className={`space-y-3 transition-all duration-300 ${
-            glitch
-              ? "translate-y-4 opacity-0"
-              : "translate-y-0 opacity-100"
-          }`}
-        >
+        <div className="space-y-3">
           <h2 className="text-2xl font-bold tracking-tight">
             {joke.headline}
           </h2>
           <p className="text-muted-foreground text-lg">{joke.punchline}</p>
         </div>
 
-        {/* Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+        {/* Button */}
+        <div className="flex items-center justify-center pt-4">
           <Link
             href="/user/dashboard"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 transition-all"
@@ -164,25 +209,6 @@ export default function UserLibraryPage() {
             </svg>
             Back to Dashboard
           </Link>
-          <button
-            onClick={shuffle}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border bg-card font-semibold hover:bg-muted transition-all hover:-translate-y-0.5"
-          >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            Another Joke
-          </button>
         </div>
 
         {/* Footer */}

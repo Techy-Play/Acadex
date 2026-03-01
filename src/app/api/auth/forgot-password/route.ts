@@ -1,3 +1,9 @@
+/**
+ * @module API/Auth/ForgotPassword
+ * @description Two-step forgot-password flow.
+ * - POST → Step 1: sends an OTP to the user's verified email.
+ * - PUT  → Step 2: verifies the OTP and resets the password.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";

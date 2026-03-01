@@ -1,3 +1,8 @@
+/**
+ * @module API/Admin/DashboardStats
+ * @description Returns quick counts (pending access requests, unread
+ * contact messages) for admin dashboard widgets.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import AccessRequest from "@/models/AccessRequest";

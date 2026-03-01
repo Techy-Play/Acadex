@@ -1,3 +1,7 @@
+/**
+ * @page AdminUsers (/admin/users)
+ * @description Admin user management — list, search, edit, ban, and delete student accounts.
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -58,6 +62,7 @@ interface User {
   adminAlias?: string | null;
   stream: StreamItem | null;
   section: SectionItem | null;
+  semester: number | null;
   must_change_password: boolean;
   status: "active" | "banned" | "suspended";
   createdAt: string;
@@ -73,6 +78,7 @@ interface UserDetails {
   adminAlias: string | null;
   stream: StreamItem | null;
   section: SectionItem | null;
+  semester: number | null;
   must_change_password: boolean;
   status: "active" | "banned" | "suspended";
   createdAt: string;
@@ -104,6 +110,7 @@ export default function UsersPage() {
   const [streamUser, setStreamUser] = useState<User | null>(null);
   const [selectedStream, setSelectedStream] = useState("none");
   const [selectedSection, setSelectedSection] = useState("none");
+  const [selectedSemester, setSelectedSemester] = useState("none");
   const [savingStream, setSavingStream] = useState(false);
 
   // Add student state
@@ -115,6 +122,7 @@ export default function UsersPage() {
   const [addRole, setAddRole] = useState("student");
   const [addStream, setAddStream] = useState("none");
   const [addSection, setAddSection] = useState("none");
+  const [addSemester, setAddSemester] = useState("none");
 
   // User details dialog state
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -136,6 +144,7 @@ export default function UsersPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterStream, setFilterStream] = useState("all");
   const [filterSection, setFilterSection] = useState("all");
+  const [filterSemester, setFilterSemester] = useState("all");
   const [sortBy, setSortBy] = useState<"name" | "college_id" | "date">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
@@ -184,6 +193,7 @@ export default function UsersPage() {
           role: addRole,
           stream: addStream === "none" ? null : addStream,
           section: addSection === "none" ? null : addSection,
+          semester: addSemester === "none" ? null : Number(addSemester),
         }),
       });
 
@@ -205,6 +215,7 @@ export default function UsersPage() {
       setAddRole("student");
       setAddStream("none");
       setAddSection("none");
+      setAddSemester("none");
       setShowAddForm(false);
       fetchUsers();
     } catch {
@@ -276,6 +287,7 @@ export default function UsersPage() {
     setStreamUser(user);
     setSelectedStream(user.stream?._id || "none");
     setSelectedSection(user.section?._id || "none");
+    setSelectedSemester(user.semester ? String(user.semester) : "none");
     setStreamDialogOpen(true);
   };
 
@@ -290,6 +302,7 @@ export default function UsersPage() {
         body: JSON.stringify({
           stream: selectedStream === "none" ? null : selectedStream,
           section: selectedSection === "none" ? null : selectedSection,
+          semester: selectedSemester === "none" ? null : Number(selectedSemester),
         }),
       });
 
@@ -421,6 +434,10 @@ export default function UsersPage() {
         if (filterSection === "none" && u.section) return false;
         if (filterSection !== "none" && u.section?._id !== filterSection) return false;
       }
+      if (currentIsSuperAdmin && filterSemester !== "all") {
+        if (filterSemester === "none" && u.semester) return false;
+        if (filterSemester !== "none" && String(u.semester || "") !== filterSemester) return false;
+      }
       return true;
     })
     .sort((a, b) => {
@@ -431,7 +448,13 @@ export default function UsersPage() {
       return sortOrder === "asc" ? cmp : -cmp;
     });
 
-  const activeFilters = [filterRole, filterStatus, filterStream, filterSection].filter(f => f !== "all").length + (searchQuery ? 1 : 0) + (sortBy !== "name" || sortOrder !== "asc" ? 1 : 0);
+  const activeFilters = [
+    filterRole,
+    filterStatus,
+    filterStream,
+    filterSection,
+    ...(currentIsSuperAdmin ? [filterSemester] : []),
+  ].filter(f => f !== "all").length + (searchQuery ? 1 : 0) + (sortBy !== "name" || sortOrder !== "asc" ? 1 : 0);
 
   if (loading) {
     return (
@@ -564,6 +587,20 @@ export default function UsersPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>Semester</Label>
+                <Select value={addSemester} onValueChange={setAddSemester}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Select semester" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="none">No Semester</SelectItem>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                      <SelectItem key={n} value={String(n)}>Semester {n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-end">
                 <Button
                   type="submit"
@@ -594,6 +631,7 @@ export default function UsersPage() {
                       setFilterStatus("all");
                       setFilterStream("all");
                       setFilterSection("all");
+                      setFilterSemester("all");
                     }}
                   >
                     Clear filters
@@ -675,6 +713,22 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
 
+              {/* Semester Filter (super admin only) */}
+              {currentIsSuperAdmin && (
+                <Select value={filterSemester} onValueChange={setFilterSemester}>
+                  <SelectTrigger className="rounded-xl text-xs h-9">
+                    <SelectValue placeholder="Semester" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all">All Semesters</SelectItem>
+                    <SelectItem value="none">No Semester</SelectItem>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                      <SelectItem key={n} value={String(n)}>Semester {n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
               {/* Sort */}
               <Select
                 value={`${sortBy}-${sortOrder}`}
@@ -708,6 +762,7 @@ export default function UsersPage() {
                   setFilterStatus("all");
                   setFilterStream("all");
                   setFilterSection("all");
+                  setFilterSemester("all");
                   setSortBy("name");
                   setSortOrder("asc");
                 }}
@@ -733,6 +788,7 @@ export default function UsersPage() {
                     <TableHead>Role</TableHead>
                     <TableHead>Stream</TableHead>
                     <TableHead>Section</TableHead>
+                    <TableHead>Semester</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -763,6 +819,15 @@ export default function UsersPage() {
                         {user.section ? (
                           <Badge variant="outline" className="rounded-full text-xs">
                             🏫 {user.section.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {user.semester ? (
+                          <Badge variant="outline" className="rounded-full text-xs">
+                            📅 Sem {user.semester}
                           </Badge>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
@@ -835,6 +900,20 @@ export default function UsersPage() {
                     <SelectItem key={s._id} value={s._id}>
                       {s.name}
                     </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Semester</Label>
+              <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Select semester" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="none">No Semester</SelectItem>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                    <SelectItem key={n} value={String(n)}>Semester {n}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1043,6 +1122,12 @@ export default function UsersPage() {
                     {detailUser.stream ? `🎓 ${detailUser.stream.name}` : "Not assigned"}
                   </p>
                 </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Semester</p>
+                  <p className="text-sm font-medium">
+                    {detailUser.semester ? `📅 Semester ${detailUser.semester}` : "Not assigned"}
+                  </p>
+                </div>
 
                 <div>
                   <p className="text-xs text-muted-foreground">Joined</p>
@@ -1105,6 +1190,7 @@ export default function UsersPage() {
                           role: detailUser.role,
                           stream: detailUser.stream,
                           section: detailUser.section,
+                          semester: detailUser.semester,
                           must_change_password: detailUser.must_change_password,
                           status: detailUser.status,
                           createdAt: detailUser.createdAt,
@@ -1126,6 +1212,7 @@ export default function UsersPage() {
                           role: detailUser.role,
                           stream: detailUser.stream,
                           section: detailUser.section,
+                          semester: detailUser.semester,
                           must_change_password: detailUser.must_change_password,
                           status: detailUser.status,
                           createdAt: detailUser.createdAt,
@@ -1160,6 +1247,7 @@ export default function UsersPage() {
                             role: detailUser.role,
                             stream: detailUser.stream,
                             section: detailUser.section,
+                            semester: detailUser.semester,
                             must_change_password: detailUser.must_change_password,
                             status: detailUser.status,
                             createdAt: detailUser.createdAt,

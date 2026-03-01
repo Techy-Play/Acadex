@@ -1,3 +1,7 @@
+/**
+ * @page ForgotPassword (/forgot-password)
+ * @description Two-step forgot-password flow: enter email → receive OTP → reset password.
+ */
 "use client";
 
 import { useState } from "react";

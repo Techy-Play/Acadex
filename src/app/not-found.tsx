@@ -1,3 +1,7 @@
+/**
+ * @page NotFound (404)
+ * @description Custom 404 page with rotating jokes and a “Go Home” button.
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -84,61 +88,101 @@ const jokes = [
     headline: "Why did the user visit this page?",
     punchline: "To get to the other side... which also doesn't exist.",
   },
+  {
+    emoji: "🧲",
+    headline: "This page has no attraction",
+    punchline: "Unlike magnets, opposite URLs do not attract.",
+  },
+  {
+    emoji: "📡",
+    headline: "Signal lost!",
+    punchline: "We sent a search party. They also got lost.",
+  },
+  {
+    emoji: "🎮",
+    headline: "Game Over",
+    punchline: "You tried to access a bonus level that doesn't exist. Insert coin to try again.",
+  },
+  {
+    emoji: "🧪",
+    headline: "Experiment failed",
+    punchline: "Our lab results confirm: this page does not exist.",
+  },
+  {
+    emoji: "🐙",
+    headline: "An octopus stole this page",
+    punchline: "With eight arms, it grabbed everything — including your URL.",
+  },
+  {
+    emoji: "💤",
+    headline: "This page is sleeping",
+    punchline: "Shhh... don't wake it. Actually, it was never awake.",
+  },
+  {
+    emoji: "🪐",
+    headline: "You've reached the edge of the internet",
+    punchline: "Beyond here, there be dragons. And no web pages.",
+  },
+  {
+    emoji: "🎭",
+    headline: "The page was an inside job",
+    punchline: "It deleted itself. We have the server logs to prove it.",
+  },
+  {
+    emoji: "📦",
+    headline: "This page is in another box",
+    punchline: "Like IKEA furniture — some assembly of the URL required.",
+  },
+  {
+    emoji: "🌮",
+    headline: "This page is on a taco run",
+    punchline: "It'll be back Tuesday. Maybe. No guarantees.",
+  },
+  {
+    emoji: "🧩",
+    headline: "Missing piece!",
+    punchline: "This URL is like a jigsaw puzzle — and you've got the wrong piece.",
+  },
+  {
+    emoji: "🦊",
+    headline: "A fox ran off with this page",
+    punchline: "What does the fox say? 404.",
+  },
+  {
+    emoji: "☕",
+    headline: "Error 404: Page not caffeinated",
+    punchline: "This page hasn't had its morning coffee. Try again after lunch.",
+  },
 ];
 
 export default function NotFound() {
   const [joke, setJoke] = useState(jokes[0]);
-  const [glitch, setGlitch] = useState(false);
 
   useEffect(() => {
     setJoke(jokes[Math.floor(Math.random() * jokes.length)]);
   }, []);
-
-  const shuffle = () => {
-    setGlitch(true);
-    setTimeout(() => {
-      let next;
-      do {
-        next = jokes[Math.floor(Math.random() * jokes.length)];
-      } while (next.headline === joke.headline);
-      setJoke(next);
-      setGlitch(false);
-    }, 300);
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="text-center max-w-md w-full space-y-8">
         {/* Animated 404 */}
         <div className="relative">
-          <h1
-            className={`text-[10rem] font-black leading-none tracking-tighter text-primary/10 select-none transition-all duration-300 ${
-              glitch ? "scale-95 opacity-40 blur-sm" : "scale-100 opacity-100 blur-0"
-            }`}
-          >
+          <h1 className="text-[10rem] font-black leading-none tracking-tighter text-primary/10 select-none">
             404
           </h1>
-          <div
-            className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${
-              glitch ? "scale-110 opacity-0" : "scale-100 opacity-100"
-            }`}
-          >
+          <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-7xl animate-bounce">{joke.emoji}</span>
           </div>
         </div>
 
         {/* Joke content */}
-        <div
-          className={`space-y-3 transition-all duration-300 ${
-            glitch ? "translate-y-4 opacity-0" : "translate-y-0 opacity-100"
-          }`}
-        >
+        <div className="space-y-3">
           <h2 className="text-2xl font-bold tracking-tight">{joke.headline}</h2>
           <p className="text-muted-foreground text-lg">{joke.punchline}</p>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+        {/* Action button */}
+        <div className="flex items-center justify-center pt-4">
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 transition-all"
@@ -148,15 +192,6 @@ export default function NotFound() {
             </svg>
             Go Home
           </Link>
-          <button
-            onClick={shuffle}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border bg-card font-semibold hover:bg-muted transition-all hover:-translate-y-0.5"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Another Joke
-          </button>
         </div>
 
         {/* Subtle footer */}

@@ -1,3 +1,8 @@
+/**
+ * @module API/Admin/Activity
+ * @description Admin-only. Returns recent activity-log entries.
+ * Sub-admins see only their own section's activity.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import ActivityLog from "@/models/ActivityLog";

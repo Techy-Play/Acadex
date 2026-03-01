@@ -1,4 +1,7 @@
-import Link from "next/link";
+/**
+ * @page About (/about)
+ * @description "About Us" page showcasing the team and technology stack.
+ */import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -7,6 +10,30 @@ export const metadata: Metadata = {
   title: "About Us – Meet the Team Behind Acadex",
   description:
     "Learn about Acadex, the open-source academic resource platform built by Lokesh Paneru (Mr Techie). Explore the tech stack, features, and how to contribute.",
+  openGraph: {
+    title: "About Us – Meet the Team Behind Acadex | Acadex",
+    description:
+      "Learn about Acadex, the open-source academic resource platform built by Lokesh Paneru (Mr Techie). Explore the tech stack, features, and how to contribute.",
+    url: "https://au-acadex.com/about",
+    images: [
+      {
+        url: "https://au-acadex.com/images/site-logo.png",
+        width: 512,
+        height: 512,
+        alt: "Acadex Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "About Us – Meet the Team Behind Acadex | Acadex",
+    description:
+      "Learn about Acadex, the open-source academic resource platform built by Lokesh Paneru (Mr Techie).",
+    images: {
+      url: "https://au-acadex.com/images/site-logo.png",
+      alt: "Acadex Logo",
+    },
+  },
 };
 
 export default function AboutPage() {
@@ -23,7 +50,7 @@ export default function AboutPage() {
       />
 
       {/* Desktop Navbar */}
-      <nav className="hidden md:flex items-center justify-between px-6 py-4 md:px-12 animate-slide-down relative z-10">
+      <nav aria-label="Desktop navigation" className="hidden md:flex items-center justify-between px-6 py-4 md:px-12 animate-slide-down relative z-10">
         <Link href="/" className="flex items-center">
           <Image src="/images/site-logo.svg" alt="Acadex" width={220} height={56} className="h-14 w-auto object-contain" priority />
         </Link>
@@ -56,7 +83,7 @@ export default function AboutPage() {
       </nav>
 
       {/* Mobile top bar */}
-      <nav className="flex md:hidden items-center justify-between px-4 py-3 relative z-10">
+      <nav aria-label="Mobile navigation" className="flex md:hidden items-center justify-between px-4 py-3 relative z-10">
         <Link href="/" className="flex items-center">
           <Image src="/images/site-logo.svg" alt="Acadex" width={180} height={48} className="h-12 w-auto object-contain" priority />
         </Link>
@@ -69,7 +96,7 @@ export default function AboutPage() {
       <main className="flex-1 px-6 md:px-12 py-12 pb-28 md:pb-12">
         <div className="max-w-4xl mx-auto space-y-12">
           {/* Hero */}
-          <div className="text-center space-y-4 animate-slide-up opacity-0 [animation-delay:0.1s]">
+          <div className="text-center space-y-4 animate-slide-up [animation-delay:0.1s]">
             <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 dark:border-indigo-800 bg-indigo-50/80 dark:bg-indigo-950/50 px-4 py-1.5 text-sm font-medium text-indigo-700 dark:text-indigo-300 backdrop-blur-sm">
               About Us
             </span>
@@ -85,7 +112,7 @@ export default function AboutPage() {
           </div>
 
           {/* What is Acadex */}
-          <div className="space-y-6 animate-slide-up opacity-0 [animation-delay:0.3s]">
+          <div className="space-y-6 animate-slide-up [animation-delay:0.3s]">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">What is Acadex?</h2>
             <div className="prose prose-gray dark:prose-invert max-w-none space-y-4 text-muted-foreground">
               <p className="text-base leading-relaxed">
@@ -101,7 +128,7 @@ export default function AboutPage() {
           </div>
 
           {/* Open Source */}
-          <div className="space-y-6 animate-slide-up opacity-0 [animation-delay:0.4s]">
+          <div className="space-y-6 animate-slide-up [animation-delay:0.4s]">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Open Source & Community</h2>
             <div className="rounded-2xl border bg-card/50 backdrop-blur-sm overflow-hidden">
               <div className="bg-gradient-to-r from-gray-900 to-gray-800 dark:from-gray-800 dark:to-gray-700 p-6 sm:p-8">
@@ -153,7 +180,7 @@ export default function AboutPage() {
           </div>
 
           {/* Tech Stack */}
-          <div className="space-y-6 animate-slide-up opacity-0 [animation-delay:0.5s]">
+          <div className="space-y-6 animate-slide-up [animation-delay:0.5s]">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Built With</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {[
@@ -178,7 +205,7 @@ export default function AboutPage() {
           </div>
 
           {/* Creator */}
-          <div className="space-y-6 animate-slide-up opacity-0 [animation-delay:0.6s]">
+          <div className="space-y-6 animate-slide-up [animation-delay:0.6s]">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">The Creator</h2>
             <div className="rounded-2xl border bg-card/50 backdrop-blur-sm p-6 sm:p-8">
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
@@ -212,7 +239,7 @@ export default function AboutPage() {
           </div>
 
           {/* CTA */}
-          <div className="text-center space-y-4 animate-slide-up opacity-0 [animation-delay:0.7s]">
+          <div className="text-center space-y-4 animate-slide-up [animation-delay:0.7s]">
             <h2 className="text-2xl font-bold tracking-tight">Ready to get started?</h2>
             <p className="text-muted-foreground">Join your classmates and start accessing all resources today.</p>
             <div className="flex flex-wrap items-center justify-center gap-4">
@@ -251,25 +278,25 @@ export default function AboutPage() {
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
-            <span className="text-[10px] font-medium">Home</span>
+            <span className="text-xs font-medium">Home</span>
           </Link>
           <Link href="/about" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-foreground">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-[10px] font-medium">About</span>
+            <span className="text-xs font-medium">About</span>
           </Link>
           <Link href="/contact" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            <span className="text-[10px] font-medium">Contact</span>
+            <span className="text-xs font-medium">Contact</span>
           </Link>
           <Link href="/login" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
             </svg>
-            <span className="text-[10px] font-medium">Login</span>
+            <span className="text-xs font-medium">Login</span>
           </Link>
         </div>
       </div>

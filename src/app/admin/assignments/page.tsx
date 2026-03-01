@@ -1,8 +1,11 @@
+/**
+ * @page AdminAssignments (/admin/assignments)
+ * @description Admin CRUD for assignments (create, edit, delete, set deadlines).
+ */
 "use client";
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +44,7 @@ import { Badge } from "@/components/ui/badge";
 interface Subject {
   _id: string;
   name: string;
+  semester: number;
 }
 
 interface SectionItem {
@@ -55,7 +59,7 @@ interface Assignment {
   file_url: string;
   deadline: string | null;
   createdAt: string;
-  subject: { _id: string; name: string };
+  subject: { _id: string; name: string; semester?: number };
   section?: { _id: string; name: string } | null;
   uploadedBy?: { _id: string; name: string } | null;
 }
@@ -65,6 +69,11 @@ export default function ManageAssignmentsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [semesterFilter, setSemesterFilter] = useState<string>("all");
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>("all");
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>("all");
+  const [userSectionId, setUserSectionId] = useState<string>("");
 
   // Add form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -94,7 +103,23 @@ export default function ManageAssignmentsPage() {
 
   const fetchAssignments = async () => {
     try {
-      const res = await fetch("/api/assignments");
+      const params = new URLSearchParams();
+      if (selectedSubjectFilter !== "all") {
+        params.set("subject", selectedSubjectFilter);
+      }
+      if (selectedSectionFilter === "all") {
+        params.set("section", "all");
+      } else if (selectedSectionFilter !== "my-section" && selectedSectionFilter) {
+        params.set("section", selectedSectionFilter);
+      }
+      if (isSuperAdmin && semesterFilter !== "all") {
+        params.set("semester", semesterFilter);
+      }
+
+      const url = params.toString()
+        ? `/api/assignments?${params.toString()}`
+        : "/api/assignments";
+      const res = await fetch(url);
       const data = await res.json();
       if (res.ok) setAssignments(data.assignments || []);
     } catch {
@@ -124,15 +149,41 @@ export default function ManageAssignmentsPage() {
     }
   };
 
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (res.ok) {
+        const superAdmin = Boolean(data.user?.isSuperAdmin);
+        setIsSuperAdmin(superAdmin);
+        const sectionId = data.user?.section?.id || "";
+        setUserSectionId(sectionId);
+        setSelectedSectionFilter(superAdmin ? "all" : "my-section");
+      }
+    } catch {
+      setIsSuperAdmin(false);
+    }
+  };
+
   useEffect(() => {
-    fetchAssignments();
     fetchSubjects();
     fetchSections();
+    fetchCurrentUser();
   }, []);
+
+  useEffect(() => {
+    fetchAssignments();
+  }, [selectedSubjectFilter, selectedSectionFilter, semesterFilter, isSuperAdmin]);
 
   // ─── Add Assignment ─────────────────────────────
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!addFileUrl.trim()) {
+      toast.error("PDF / File URL is required");
+      return;
+    }
+
     setAddLoading(true);
 
     try {
@@ -143,9 +194,9 @@ export default function ManageAssignmentsPage() {
           subject: addSubject,
           title: addTitle,
           description: addDescription || undefined,
-          file_url: addFileUrl || undefined,
+          file_url: addFileUrl.trim(),
           deadline: addDeadline || undefined,
-          ...(addSection && { section: addSection }),
+          ...(isSuperAdmin && addSection && { section: addSection }),
         }),
       });
 
@@ -263,19 +314,70 @@ export default function ManageAssignmentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Assignments</h1>
           <p className="text-muted-foreground">
             {assignments.length} assignment{assignments.length !== 1 ? "s" : ""} created
           </p>
         </div>
-        <Button
-          className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={() => setShowAddForm(!showAddForm)}
-        >
-          {showAddForm ? "Cancel" : "+ Add Assignment"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={selectedSubjectFilter} onValueChange={setSelectedSubjectFilter}>
+            <SelectTrigger className="w-[170px] rounded-xl">
+              <SelectValue placeholder="Subject" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="all">All Subjects</SelectItem>
+              {subjects.map((s) => (
+                <SelectItem key={s._id} value={s._id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedSectionFilter} onValueChange={setSelectedSectionFilter}>
+            <SelectTrigger className="w-[170px] rounded-xl">
+              <SelectValue placeholder="Section" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              {!isSuperAdmin && userSectionId && (
+                <SelectItem value="my-section">My Section</SelectItem>
+              )}
+              <SelectItem value="all">All Sections</SelectItem>
+              {sections
+                .filter((s) => !userSectionId || s._id !== userSectionId)
+                .map((s) => (
+                  <SelectItem key={s._id} value={s._id}>
+                    🏫 {s.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+
+          {isSuperAdmin && (
+            <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+              <SelectTrigger className="w-[160px] rounded-xl">
+                <SelectValue placeholder="Semester" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">All Semesters</SelectItem>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                  <SelectItem key={s} value={String(s)}>
+                    Semester {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Button
+            className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={() => setShowAddForm(!showAddForm)}
+          >
+            {showAddForm ? "Cancel" : "+ Add Assignment"}
+          </Button>
+        </div>
       </div>
 
       {/* Add Assignment Form (collapsible) */}
@@ -332,13 +434,14 @@ export default function ManageAssignmentsPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="addFileUrl">PDF / File URL (Optional)</Label>
+                  <Label htmlFor="addFileUrl">PDF / File URL</Label>
                   <Input
                     id="addFileUrl"
                     type="url"
                     placeholder="https://drive.google.com/..."
                     value={addFileUrl}
                     onChange={(e) => setAddFileUrl(e.target.value)}
+                    required
                     className="rounded-xl"
                   />
                 </div>
@@ -354,12 +457,12 @@ export default function ManageAssignmentsPage() {
                 </div>
               </div>
 
-              {sections.length > 0 && (
+              {isSuperAdmin && sections.length > 0 ? (
                 <div className="space-y-2">
-                  <Label>Section (Optional)</Label>
+                  <Label>Section</Label>
                   <Select value={addSection} onValueChange={setAddSection}>
                     <SelectTrigger className="rounded-xl w-full sm:w-[200px]">
-                      <SelectValue placeholder="Auto (your section)" />
+                      <SelectValue placeholder="Select section (optional)" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
                       {sections.map((s) => (
@@ -370,12 +473,21 @@ export default function ManageAssignmentsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Section</Label>
+                  <Input
+                    value="Auto (your section)"
+                    disabled
+                    className="rounded-xl w-full sm:w-[200px]"
+                  />
+                </div>
               )}
 
               <Button
                 type="submit"
                 className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={addLoading || !addSubject}
+                disabled={addLoading || !addSubject || !addFileUrl.trim()}
               >
                 {addLoading ? "Adding..." : "Add Assignment"}
               </Button>
@@ -395,8 +507,22 @@ export default function ManageAssignmentsPage() {
         </Card>
       ) : (
         (() => {
+          const filtered = assignments;
+
+          if (filtered.length === 0) {
+            return (
+              <Card className="rounded-2xl">
+                <CardContent className="py-8">
+                  <p className="text-center text-muted-foreground">
+                    No assignments found for selected filters.
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          }
+
           const grouped: Record<string, Assignment[]> = {};
-          for (const a of assignments) {
+          for (const a of filtered) {
             const subjectName = a.subject?.name || "Unknown";
             if (!grouped[subjectName]) grouped[subjectName] = [];
             grouped[subjectName].push(a);
@@ -422,7 +548,7 @@ export default function ManageAssignmentsPage() {
                           <TableHead>Section</TableHead>
                           <TableHead>Uploaded By</TableHead>
                           <TableHead>Deadline</TableHead>
-                          <TableHead>PDF</TableHead>
+                          <TableHead>Created</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -432,9 +558,23 @@ export default function ManageAssignmentsPage() {
                             ? new Date(a.deadline) < new Date()
                             : false;
                           return (
-                            <TableRow key={a._id}>
+                            <TableRow
+                              key={a._id}
+                              className={a.file_url ? "cursor-pointer hover:bg-muted/50" : ""}
+                              onClick={() => {
+                                if (a.file_url) {
+                                  window.open(
+                                    `/user/dashboard/viewer?url=${encodeURIComponent(a.file_url)}&title=${encodeURIComponent(a.title)}`,
+                                    "_blank"
+                                  );
+                                }
+                              }}
+                            >
                               <TableCell className="font-medium max-w-[200px] truncate">
                                 {a.title}
+                                {a.file_url && (
+                                  <span className="ml-2 text-xs text-primary">📄</span>
+                                )}
                               </TableCell>
                               <TableCell>
                                 {a.section ? (
@@ -464,30 +604,19 @@ export default function ManageAssignmentsPage() {
                                   <span className="text-sm text-muted-foreground">—</span>
                                 )}
                               </TableCell>
-                              <TableCell>
-                                {a.file_url ? (
-                                  <div className="flex gap-1">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="rounded-lg text-xs"
-                                      asChild
-                                    >
-                                      <Link href={`/user/dashboard/viewer?url=${encodeURIComponent(a.file_url)}&title=${encodeURIComponent(a.title)}`} target="_blank">
-                                        Open
-                                      </Link>
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <span className="text-sm text-muted-foreground">—</span>
-                                )}
+                              <TableCell className="text-sm text-muted-foreground">
+                                {new Date(a.createdAt).toLocaleDateString("en-IN", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}
                               </TableCell>
                               <TableCell className="text-right space-x-2">
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   className="rounded-lg"
-                                  onClick={() => openEditDialog(a)}
+                                  onClick={(e) => { e.stopPropagation(); openEditDialog(a); }}
                                 >
                                   Edit
                                 </Button>
@@ -495,7 +624,7 @@ export default function ManageAssignmentsPage() {
                                   variant="destructive"
                                   size="sm"
                                   className="rounded-lg"
-                                  onClick={() => openDeleteDialog(a)}
+                                  onClick={(e) => { e.stopPropagation(); openDeleteDialog(a); }}
                                 >
                                   Delete
                                 </Button>

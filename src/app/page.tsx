@@ -1,3 +1,7 @@
+/**
+ * @page LandingPage (/)
+ * @description Marketing hero page with features, stats, and CTA buttons.
+ */
 import Link from "next/link";
 import Image from "next/image";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -11,6 +15,7 @@ export default function LandingPage() {
       {/* Animated grid pattern */}
       <div
         className="absolute inset-0 -z-10 opacity-[0.03] dark:opacity-[0.05]"
+        aria-hidden="true"
         style={{
           backgroundImage: `linear-gradient(rgba(99,102,241,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.8) 1px, transparent 1px)`,
           backgroundSize: "60px 60px",
@@ -18,12 +23,12 @@ export default function LandingPage() {
       />
 
       {/* Floating decorative blobs */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-indigo-300/20 dark:bg-indigo-500/10 rounded-full blur-3xl animate-float" />
-      <div className="absolute bottom-40 right-10 w-96 h-96 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl animate-float [animation-delay:3s]" />
-      <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-blue-300/15 dark:bg-blue-500/8 rounded-full blur-3xl animate-float [animation-delay:5s]" />
+      <div className="absolute top-20 left-10 w-72 h-72 bg-indigo-300/20 dark:bg-indigo-500/10 rounded-full blur-3xl" aria-hidden="true" />
+      <div className="absolute bottom-40 right-10 w-96 h-96 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl" aria-hidden="true" />
+      <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-blue-300/15 dark:bg-blue-500/8 rounded-full blur-3xl" aria-hidden="true" />
 
       {/* Desktop Navbar */}
-      <nav className="hidden md:flex items-center justify-between px-6 py-4 md:px-12 animate-slide-down sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-transparent [&:not(:first-child)]:border-border/50">
+      <nav className="hidden md:flex items-center justify-between px-6 py-4 md:px-12 sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-transparent [&:not(:first-child)]:border-border/50" aria-label="Main navigation">
         <Link href="/" className="flex items-center">
           <Image src="/images/site-logo.svg" alt="Acadex" width={220} height={56} className="h-14 w-auto object-contain" priority />
         </Link>
@@ -56,7 +61,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Mobile top bar */}
-      <nav className="flex md:hidden items-center justify-between px-4 py-3 relative z-10 animate-slide-down">
+      <nav className="flex md:hidden items-center justify-between px-4 py-3 relative z-10" aria-label="Main navigation">
         <Link href="/" className="flex items-center">
           <Image src="/images/site-logo.svg" alt="Acadex" width={180} height={48} className="h-12 w-auto object-contain" priority />
         </Link>
@@ -69,7 +74,7 @@ export default function LandingPage() {
       <main className="flex-1 flex flex-col items-center justify-center px-6 md:px-12 pt-8 pb-28 md:pb-4">
         <div className="max-w-5xl mx-auto text-center space-y-8">
           {/* Badge */}
-          <div className="animate-fade-in [animation-delay:0.1s] opacity-0">
+          <div className="animate-fade-in">
             <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 dark:border-indigo-800 bg-indigo-50/80 dark:bg-indigo-950/50 px-4 py-1.5 text-sm font-medium text-indigo-700 dark:text-indigo-300 backdrop-blur-sm">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
@@ -80,7 +85,7 @@ export default function LandingPage() {
           </div>
 
           {/* Headline */}
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tighter leading-[0.9] animate-slide-up [animation-delay:0.2s] opacity-0">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tighter leading-[0.9] animate-slide-up">
             Everything you need,
             <br />
             <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
@@ -89,14 +94,14 @@ export default function LandingPage() {
           </h1>
 
           {/* Subheading */}
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto animate-slide-up [animation-delay:0.4s] opacity-0 leading-relaxed">
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto animate-slide-up leading-relaxed">
             Acadex is an open-source academic resource management platform engineered by Mr Techie.
             Built by students for students, it replaces unstructured WhatsApp sharing and outdated ERP systems
             with a modern, secure, and organized academic dashboard.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up [animation-delay:0.6s] opacity-0">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up">
             <Link
               href="/login"
               className="inline-flex items-center justify-center rounded-xl border border-border bg-background/50 backdrop-blur-sm px-8 py-3.5 text-base font-medium hover:bg-accent transition-all hover:-translate-y-0.5"
@@ -108,7 +113,7 @@ export default function LandingPage() {
               className="group inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-3.5 text-base font-medium shadow-lg shadow-indigo-500/25 transition-all hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5"
             >
               Get Started
-              <svg className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </Link>
@@ -116,7 +121,7 @@ export default function LandingPage() {
         </div>
 
         {/* Stats Bar */}
-        <div className="mt-16 w-full max-w-3xl mx-auto animate-scale-in [animation-delay:0.8s] opacity-0">
+        <div className="mt-16 w-full max-w-3xl mx-auto animate-scale-in">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { icon: "📚", label: "Subject Notes", value: "Organized" },
@@ -137,7 +142,7 @@ export default function LandingPage() {
         </div>
 
         {/* Feature Cards */}
-        <div className="mt-16 w-full max-w-5xl mx-auto animate-scale-in [animation-delay:1s] opacity-0">
+        <div className="mt-16 w-full max-w-5xl mx-auto animate-scale-in">
           <div className="text-center mb-8">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Built for <span className="text-indigo-600 dark:text-indigo-400">students</span>, by students
@@ -204,7 +209,7 @@ export default function LandingPage() {
         </div>
 
         {/* Open Source / Contribute */}
-        <div className="mt-20 w-full max-w-2xl mx-auto animate-scale-in [animation-delay:1.2s] opacity-0">
+        <div className="mt-20 w-full max-w-2xl mx-auto animate-scale-in">
           <div className="rounded-2xl border bg-gradient-to-br from-gray-900 to-gray-800 dark:from-gray-800 dark:to-gray-900 p-8 text-center text-white relative overflow-hidden">
             <div className="absolute inset-0 opacity-5">
               <div
@@ -250,37 +255,37 @@ export default function LandingPage() {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t bg-background/90 backdrop-blur-md">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t bg-background/90 backdrop-blur-md" aria-label="Mobile navigation">
         <div className="flex items-center justify-around py-2">
-          <Link href="/" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-foreground">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <Link href="/" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-foreground" aria-label="Home">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
-            <span className="text-[10px] font-medium">Home</span>
+            <span className="text-xs font-medium">Home</span>
           </Link>
-          <Link href="/about" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <Link href="/about" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground" aria-label="About">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-[10px] font-medium">About</span>
+            <span className="text-xs font-medium">About</span>
           </Link>
-          <Link href="/contact" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <Link href="/contact" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground" aria-label="Contact">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            <span className="text-[10px] font-medium">Contact</span>
+            <span className="text-xs font-medium">Contact</span>
           </Link>
-          <Link href="/login" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <Link href="/login" className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-muted-foreground" aria-label="Login">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
             </svg>
-            <span className="text-[10px] font-medium">Login</span>
+            <span className="text-xs font-medium">Login</span>
           </Link>
         </div>
-      </div>
+      </nav>
 
       {/* Footer */}
-      <footer className="hidden md:block py-8 px-6 md:px-12 mt-12 border-t bg-card/30 backdrop-blur-sm animate-fade-in [animation-delay:1.6s] opacity-0">
+      <footer className="hidden md:block py-8 px-6 md:px-12 mt-12 border-t bg-card/30 backdrop-blur-sm animate-fade-in">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center">
             <Image src="/images/site-logo.svg" alt="Acadex" width={180} height={48} className="h-12 w-auto object-contain" />

@@ -1,7 +1,12 @@
+/**
+ * @page Login (/login)
+ * @description Login form with college ID + password. Supports auto-fill
+ * via `?id=` and `?p=` URL params (from approval email link).
+ */
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -18,11 +23,31 @@ import { MagicCard } from "@/components/ui/magic-card";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
+  );
+}
+
+function LoginPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [collegeId, setCollegeId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // Auto-fill from email link query params
+  useEffect(() => {
+    const id = searchParams.get("id");
+    const p = searchParams.get("p");
+    if (id) setCollegeId(id);
+    if (p) {
+      setPassword(p);
+      setShowPassword(true);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

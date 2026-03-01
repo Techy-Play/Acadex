@@ -1,3 +1,4 @@
+/** Radix Dialog used as a sliding sheet/drawer with overlay and configurable side. */
 "use client"
 
 import * as React from "react"

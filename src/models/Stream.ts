@@ -1,3 +1,8 @@
+/**
+ * @module Stream
+ * @description Represents an academic stream/branch (e.g., "B.Tech CSE").
+ * Each stream has a list of associated subjects.
+ */
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IStream extends Document {

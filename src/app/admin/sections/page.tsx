@@ -1,3 +1,7 @@
+/**
+ * @page AdminSections (/admin/sections)
+ * @description Admin CRUD for class sections (create, rename, delete).
+ */
 "use client";
 
 import { useEffect, useState } from "react";

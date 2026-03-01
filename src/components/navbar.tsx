@@ -1,3 +1,9 @@
+/**
+ * @component Navbar
+ * @description Top navigation bar. Includes logo, notification bell
+ * (polls `/api/notifications` with unread badge), user avatar dropdown
+ * (profile, logout), admin/student view toggle, and ThemeToggle.
+ */
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -77,7 +83,7 @@ export function Navbar({ userName, userRole, onMenuToggle, isAdmin, isOnAdminRou
 
   useEffect(() => {
     fetchData();
-    pollRef.current = setInterval(fetchData, 30000);
+    pollRef.current = setInterval(fetchData, 60000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
@@ -171,6 +177,8 @@ export function Navbar({ userName, userRole, onMenuToggle, isAdmin, isOnAdminRou
     contact_message: "📬",
     profile_update: "🔐",
     admin_message: "💬",
+    request_approved: "✅",
+    request_denied: "❌",
   };
 
   function timeAgo(dateStr: string) {

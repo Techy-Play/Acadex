@@ -1,3 +1,8 @@
+/**
+ * @component NoteCard
+ * @description Renders a single note card with title, subject badge,
+ * upload date, and download/view links. Uses MagicCard for hover gradient.
+ */
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

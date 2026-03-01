@@ -1,3 +1,8 @@
+/**
+ * @module Note
+ * @description Represents a study note uploaded by an admin for a specific subject.
+ * Notes are displayed on the student dashboard grouped by subject.
+ */
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface INote extends Document {

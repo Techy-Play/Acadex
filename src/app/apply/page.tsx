@@ -1,3 +1,7 @@
+/**
+ * @page Apply (/apply)
+ * @description Access request / registration form with email OTP verification.
+ */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -42,6 +46,7 @@ export default function ApplyPage() {
   const [applyEmail, setApplyEmail] = useState("");
   const [applyStream, setApplyStream] = useState("none");
   const [applySection, setApplySection] = useState("");
+  const [applySemester, setApplySemester] = useState("");
   const [applyReason, setApplyReason] = useState("");
   const [streams, setStreams] = useState<StreamOption[]>([]);
   const [sections, setSections] = useState<SectionOption[]>([]);
@@ -172,6 +177,7 @@ export default function ApplyPage() {
           email: applyEmail,
           stream: applyStream === "none" ? null : applyStream,
           section: applySection || null,
+          semester: applySemester ? Number(applySemester) : null,
           reason: applyReason,
         }),
       });
@@ -451,6 +457,24 @@ export default function ApplyPage() {
                               {streams.map((s) => (
                                 <SelectItem key={s._id} value={s._id}>
                                   {s.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">
+                            Semester <span className="text-red-500">*</span>
+                          </Label>
+                          <Select value={applySemester} onValueChange={setApplySemester} required>
+                            <SelectTrigger className="rounded-xl h-11 border-muted-foreground/20">
+                              <SelectValue placeholder="Select your semester" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                                <SelectItem key={n} value={String(n)}>
+                                  Semester {n}
                                 </SelectItem>
                               ))}
                             </SelectContent>

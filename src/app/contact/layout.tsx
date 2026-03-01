@@ -1,9 +1,34 @@
+/** Metadata-only layout for the Contact page (title + Open Graph). */
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Contact Us",
   description:
     "Get in touch with the Acadex team. Report issues, suggest features, or ask questions about the academic resource platform.",
+  openGraph: {
+    title: "Contact Us | Acadex",
+    description:
+      "Get in touch with the Acadex team. Report issues, suggest features, or ask questions about the academic resource platform.",
+    url: "https://au-acadex.com/contact",
+    images: [
+      {
+        url: "https://au-acadex.com/images/site-logo.png",
+        width: 512,
+        height: 512,
+        alt: "Acadex Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Contact Us | Acadex",
+    description:
+      "Get in touch with the Acadex team. Report issues, suggest features, or ask questions.",
+    images: {
+      url: "https://au-acadex.com/images/site-logo.png",
+      alt: "Acadex Logo",
+    },
+  },
 };
 
 export default function ContactLayout({

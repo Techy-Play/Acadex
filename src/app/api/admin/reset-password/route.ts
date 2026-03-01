@@ -1,3 +1,8 @@
+/**
+ * @module API/Admin/ResetPassword
+ * @description Admin-only. Resets a specific user's password
+ * to a temporary value (validated with Zod `resetPasswordSchema`).
+ */
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";

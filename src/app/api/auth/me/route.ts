@@ -1,3 +1,8 @@
+/**
+ * @module API/Auth/Me
+ * @description Authenticated. Returns the current user's profile (minus password).
+ * Auto-refreshes the JWT cookie if section or semester changed in the DB.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { signToken, setAuthCookie } from "@/lib/auth";
@@ -21,10 +26,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Detect if section in JWT differs from DB — refresh token if so
+    // Detect if section or semester in JWT differs from DB — refresh token if so
     const jwtSection = request.headers.get("x-user-section") || null;
     const dbSection = user.section ? user.section.toString() : null;
-    if (jwtSection !== dbSection) {
+    const jwtSemester = request.headers.get("x-user-semester");
+    const dbSemester = user.semester || null;
+    if (jwtSection !== dbSection || (jwtSemester ? Number(jwtSemester) : null) !== dbSemester) {
       const token = signToken({
         userId: user._id.toString(),
         collegeId: user.college_id,
@@ -32,6 +39,7 @@ export async function GET(request: Request) {
         name: user.name,
         isSuperAdmin: user.isSuperAdmin || false,
         section: dbSection,
+        semester: dbSemester,
       });
       await setAuthCookie(token);
     }
@@ -74,6 +82,7 @@ export async function GET(request: Request) {
           isSuperAdmin: user.isSuperAdmin || false,
           stream: streamData,
           section: sectionData,
+          semester: user.semester || null,
           must_change_password: user.must_change_password,
           theme: user.theme || "system",
           accentColor: user.accentColor || "default",

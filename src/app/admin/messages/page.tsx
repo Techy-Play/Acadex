@@ -1,3 +1,7 @@
+/**
+ * @page AdminMessages (/admin/messages)
+ * @description Admin view for contact messages with read/reply/delete actions.
+ */
 "use client";
 
 import { useEffect, useState, useCallback } from "react";

@@ -1,3 +1,8 @@
+/**
+ * @module API/Auth/SendOTP
+ * @description Authenticated. Sends an OTP for password-change or
+ * email-change flows. Validates email domain for email changes.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";

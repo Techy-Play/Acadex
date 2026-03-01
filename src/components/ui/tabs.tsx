@@ -1,3 +1,4 @@
+/** Radix Tabs with CVA variants (default / line) and orientation support. */
 "use client"
 
 import * as React from "react"

@@ -1,3 +1,10 @@
+/**
+ * @module API/PracticalCompletions
+ * @description Practical completion tracking.
+ * - GET   → returns IDs of practicals the user has completed.
+ * - POST  → marks a practical as complete.
+ * - DELETE → un-marks a completion.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import PracticalCompletion from "@/models/PracticalCompletion";

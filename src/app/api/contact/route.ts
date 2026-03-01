@@ -1,3 +1,9 @@
+/**
+ * @module API/Contact
+ * @description Contact messages.
+ * - POST → public: submits a new contact message.
+ * - GET  → admin only: lists all contact messages.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import ContactMessage from "@/models/ContactMessage";

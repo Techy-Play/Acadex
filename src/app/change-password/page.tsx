@@ -1,3 +1,8 @@
+/**
+ * @page ChangePassword (/change-password)
+ * @description Authenticated form to set a new password
+ * (typically shown on first login with a temporary password).
+ */
 "use client";
 
 import { useState } from "react";

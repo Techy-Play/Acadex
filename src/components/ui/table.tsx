@@ -1,3 +1,4 @@
+/** Styled HTML table primitives: Table, TableHeader, TableBody, TableRow, TableHead, TableCell, etc. */
 "use client"
 
 import * as React from "react"

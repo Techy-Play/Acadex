@@ -1,3 +1,9 @@
+/**
+ * @module API/Library
+ * @description Library resource list & creation.
+ * - GET  → lists resources with optional subject/semester/type/year/section/search filters.
+ * - POST → creates a new resource (admin only, validated with `addLibraryResourceSchema`).
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { addLibraryResourceSchema } from "@/lib/validations";

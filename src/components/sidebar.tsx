@@ -1,3 +1,9 @@
+/**
+ * @component Sidebar
+ * @description Desktop/mobile sidebar navigation. Supports configurable
+ * `mobileMode` (slide / hidden / icons), active-link highlighting,
+ * and an overlay backdrop for the mobile slide-out drawer.
+ */
 "use client";
 
 import Link from "next/link";
@@ -38,8 +44,8 @@ export function Sidebar({ links, open, onClose, children, mobileMode = "slide" }
 
       {/* === Icon-only sidebar for mobile (left nav mode) === */}
       {mobileMode === "icons" && (
-        <aside className="fixed top-14 left-0 z-20 h-[calc(100vh-3.5rem)] w-14 border-r bg-background flex flex-col md:hidden">
-          <nav className="flex flex-col items-center gap-1 py-3 flex-1">
+        <aside className="fixed top-14 left-0 z-20 h-[calc(100vh-3.5rem)] w-14 border-r bg-background flex flex-col md:hidden overflow-hidden">
+          <nav className="flex flex-col items-center gap-1 py-3 flex-1 overflow-y-auto scrollbar-thin">
             {links.map((link) => {
               const isActive =
                 pathname === link.href ||
@@ -72,7 +78,7 @@ export function Sidebar({ links, open, onClose, children, mobileMode = "slide" }
       <aside
         className={cn(
           // Desktop: always visible full sidebar
-          "fixed top-14 left-0 z-30 h-[calc(100vh-3.5rem)] w-64 border-r bg-background transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:z-0 flex flex-col",
+          "fixed top-14 left-0 z-30 h-[calc(100vh-3.5rem)] w-64 border-r bg-background transition-transform duration-200 ease-in-out md:translate-x-0 md:sticky md:top-14 md:z-0 flex flex-col",
           // Mobile behavior depends on mode
           mobileMode === "slide"
             ? (open ? "translate-x-0" : "-translate-x-full")
@@ -81,7 +87,7 @@ export function Sidebar({ links, open, onClose, children, mobileMode = "slide" }
           mobileMode === "icons" && "md:translate-x-0"
         )}
       >
-        <nav className="flex flex-col gap-1 p-4 flex-1">
+        <nav className="flex flex-col gap-1 p-4 flex-1 overflow-y-auto scrollbar-thin">
           {links.map((link) => {
             const isActive =
               pathname === link.href ||

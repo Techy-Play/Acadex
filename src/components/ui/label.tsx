@@ -1,3 +1,4 @@
+/** Radix Label primitive with disabled-state styling. */
 "use client"
 
 import * as React from "react"

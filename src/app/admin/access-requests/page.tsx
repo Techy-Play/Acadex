@@ -1,3 +1,7 @@
+/**
+ * @page AdminAccessRequests (/admin/access-requests)
+ * @description Admin panel for reviewing and approving student access requests.
+ */
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -45,6 +49,7 @@ interface AccessRequest {
   email: string;
   stream: { _id: string; name: string } | null;
   section: { _id: string; name: string } | null;
+  semester: number | null;
   reason: string;
   status: "pending" | "approved" | "denied";
   admin_note: string;
@@ -75,6 +80,7 @@ export default function AccessRequestsPage() {
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [clearingOlder, setClearingOlder] = useState(false);
 
   // Approval result
   const [approvalResult, setApprovalResult] = useState<{
@@ -224,6 +230,29 @@ export default function AccessRequestsPage() {
     }
   };
 
+  const handleClearOlder = async () => {
+    if (!confirm("Clear older processed requests (approved/denied)? Pending requests will be kept.")) {
+      return;
+    }
+    setClearingOlder(true);
+    try {
+      const res = await fetch("/api/admin/access-requests?mode=clear-older", {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to clear older requests");
+        return;
+      }
+      toast.success(`Cleared ${data.deletedCount || 0} older request(s)`);
+      fetchRequests();
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setClearingOlder(false);
+    }
+  };
+
   const statusBadge = (status: string) => {
     switch (status) {
       case "pending":
@@ -350,6 +379,14 @@ export default function AccessRequestsPage() {
                 )}
               </CardDescription>
             </div>
+            <Button
+              variant="outline"
+              className="rounded-xl text-xs h-9"
+              onClick={handleClearOlder}
+              disabled={clearingOlder}
+            >
+              {clearingOlder ? "Clearing..." : "Clear Older Requests"}
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -438,6 +475,7 @@ export default function AccessRequestsPage() {
                     <TableHead>College ID</TableHead>
                     <TableHead>Stream</TableHead>
                     <TableHead>Section</TableHead>
+                    <TableHead>Semester</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Date</TableHead>
                   </TableRow>
@@ -503,6 +541,20 @@ export default function AccessRequestsPage() {
                             className="rounded-full text-xs"
                           >
                             🏫 {req.section.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {req.semester ? (
+                          <Badge
+                            variant="outline"
+                            className="rounded-full text-xs"
+                          >
+                            📅 Sem {req.semester}
                           </Badge>
                         ) : (
                           <span className="text-xs text-muted-foreground">
@@ -602,6 +654,14 @@ export default function AccessRequestsPage() {
                   <p className="text-sm font-medium">
                     {selectedRequest.section
                       ? `🏫 ${selectedRequest.section.name}`
+                      : "Not specified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Semester</p>
+                  <p className="text-sm font-medium">
+                    {selectedRequest.semester
+                      ? `📅 Semester ${selectedRequest.semester}`
                       : "Not specified"}
                   </p>
                 </div>

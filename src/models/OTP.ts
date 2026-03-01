@@ -1,3 +1,9 @@
+/**
+ * @module OTP
+ * @description One-Time Password model for email verification flows.
+ * Supports password change, email change, forgot password, and signup verification.
+ * Uses a TTL index on expiresAt — expired OTPs are auto-deleted by MongoDB.
+ */
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IOTP extends Document {

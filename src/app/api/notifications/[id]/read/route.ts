@@ -1,3 +1,9 @@
+/**
+ * @module API/Notifications/[id]/Read
+ * @description Single notification actions.
+ * - POST  → marks the notification as read (adds user to `readBy`).
+ * - DELETE → dismisses the notification for the user (adds to `dismissedBy`).
+ */
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";

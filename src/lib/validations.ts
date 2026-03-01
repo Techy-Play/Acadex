@@ -1,6 +1,12 @@
+/**
+ * @module lib/validations
+ * @description Zod validation schemas shared between client forms and
+ * API route handlers. Each schema has a matching inferred TypeScript
+ * type exported at the bottom of the file.
+ */
 import { z } from "zod";
 
-// Allowed email domains
+/** Whitelist of email domains accepted during registration/email-change. */
 export const ALLOWED_EMAIL_DOMAINS = [
   "gmail.com",
   "outlook.com",
@@ -9,9 +15,10 @@ export const ALLOWED_EMAIL_DOMAINS = [
   "amrapali.ac.in",
 ];
 
-// College ID format: 7 digits starting with 241/257/258/259
+/** College ID regex: 6–7 digits starting with 241/257/258/259. */
 export const STUDENT_COLLEGE_ID_REGEX = /^(241|257|258|259)\d{3,4}$/;
 
+/** Returns `true` if the email’s domain is in the allowed whitelist. */
 export function isAllowedEmailDomain(email: string): boolean {
   const domain = email.split("@")[1]?.toLowerCase();
   return ALLOWED_EMAIL_DOMAINS.includes(domain);
@@ -42,6 +49,7 @@ export const addStudentSchema = z.object({
     .min(6, "Password must be at least 6 characters")
     .max(128, "Password too long"),
   role: z.enum(["admin", "student"]).default("student"),
+  semester: z.number().int().min(1, "Min semester is 1").max(8, "Max semester is 8").optional().nullable(),
 });
 
 export const resetPasswordSchema = z.object({
@@ -141,6 +149,7 @@ export const accessRequestSchema = z.object({
     ),
   stream: z.string().optional().nullable(),
   section: z.string().min(1, "Section is required"),
+  semester: z.number().int().min(1, "Min semester is 1").max(8, "Max semester is 8").optional().nullable(),
   reason: z.string().max(500, "Reason too long").optional().default(""),
 });
 

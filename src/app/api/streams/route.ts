@@ -1,3 +1,9 @@
+/**
+ * @module API/Streams
+ * @description Stream management.
+ * - GET  → lists all streams with populated subjects.
+ * - POST → creates a new stream (admin with `isAdminStream` or super admin).
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Stream from "@/models/Stream";

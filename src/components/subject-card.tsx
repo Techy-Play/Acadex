@@ -1,3 +1,8 @@
+/**
+ * @component SubjectCard
+ * @description Card showing a subject name with note count, assignment
+ * progress bar, and practical progress bar. Uses MagicCard for hover effect.
+ */
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

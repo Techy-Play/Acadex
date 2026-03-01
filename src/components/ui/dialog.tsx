@@ -1,3 +1,4 @@
+/** Radix Dialog (modal) with overlay, close button, and header/footer slots. */
 "use client"
 
 import * as React from "react"

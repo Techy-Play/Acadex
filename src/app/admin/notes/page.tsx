@@ -1,8 +1,11 @@
+/**
+ * @page AdminNotes (/admin/notes)
+ * @description Admin CRUD for notes (create, edit, delete).
+ */
 "use client";
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +44,7 @@ import { Badge } from "@/components/ui/badge";
 interface Subject {
   _id: string;
   name: string;
+  semester: number;
 }
 
 interface SectionItem {
@@ -53,7 +57,7 @@ interface Note {
   title: string;
   file_url: string;
   uploadedAt: string;
-  subject: { _id: string; name: string };
+  subject: { _id: string; name: string; semester?: number };
   section?: { _id: string; name: string } | null;
   uploadedBy?: { _id: string; name: string } | null;
 }
@@ -63,6 +67,11 @@ export default function ManageNotesPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [semesterFilter, setSemesterFilter] = useState<string>("all");
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>("all");
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>("all");
+  const [userSectionId, setUserSectionId] = useState<string>("");
 
   // Add form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -88,7 +97,21 @@ export default function ManageNotesPage() {
 
   const fetchNotes = async () => {
     try {
-      const res = await fetch("/api/notes");
+      const params = new URLSearchParams();
+      if (selectedSubjectFilter !== "all") {
+        params.set("subject", selectedSubjectFilter);
+      }
+      if (selectedSectionFilter === "all") {
+        params.set("section", "all");
+      } else if (selectedSectionFilter !== "my-section" && selectedSectionFilter) {
+        params.set("section", selectedSectionFilter);
+      }
+      if (isSuperAdmin && semesterFilter !== "all") {
+        params.set("semester", semesterFilter);
+      }
+
+      const url = params.toString() ? `/api/notes?${params.toString()}` : "/api/notes";
+      const res = await fetch(url);
       const data = await res.json();
       if (res.ok) setNotes(data.notes || []);
     } catch {
@@ -118,15 +141,41 @@ export default function ManageNotesPage() {
     }
   };
 
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (res.ok) {
+        const superAdmin = Boolean(data.user?.isSuperAdmin);
+        setIsSuperAdmin(superAdmin);
+        const sectionId = data.user?.section?.id || "";
+        setUserSectionId(sectionId);
+        setSelectedSectionFilter(superAdmin ? "all" : "my-section");
+      }
+    } catch {
+      setIsSuperAdmin(false);
+    }
+  };
+
   useEffect(() => {
-    fetchNotes();
     fetchSubjects();
     fetchSections();
+    fetchCurrentUser();
   }, []);
+
+  useEffect(() => {
+    fetchNotes();
+  }, [selectedSubjectFilter, selectedSectionFilter, semesterFilter, isSuperAdmin]);
 
   // ─── Add Note ───────────────────────────────────
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!addFileUrl.trim()) {
+      toast.error("PDF / File URL is required");
+      return;
+    }
+
     setAddLoading(true);
 
     try {
@@ -136,8 +185,8 @@ export default function ManageNotesPage() {
         body: JSON.stringify({
           subject: addSubject,
           title: addTitle,
-          file_url: addFileUrl,
-          ...(addSection && { section: addSection }),
+          file_url: addFileUrl.trim(),
+          ...(isSuperAdmin && addSection && { section: addSection }),
         }),
       });
 
@@ -247,19 +296,70 @@ export default function ManageNotesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Notes</h1>
           <p className="text-muted-foreground">
             {notes.length} note{notes.length !== 1 ? "s" : ""} uploaded
           </p>
         </div>
-        <Button
-          className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={() => setShowAddForm(!showAddForm)}
-        >
-          {showAddForm ? "Cancel" : "+ Add Note"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={selectedSubjectFilter} onValueChange={setSelectedSubjectFilter}>
+            <SelectTrigger className="w-[170px] rounded-xl">
+              <SelectValue placeholder="Subject" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="all">All Subjects</SelectItem>
+              {subjects.map((s) => (
+                <SelectItem key={s._id} value={s._id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedSectionFilter} onValueChange={setSelectedSectionFilter}>
+            <SelectTrigger className="w-[170px] rounded-xl">
+              <SelectValue placeholder="Section" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              {!isSuperAdmin && userSectionId && (
+                <SelectItem value="my-section">My Section</SelectItem>
+              )}
+              <SelectItem value="all">All Sections</SelectItem>
+              {sections
+                .filter((s) => !userSectionId || s._id !== userSectionId)
+                .map((s) => (
+                  <SelectItem key={s._id} value={s._id}>
+                    🏫 {s.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+
+          {isSuperAdmin && (
+            <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+              <SelectTrigger className="w-[160px] rounded-xl">
+                <SelectValue placeholder="Semester" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">All Semesters</SelectItem>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                  <SelectItem key={s} value={String(s)}>
+                    Semester {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Button
+            className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={() => setShowAddForm(!showAddForm)}
+          >
+            {showAddForm ? "Cancel" : "+ Add Note"}
+          </Button>
+        </div>
       </div>
 
       {/* Add Note Form (collapsible) */}
@@ -318,12 +418,12 @@ export default function ManageNotesPage() {
                     Use a shared Google Drive or Dropbox link so students can access it.
                   </p>
                 </div>
-                {sections.length > 0 && (
+                {isSuperAdmin && sections.length > 0 ? (
                   <div className="space-y-2">
-                    <Label>Section (Optional)</Label>
+                    <Label>Section</Label>
                     <Select value={addSection} onValueChange={setAddSection}>
                       <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="Auto (your section)" />
+                        <SelectValue placeholder="Select section (optional)" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
                         {sections.map((s) => (
@@ -334,13 +434,22 @@ export default function ManageNotesPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label>Section</Label>
+                    <Input
+                      value="Auto (your section)"
+                      disabled
+                      className="rounded-xl"
+                    />
+                  </div>
                 )}
               </div>
 
               <Button
                 type="submit"
                 className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={addLoading || !addSubject}
+                disabled={addLoading || !addSubject || !addFileUrl.trim()}
               >
                 {addLoading ? "Adding..." : "Add Note"}
               </Button>
@@ -360,8 +469,22 @@ export default function ManageNotesPage() {
         </Card>
       ) : (
         (() => {
+          const filtered = notes;
+
+          if (filtered.length === 0) {
+            return (
+              <Card className="rounded-2xl">
+                <CardContent className="py-8">
+                  <p className="text-center text-muted-foreground">
+                    No notes found for selected filters.
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          }
+
           const grouped: Record<string, Note[]> = {};
-          for (const note of notes) {
+          for (const note of filtered) {
             const subjectName = note.subject?.name || "Unknown";
             if (!grouped[subjectName]) grouped[subjectName] = [];
             grouped[subjectName].push(note);
@@ -392,9 +515,23 @@ export default function ManageNotesPage() {
                     </TableHeader>
                     <TableBody>
                       {subjectNotes.map((note) => (
-                        <TableRow key={note._id}>
+                        <TableRow
+                          key={note._id}
+                          className={note.file_url ? "cursor-pointer hover:bg-muted/50" : ""}
+                          onClick={() => {
+                            if (note.file_url) {
+                              window.open(
+                                `/user/dashboard/viewer?url=${encodeURIComponent(note.file_url)}&title=${encodeURIComponent(note.title)}`,
+                                "_blank"
+                              );
+                            }
+                          }}
+                        >
                           <TableCell className="font-medium max-w-[200px] truncate">
                             {note.title}
+                            {note.file_url && (
+                              <span className="ml-2 text-xs text-primary">📄</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             {note.section ? (
@@ -416,15 +553,10 @@ export default function ManageNotesPage() {
                             })}
                           </TableCell>
                           <TableCell className="text-right space-x-2">
-                            <Button variant="outline" size="sm" className="rounded-lg" asChild>
-                              <Link href={`/user/dashboard/viewer?url=${encodeURIComponent(note.file_url)}&title=${encodeURIComponent(note.title)}`} target="_blank">
-                                Open
-                              </Link>
-                            </Button>
-                            <Button variant="outline" size="sm" className="rounded-lg" onClick={() => openEditDialog(note)}>
+                            <Button variant="outline" size="sm" className="rounded-lg" onClick={(e) => { e.stopPropagation(); openEditDialog(note); }}>
                               Edit
                             </Button>
-                            <Button variant="destructive" size="sm" className="rounded-lg" onClick={() => openDeleteDialog(note)}>
+                            <Button variant="destructive" size="sm" className="rounded-lg" onClick={(e) => { e.stopPropagation(); openDeleteDialog(note); }}>
                               Delete
                             </Button>
                           </TableCell>

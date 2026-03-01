@@ -1,9 +1,67 @@
+/**
+ * @module API/Notifications
+ * @description User notification management.
+ * - GET   → fetches notifications for the current user (also triggers
+ *            throttled deadline-alert generation).
+ * - PUT   → marks all notifications as read.
+ * - DELETE → dismisses all notifications for the user.
+ */
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import Notification from "@/models/Notification";
 import Assignment from "@/models/Assignment";
 import User from "@/models/User";
+
+// ── Throttled deadline alert generation ──
+// Run at most once every 15 minutes across all requests (in-memory per instance)
+let lastDeadlineCheck = 0;
+const DEADLINE_CHECK_INTERVAL = 15 * 60 * 1000; // 15 minutes
+
+async function generateDeadlineAlerts() {
+  const now = Date.now();
+  if (now - lastDeadlineCheck < DEADLINE_CHECK_INTERVAL) return;
+  lastDeadlineCheck = now;
+
+  try {
+    const currentDate = new Date();
+    const in24h = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000);
+
+    const upcomingAssignments = await Assignment.find({
+      deadline: { $gte: currentDate, $lte: in24h },
+    })
+      .populate("subject", "name")
+      .lean();
+
+    for (const a of upcomingAssignments) {
+      // Don't create duplicate deadline alerts
+      const existing = await Notification.findOne({
+        type: "deadline_alert",
+        link: `/user/dashboard/assignments`,
+        message: { $regex: a._id.toString() },
+      });
+      if (!existing) {
+        const subjectName =
+          (a.subject as { name?: string })?.name || "Unknown";
+        const deadlineStr = new Date(a.deadline!).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        await Notification.create({
+          type: "deadline_alert",
+          title: "Assignment Deadline Approaching",
+          message: `"${a.title}" (${subjectName}) is due ${deadlineStr} [${a._id}]`,
+          link: "/user/dashboard/assignments",
+          targetRole: "student",
+        });
+      }
+    }
+  } catch {
+    // Don't fail — silently skip deadline check
+  }
+}
 
 // GET /api/notifications — Fetch notifications for current user
 export async function GET(request: Request) {
@@ -17,45 +75,8 @@ export async function GET(request: Request) {
 
     await connectDB();
 
-    // ── Generate deadline alerts for upcoming assignments (24h) ──
-    try {
-      const now = new Date();
-      const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
-      const upcomingAssignments = await Assignment.find({
-        deadline: { $gte: now, $lte: in24h },
-      })
-        .populate("subject", "name")
-        .lean();
-
-      for (const a of upcomingAssignments) {
-        // Don't create duplicate deadline alerts
-        const existing = await Notification.findOne({
-          type: "deadline_alert",
-          link: `/user/dashboard/assignments`,
-          "message": { $regex: a._id.toString() },
-        });
-        if (!existing) {
-          const subjectName =
-            (a.subject as { name?: string })?.name || "Unknown";
-          const deadlineStr = new Date(a.deadline!).toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          await Notification.create({
-            type: "deadline_alert",
-            title: "Assignment Deadline Approaching",
-            message: `"${a.title}" (${subjectName}) is due ${deadlineStr} [${a._id}]`,
-            link: "/user/dashboard/assignments",
-            targetRole: "student",
-          });
-        }
-      }
-    } catch {
-      // Don't fail the whole request if deadline check fails
-    }
+    // Generate deadline alerts (throttled — at most once per 15 min)
+    await generateDeadlineAlerts();
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const userObjId = new mongoose.Types.ObjectId(userId);
@@ -72,6 +93,8 @@ export async function GET(request: Request) {
           new_practical: prefs.new_practical,
           deadline_alert: prefs.deadline_alert,
           admin_message: prefs.admin_message,
+          request_approved: prefs.request_approved,
+          request_denied: prefs.request_denied,
         };
         for (const [type, enabled] of Object.entries(prefMap)) {
           if (enabled === false) mutedTypes.push(type);

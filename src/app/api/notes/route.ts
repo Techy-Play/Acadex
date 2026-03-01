@@ -1,3 +1,9 @@
+/**
+ * @module API/Notes
+ * @description Note list & creation.
+ * - GET  → lists notes with optional subject/section/semester filters.
+ * - POST → creates a new note (admin only, validated with `addNoteSchema`).
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { addNoteSchema } from "@/lib/validations";
@@ -17,21 +23,101 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const subjectId = searchParams.get("subject");
     const sectionParam = searchParams.get("section");
+    const semesterParam = searchParams.get("semester");
 
+    const userId = request.headers.get("x-user-id");
     const userRole = request.headers.get("x-user-role");
     const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
     const userSection = request.headers.get("x-user-section");
 
-    const filter: Record<string, string> = {};
-    if (subjectId) filter.subject = subjectId;
+    const filter: Record<string, unknown> = {};
+
+    if (subjectId) {
+      filter.subject = subjectId;
+    }
+
+    // Optional super-admin semester filter
+    if (isSuperAdmin && semesterParam) {
+      const semesterNum = Number(semesterParam);
+      if (!Number.isNaN(semesterNum) && semesterNum >= 1 && semesterNum <= 8) {
+        const SubjectModel = (await import("@/models/Subject")).default;
+        const semSubjects = await SubjectModel.find({ semester: semesterNum })
+          .select("_id")
+          .lean();
+        const semSubjectIds = semSubjects.map((s) => s._id.toString());
+        if (semSubjectIds.length === 0) {
+          return NextResponse.json({ notes: [] });
+        }
+
+        if (subjectId) {
+          if (!semSubjectIds.includes(subjectId)) {
+            return NextResponse.json({ notes: [] });
+          }
+        } else {
+          filter.subject = { $in: semSubjectIds };
+        }
+      }
+    }
+
+    // Non-super admin/student visibility: subjects must match own stream and (if set) own semester
+    if (!isSuperAdmin && (userRole === "student" || userRole === "admin")) {
+      if (!userId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      const StreamModel = (await import("@/models/Stream")).default;
+      const SubjectModel = (await import("@/models/Subject")).default;
+
+      const student = await User.findById(userId).select("stream semester").lean();
+
+      if (!student?.stream) {
+        return NextResponse.json({ notes: [] });
+      }
+
+      const stream = await StreamModel.findById(student.stream).select("subjects").lean();
+
+      if (!stream?.subjects?.length) {
+        return NextResponse.json({ notes: [] });
+      }
+
+      const subjectFilter: Record<string, unknown> = {
+        _id: { $in: stream.subjects },
+      };
+
+      if (student.semester && student.semester >= 1 && student.semester <= 8) {
+        subjectFilter.semester = student.semester;
+      }
+
+      const allowedSubjects = await SubjectModel.find(subjectFilter)
+        .select("_id")
+        .lean();
+
+      const allowedSubjectIds = allowedSubjects.map((s) => s._id.toString());
+
+      if (allowedSubjectIds.length === 0) {
+        return NextResponse.json({ notes: [] });
+      }
+
+      if (subjectId) {
+        if (!allowedSubjectIds.includes(subjectId)) {
+          return NextResponse.json({ notes: [] });
+        }
+      } else {
+        filter.subject = { $in: allowedSubjectIds };
+      }
+    }
 
     // Section filtering logic:
     // - Super admins see all (unless they explicitly filter)
     // - Sub-admins are hard-filtered to their own section
     // - Students default to their section; can use ?section=all to see all
     if (userRole === "admin" && !isSuperAdmin && userSection) {
-      // Sub-admin: always restricted to own section
-      filter.section = userSection;
+      // Sub-admin: default to own section, but allow explicit section/all filter
+      if (sectionParam && sectionParam !== "all") {
+        filter.section = sectionParam;
+      } else if (sectionParam !== "all") {
+        filter.section = userSection;
+      }
     } else if (sectionParam && sectionParam !== "all") {
       // Explicit section filter from query param
       filter.section = sectionParam;
@@ -41,7 +127,7 @@ export async function GET(request: Request) {
     }
 
     const notes = await Note.find(filter)
-      .populate("subject", "name type")
+      .populate("subject", "name type semester")
       .populate("section", "name")
       .populate("uploadedBy", "name")
       .sort({ uploadedAt: -1 });

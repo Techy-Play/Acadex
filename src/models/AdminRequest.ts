@@ -1,3 +1,8 @@
+/**
+ * @module AdminRequest
+ * @description Handles elevated requests that require super-admin approval,
+ * such as creating new admin accounts or changing a user's section/stream.
+ */
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IAdminRequest extends Document {

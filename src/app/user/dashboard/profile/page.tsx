@@ -1,3 +1,8 @@
+/**
+ * @page UserProfile (/user/dashboard/profile)
+ * @description User profile settings: edit name, email (OTP-verified),
+ * password, theme preferences, notification opt-ins, and admin actions.
+ */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -20,6 +25,8 @@ interface UserData {
   role: "admin" | "student";
   isSuperAdmin?: boolean;
   stream: { id: string; name: string } | null;
+  section?: { id: string; name: string } | null;
+  semester: number | null;
   createdAt: string;
   mobileNavPosition?: "top" | "bottom" | "left";
 }
@@ -61,6 +68,8 @@ export default function ProfilePage() {
     new_practical: true,
     deadline_alert: true,
     admin_message: true,
+    request_approved: true,
+    request_denied: true,
   });
   const [notifSaving, setNotifSaving] = useState<string | null>(null);
 
@@ -358,9 +367,15 @@ export default function ProfilePage() {
               <p className="text-sm text-muted-foreground">
                 Email: {user.email || <span className="italic text-yellow-600 dark:text-yellow-400">Not set</span>}
               </p>
-              {user.stream && (
-                <p className="text-sm text-muted-foreground">Stream: {user.stream.name}</p>
-              )}
+              <p className="text-sm text-muted-foreground">
+                Stream: {user.stream?.name || "No Stream"} 
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Semester: {user.semester ?? "-"} | Section: {user.section?.name || "No Section"}
+
+              </p>
+              <p className="text-sm text-muted-foreground">
+              </p>
               <p className="text-xs text-muted-foreground mt-1">Member since {memberSince}</p>
             </div>
           </div>
@@ -516,6 +531,8 @@ export default function ProfilePage() {
               { key: "new_practical" as const, label: "New Practicals", icon: "🧪", desc: "When new practicals are added" },
               { key: "deadline_alert" as const, label: "Deadline Alerts", icon: "⏰", desc: "Assignment deadline reminders" },
               { key: "admin_message" as const, label: "Admin Messages", icon: "💬", desc: "Direct messages from admins" },
+              { key: "request_approved" as const, label: "Request Approved", icon: "✅", desc: "When your request is approved" },
+              { key: "request_denied" as const, label: "Request Denied", icon: "❌", desc: "When your request is denied" },
             ]).map((item) => (
               <button
                 key={item.key}

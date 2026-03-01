@@ -1,3 +1,8 @@
+/**
+ * @module API/Auth/ChangePassword
+ * @description Authenticated. Forces the current user to set a new password
+ * (typically used on first login with a temporary password). Re-issues JWT.
+ */
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";

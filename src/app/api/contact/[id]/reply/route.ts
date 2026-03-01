@@ -1,3 +1,8 @@
+/**
+ * @module API/Contact/[id]/Reply
+ * @description Admin-only. Sends an email reply to a contact message
+ * and marks it as replied in the database.
+ */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import ContactMessage from "@/models/ContactMessage";
