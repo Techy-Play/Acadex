@@ -511,7 +511,7 @@ export default function UsersPage() {
                 <Input
                   id="add_name"
                   type="text"
-                  placeholder="e.g. John Doe"
+                  placeholder="e.g. Deepak Negi"
                   value={addName}
                   onChange={(e) => setAddName(e.target.value)}
                   required
@@ -523,7 +523,7 @@ export default function UsersPage() {
                 <Input
                   id="add_college_id"
                   type="text"
-                  placeholder="e.g. 2024BCS001"
+                  placeholder="e.g. 241...."
                   value={addCollegeId}
                   onChange={(e) => setAddCollegeId(e.target.value)}
                   required
