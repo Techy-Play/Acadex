@@ -31,6 +31,7 @@ const siteDescription =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  applicationName: "Acadex",
 
   title: {
     default: "Acadex – Open Source Academic Resource Platform",
@@ -102,11 +103,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/images/favicon.ico", sizes: "any" },
-      { url: "/images/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/images/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
     ],
-    apple: "/images/apple-touch-icon.png",
+    apple: "/apple-touch-icon.png",
+    shortcut: "/favicon.ico",
   },
 };
 
@@ -117,9 +118,13 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "Organization",
+      "@id": `${siteUrl}/#organization`,
       name: "Acadex",
       url: siteUrl,
-      logo: `${siteUrl}/images/logo.png`,
+      logo: {
+        "@type": "ImageObject",
+        url: `${siteUrl}/site-logo.png`,
+      },
       founder: {
         "@type": "Person",
         name: "Lokesh Paneru",
@@ -130,8 +135,13 @@ const jsonLd = {
     },
     {
       "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
       name: "Acadex",
+      alternateName: "Acadex",
       url: siteUrl,
+      publisher: {
+        "@id": `${siteUrl}/#organization`,
+      },
       description:
         "Structured academic resource management system designed to replace WhatsApp-based academic sharing.",
     },
@@ -215,35 +225,6 @@ const jsonLd = {
             "@type": "Answer",
             text: "Traditional college ERP systems are often outdated, slow, and hard to navigate. Acadex provides a modern, fast, and student-friendly interface specifically designed for academic resource management.",
           },
-        },
-      ],
-    },
-    {
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: "Home",
-          item: siteUrl,
-        },
-        {
-          "@type": "ListItem",
-          position: 2,
-          name: "Why Acadex",
-          item: `${siteUrl}/why-acadex`,
-        },
-        {
-          "@type": "ListItem",
-          position: 3,
-          name: "About Us",
-          item: `${siteUrl}/about`,
-        },
-        {
-          "@type": "ListItem",
-          position: 4,
-          name: "Contact",
-          item: `${siteUrl}/contact`,
         },
       ],
     },
