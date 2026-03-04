@@ -5,6 +5,16 @@ export const metadata: Metadata = {
   title: "Dashboard",
   description:
     "Acadex dashboard entry point. Sign in to access your academic resources, subjects, assignments, and practicals.",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+      "max-image-preview": "none",
+      "max-snippet": -1,
+    },
+  },
   openGraph: {
     title: "Dashboard | Acadex",
     description:

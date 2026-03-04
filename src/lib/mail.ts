@@ -11,13 +11,11 @@
  * - `profileUpdateOtpHTML` – OTP for password / email change
  */
 import nodemailer from "nodemailer";
-import path from "path";
-import fs from "fs";
 
 function getAppUrl(): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "https://au-acadex.com";
+  return "http://localhost:3000";
 }
 
 const transporter = nodemailer.createTransport({
@@ -40,23 +38,11 @@ export async function sendMail({ to, subject, html }: SendMailOptions) {
     return null;
   }
 
-  const logoPath = path.join(process.cwd(), "public", "site-logo.png");
-  const attachments = fs.existsSync(logoPath)
-    ? [
-        {
-          filename: "site-logo.png",
-          path: logoPath,
-          cid: "acadex-logo",
-        },
-      ]
-    : [];
-
   const info = await transporter.sendMail({
     from: `"Acadex" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     html,
-    attachments,
   });
 
   return info;
@@ -75,7 +61,7 @@ function emailWrapper(body: string): string {
               <!-- Logo -->
               <tr>
                 <td style="padding: 0 0 5px 0;">
-                  <img src="cid:acadex-logo" alt="Acadex" height="100" style="display: block; height: 80px; width: auto;" />
+                  <img src="${getAppUrl()}/site-logo.png" alt="Acadex" height="100" style="display: block; height: 80px; width: auto;" />
                 </td>
               </tr>
               <!-- Main card -->

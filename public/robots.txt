@@ -3,6 +3,7 @@ Allow: /
 Disallow: /api/
 Disallow: /admin/
 Disallow: /user/
+Disallow: /dashboard
 Disallow: /forgot-password
 Disallow: /change-password
 Disallow: /account-restricted
