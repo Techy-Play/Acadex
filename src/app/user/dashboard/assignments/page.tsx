@@ -493,6 +493,7 @@ export default function AssignmentsPage() {
                             title={assignment.title}
                             description={assignment.description}
                             subjectName={assignment.subject?.name}
+                            subjectId={assignment.subject?._id}
                             deadline={assignment.deadline}
                             fileUrl={assignment.file_url}
                             createdAt={assignment.createdAt}

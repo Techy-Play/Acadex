@@ -26,6 +26,7 @@ interface AssignmentCardProps {
   title: string;
   description?: string;
   subjectName?: string;
+  subjectId?: string;
   deadline?: string | null;
   fileUrl?: string;
   createdAt: string;
@@ -38,6 +39,7 @@ export function AssignmentCard({
   title,
   description,
   subjectName,
+  subjectId,
   deadline,
   fileUrl,
   createdAt,
@@ -103,9 +105,20 @@ export function AssignmentCard({
               </CardTitle>
               <div className="flex gap-2 flex-wrap">
                 {subjectName && (
-                  <Badge variant="secondary" className="rounded-lg text-xs">
-                    {subjectName}
-                  </Badge>
+                  subjectId ? (
+                    <Link
+                      href={`/user/dashboard/notes?subject=${subjectId}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Badge variant="secondary" className="rounded-lg text-xs hover:bg-primary/20 transition-colors cursor-pointer">
+                        {subjectName}
+                      </Badge>
+                    </Link>
+                  ) : (
+                    <Badge variant="secondary" className="rounded-lg text-xs">
+                      {subjectName}
+                    </Badge>
+                  )
                 )}
                 {deadline && (
                   <Badge

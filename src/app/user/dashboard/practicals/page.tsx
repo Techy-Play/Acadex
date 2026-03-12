@@ -456,6 +456,7 @@ export default function PracticalsPage() {
                             title={practical.title}
                             description={practical.description}
                             subjectName={practical.subject?.name}
+                            subjectId={practical.subject?._id}
                             deadline={null}
                             fileUrl={practical.file_url}
                             createdAt={practical.createdAt}

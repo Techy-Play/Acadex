@@ -6,6 +6,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubjectCard } from "@/components/subject-card";
@@ -70,6 +71,7 @@ export default function StudentDashboard() {
   const [section, setSection] = useState<SectionData | null>(null);
   const [semester, setSemester] = useState<number | null>(null);
   const [subjectPopup, setSubjectPopup] = useState<{ id: string; name: string; type: string } | null>(null);
+  const [progressPopup, setProgressPopup] = useState<"assignments" | "practicals" | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const handleViewChange = (mode: ViewMode) => {
@@ -432,8 +434,7 @@ export default function StudentDashboard() {
           Your Progress
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
-        {/* Assignment Gauge */}
-        <Card className="rounded-2xl">
+        <Card className="rounded-2xl cursor-pointer hover:shadow-md transition-shadow" onClick={() => setProgressPopup("assignments")}>
           <CardContent className="p-5 flex items-center gap-5">
             {/* SVG Gauge */}
             <div className="relative h-24 w-24 shrink-0">
@@ -470,7 +471,7 @@ export default function StudentDashboard() {
         </Card>
 
         {/* Practical Gauge */}
-        <Card className="rounded-2xl">
+        <Card className="rounded-2xl cursor-pointer hover:shadow-md transition-shadow" onClick={() => setProgressPopup("practicals")}>
           <CardContent className="p-5 flex items-center gap-5">
             {/* SVG Gauge */}
             <div className="relative h-24 w-24 shrink-0">
@@ -767,11 +768,146 @@ export default function StudentDashboard() {
           </div>
         );
       })()}
+
+      {/* Progress Details Popup */}
+      {progressPopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setProgressPopup(null)}
+        >
+          <div
+            className="bg-card border rounded-2xl shadow-2xl p-6 w-[90vw] max-w-md max-h-[80vh] overflow-y-auto space-y-5 animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold tracking-tight flex items-center gap-2">
+                {progressPopup === "assignments" ? (
+                  <>
+                    <svg className="h-5 w-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    Assignment Progress
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-5 w-5 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                    Practical Progress
+                  </>
+                )}
+              </h3>
+              <button
+                onClick={() => setProgressPopup(null)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Assignments by subject */}
+            {progressPopup === "assignments" && (() => {
+              const theoryWithAssign = data.subjects.filter(
+                (s) => s.type !== "practical" && (assignmentCountBySubject[s._id] || 0) > 0
+              );
+              if (theoryWithAssign.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">No assignments found.</p>;
+              return (
+                <div className="space-y-2.5">
+                  {theoryWithAssign.map((s, i) => {
+                    const total = assignmentCountBySubject[s._id] || 0;
+                    const done = completedBySubject[s._id] || 0;
+                    const remaining = total - done;
+                    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                    return (
+                      <div key={s._id} className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-muted-foreground w-5 text-right shrink-0">{i + 1}.</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <Link
+                              href={`/user/dashboard/assignments?subject=${s._id}${remaining > 0 ? "" : ""}`}
+                              onClick={() => setProgressPopup(null)}
+                              className="text-sm font-medium truncate hover:text-purple-500 hover:underline transition-colors"
+                            >
+                              {s.name}
+                            </Link>
+                            <span className={`text-xs font-semibold ml-2 shrink-0 ${pct === 100 ? "text-emerald-500" : "text-purple-600 dark:text-purple-400"}`}>
+                              {done}/{total}
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-500" : "bg-purple-500"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Practicals by subject */}
+            {progressPopup === "practicals" && (() => {
+              const labWithPrac = data.subjects.filter(
+                (s) => s.type === "practical" && (practicalCountBySubject[s._id] || 0) > 0
+              );
+              if (labWithPrac.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">No practicals found.</p>;
+              return (
+                <div className="space-y-2.5">
+                  {labWithPrac.map((s, i) => {
+                    const total = practicalCountBySubject[s._id] || 0;
+                    const done = practicalCompletedBySubject[s._id] || 0;
+                    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                    return (
+                      <div key={s._id} className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-muted-foreground w-5 text-right shrink-0">{i + 1}.</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <Link
+                              href={`/user/dashboard/practicals?subject=${s._id}`}
+                              onClick={() => setProgressPopup(null)}
+                              className="text-sm font-medium truncate hover:text-teal-500 hover:underline transition-colors"
+                            >
+                              {s.name}
+                            </Link>
+                            <span className={`text-xs font-semibold ml-2 shrink-0 ${pct === 100 ? "text-emerald-500" : "text-teal-600 dark:text-teal-400"}`}>
+                              {done}/{total}
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-teal-500 to-emerald-500"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            <button
+              onClick={() => setProgressPopup(null)}
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors pt-1"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 
   function renderSubjectsByView(subjects: Subject[], label: string, emoji: string) {
     if (subjects.length === 0) return null;
+    const isTheory = label === "Theory";
 
     return (
       <div className={label === "Theory" ? "mb-6" : ""}>
@@ -854,7 +990,7 @@ export default function StudentDashboard() {
                     <th className="px-4 py-3 font-semibold text-muted-foreground">Subject</th>
                     <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Notes</th>
                     <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Assignments</th>
-                    <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Practicals</th>
+                    {!isTheory && <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Practicals</th>}
                     <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Progress</th>
                   </tr>
                 </thead>
@@ -888,9 +1024,11 @@ export default function StudentDashboard() {
                         <td className="px-4 py-3 text-center">
                           <span className="text-purple-600 dark:text-purple-400">{assignDone}/{assignTotal}</span>
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="text-teal-600 dark:text-teal-400">{pracDone}/{pracTotal}</span>
-                        </td>
+                        {!isTheory && (
+                          <td className="px-4 py-3 text-center">
+                            <span className="text-teal-600 dark:text-teal-400">{pracDone}/{pracTotal}</span>
+                          </td>
+                        )}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2 justify-center">
                             <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
@@ -950,7 +1088,7 @@ export default function StudentDashboard() {
                       </span>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className={`grid gap-4 ${!isTheory ? "sm:grid-cols-2" : ""}`}>
                       {/* Assignment Progress */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
@@ -970,24 +1108,25 @@ export default function StudentDashboard() {
                         </div>
                       </div>
 
-                      {/* Practical Progress */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground flex items-center gap-1.5">
-                            <svg className="h-3.5 w-3.5 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                            </svg>
-                            Practicals
-                          </span>
-                          <span className="font-medium">{pracDone}/{pracTotal}</span>
+                      {!isTheory && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground flex items-center gap-1.5">
+                              <svg className="h-3.5 w-3.5 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                              </svg>
+                              Practicals
+                            </span>
+                            <span className="font-medium">{pracDone}/{pracTotal}</span>
+                          </div>
+                          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${pracPct === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-teal-500 to-emerald-500"}`}
+                              style={{ width: `${pracPct}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${pracPct === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-teal-500 to-emerald-500"}`}
-                            style={{ width: `${pracPct}%` }}
-                          />
-                        </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Upcoming Deadlines */}
