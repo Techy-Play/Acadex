@@ -81,18 +81,27 @@ export async function PATCH(request: Request) {
   try {
     const userRole = request.headers.get("x-user-role");
     const adminId = request.headers.get("x-user-id");
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
 
     if (userRole !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
-    const { requestId, action, admin_note } = body;
+    const { requestId, action, role, admin_note } = body;
 
     if (!requestId || !["approve", "deny"].includes(action)) {
       return NextResponse.json(
         { error: "requestId and action (approve/deny) are required" },
         { status: 400 }
+      );
+    }
+
+    const approvedRole: "student" | "admin" = role === "admin" ? "admin" : "student";
+    if (action === "approve" && approvedRole === "admin" && !isSuperAdmin) {
+      return NextResponse.json(
+        { error: "Only super admin can approve a request as admin" },
+        { status: 403 }
       );
     }
 
@@ -123,6 +132,17 @@ export async function PATCH(request: Request) {
         );
       }
 
+      const normalizedEmail = accessReq.email?.trim().toLowerCase();
+      if (normalizedEmail) {
+        const existingEmailUser = await User.findOne({ email: normalizedEmail });
+        if (existingEmailUser) {
+          return NextResponse.json(
+            { error: "A user with this email already exists" },
+            { status: 409 }
+          );
+        }
+      }
+
       // Generate temp password & create user
       const tempPassword = generateTempPassword();
       const passwordHash = await bcrypt.hash(tempPassword, 10);
@@ -130,9 +150,9 @@ export async function PATCH(request: Request) {
       await User.create({
         name: accessReq.name,
         college_id: accessReq.college_id,
-        email: accessReq.email,
+        email: normalizedEmail || null,
         password_hash: passwordHash,
-        role: "student",
+        role: approvedRole,
         stream: accessReq.stream,
         section: accessReq.section,
         semester: accessReq.semester || null,
@@ -148,7 +168,7 @@ export async function PATCH(request: Request) {
       await ActivityLog.create({
         user: adminId!,
         action: "ACCESS_REQUEST_APPROVED",
-        details: `Approved access for ${accessReq.name} (${accessReq.college_id})`,
+        details: `Approved access for ${accessReq.name} (${accessReq.college_id}) as ${approvedRole}`,
         section: accessReq.section || null,
       });
 
@@ -166,8 +186,9 @@ export async function PATCH(request: Request) {
 
       return NextResponse.json({
         success: true,
-        message: `Approved! Account created for ${accessReq.name}. Temp password: ${tempPassword}`,
+        message: `Approved! ${approvedRole} account created for ${accessReq.name}. Temp password: ${tempPassword}`,
         tempPassword,
+        role: approvedRole,
       });
     } else {
       // Deny

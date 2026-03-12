@@ -159,10 +159,25 @@ export async function PATCH(request: Request) {
           );
         }
 
+        const requestedEmail =
+          typeof data.email === "string" && data.email.trim()
+            ? data.email.trim().toLowerCase()
+            : null;
+        if (requestedEmail) {
+          const existingByEmail = await User.findOne({ email: requestedEmail });
+          if (existingByEmail) {
+            return NextResponse.json(
+              { error: "A user with this email already exists" },
+              { status: 409 }
+            );
+          }
+        }
+
         // Create the admin user
         await User.create({
           name: data.name as string,
           college_id: data.college_id as string,
+          email: requestedEmail,
           password_hash: data.password_hash as string,
           role: "admin",
           stream: (data.stream as string) || null,

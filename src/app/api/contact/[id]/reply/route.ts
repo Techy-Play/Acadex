@@ -20,28 +20,42 @@ export async function POST(
     }
 
     const { id } = await params;
-    const { reply, email, name, subject } = await request.json();
+    const { reply } = await request.json();
 
-    if (!reply || !email) {
+    if (!reply || !reply.trim()) {
       return NextResponse.json(
-        { error: "Reply text and email are required" },
+        { error: "Reply text is required" },
         { status: 400 }
+      );
+    }
+
+    await connectDB();
+
+    const contactMessage = await ContactMessage.findById(id);
+    if (!contactMessage) {
+      return NextResponse.json(
+        { error: "Contact message not found" },
+        { status: 404 }
       );
     }
 
     // Send the reply email
     await sendMail({
-      to: email,
-      subject: `Re: ${subject || "Your message"} — Acadex`,
-      html: contactReplyEmailHTML(name, subject, reply),
+      to: contactMessage.email,
+      subject: `Re: ${contactMessage.subject || "Your message"} — Acadex`,
+      html: contactReplyEmailHTML(
+        contactMessage.name,
+        contactMessage.subject,
+        contactMessage.message,
+        reply.trim()
+      ),
     });
 
     // Update the message in DB
-    await connectDB();
     await ContactMessage.findByIdAndUpdate(id, {
       read: true,
       replied: true,
-      adminReply: reply,
+      adminReply: reply.trim(),
       repliedAt: new Date(),
     });
 

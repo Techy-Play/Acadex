@@ -6,6 +6,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { NoteCard } from "@/components/note-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,7 @@ export default function NotesPage() {
   const [userSectionId, setUserSectionId] = useState<string | null>(null);
   const [userSectionName, setUserSectionName] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string>("my-section");
+  const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchInit() {
@@ -145,14 +147,36 @@ export default function NotesPage() {
 
   // Group notes by subject
   const groupedNotes = useMemo(() => {
-    const grouped: Record<string, Note[]> = {};
+    const grouped: Record<
+      string,
+      { subjectId: string; subjectName: string; notes: Note[] }
+    > = {};
+
     for (const note of sortedNotes) {
+      const subjectId = note.subject?._id || "unknown";
       const subjectName = note.subject?.name || "Unknown";
-      if (!grouped[subjectName]) grouped[subjectName] = [];
-      grouped[subjectName].push(note);
+
+      if (!grouped[subjectId]) {
+        grouped[subjectId] = { subjectId, subjectName, notes: [] };
+      }
+      grouped[subjectId].notes.push(note);
     }
-    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+
+    return Object.values(grouped).sort((a, b) =>
+      a.subjectName.localeCompare(b.subjectName)
+    );
   }, [sortedNotes]);
+
+  // Auto-expand selected subject when a specific subject filter is applied.
+  useEffect(() => {
+    if (selectedSubject === "all") {
+      setExpandedSubjectId(null);
+      return;
+    }
+
+    const exists = groupedNotes.some((g) => g.subjectId === selectedSubject);
+    setExpandedSubjectId(exists ? selectedSubject : null);
+  }, [selectedSubject, groupedNotes]);
 
   return (
     <div className="space-y-6">
@@ -251,34 +275,79 @@ export default function NotesPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
-          {groupedNotes.map(([subjectName, subjectNotes]) => (
-            <Card key={subjectName} className="rounded-2xl">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    📚 {subjectName}
-                    <Badge variant="secondary" className="rounded-full text-xs">
-                      {subjectNotes.length}
-                    </Badge>
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {subjectNotes.map((note) => (
-                    <NoteCard
-                      key={note._id}
-                      title={note.title}
-                      subjectName={note.subject?.name}
-                      fileUrl={note.file_url}
-                      uploadedAt={note.uploadedAt}
+        <div className="space-y-3">
+          {groupedNotes.map((group) => {
+            const isExpanded =
+              selectedSubject === "all"
+                ? expandedSubjectId === group.subjectId
+                : group.subjectId === selectedSubject;
+
+            return (
+              <Card
+                key={group.subjectId}
+                className="rounded-2xl overflow-hidden py-0 gap-0"
+              >
+                <CardHeader className="p-0">
+                  <button
+                    type="button"
+                    className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-muted/50 ${
+                      selectedSubject !== "all" ? "cursor-default" : "cursor-pointer"
+                    }`}
+                    onClick={() => {
+                      if (selectedSubject !== "all") return;
+                      setExpandedSubjectId((prev) =>
+                        prev === group.subjectId ? null : group.subjectId
+                      );
+                    }}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="flex-shrink-0 flex items-center justify-center h-6 w-6 rounded-md bg-muted text-xs">
+                        📚
+                      </span>
+                      <CardTitle className="text-sm font-medium truncate">
+                        {group.subjectName}
+                      </CardTitle>
+                      <Badge
+                        variant="secondary"
+                        className="rounded-full text-xs flex-shrink-0"
+                      >
+                        {group.notes.length}
+                      </Badge>
+                    </div>
+                    <ChevronDown
+                      className={`flex-shrink-0 h-4 w-4 text-muted-foreground transition-transform duration-300 ease-in-out ${
+                        isExpanded ? "rotate-180" : ""
+                      }`}
                     />
-                  ))}
+                  </button>
+                </CardHeader>
+
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${
+                    isExpanded
+                      ? "grid-rows-[1fr] opacity-100"
+                      : "grid-rows-[0fr] opacity-0"
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <CardContent className="pt-2 pb-5">
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {group.notes.map((note) => (
+                          <NoteCard
+                            key={note._id}
+                            title={note.title}
+                            subjectName={note.subject?.name}
+                            fileUrl={note.file_url}
+                            uploadedAt={note.uploadedAt}
+                          />
+                        ))}
+                      </div>
+                    </CardContent>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

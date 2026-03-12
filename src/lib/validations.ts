@@ -44,6 +44,16 @@ export const addStudentSchema = z.object({
     .string()
     .min(1, "College ID is required")
     .max(50, "College ID too long"),
+  email: z
+    .string()
+    .email("Must be a valid email")
+    .max(255, "Email too long")
+    .refine(
+      isAllowedEmailDomain,
+      `Email must end with: ${ALLOWED_EMAIL_DOMAINS.join(", ")}`
+    )
+    .optional()
+    .nullable(),
   password: z
     .string()
     .min(6, "Password must be at least 6 characters")

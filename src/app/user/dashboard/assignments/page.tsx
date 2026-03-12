@@ -4,8 +4,9 @@
  */
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { AssignmentCard } from "@/components/assignment-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +56,9 @@ export default function AssignmentsPage() {
   const [userSectionId, setUserSectionId] = useState<string | null>(null);
   const [userSectionName, setUserSectionName] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string>("my-section");
+  const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
+  const [shouldHighlight, setShouldHighlight] = useState(false);
+  const highlightTriggeredRef = useRef(false);
 
   // Fetch completions from server
   useEffect(() => {
@@ -207,14 +211,43 @@ export default function AssignmentsPage() {
 
   // Group assignments by subject
   const groupedAssignments = useMemo(() => {
-    const grouped: Record<string, Assignment[]> = {};
+    const grouped: Record<string, { subjectId: string; subjectName: string; assignments: Assignment[] }> = {};
     for (const a of sortedAssignments) {
+      const subjectId = a.subject?._id || "unknown";
       const subjectName = a.subject?.name || "Unknown";
-      if (!grouped[subjectName]) grouped[subjectName] = [];
-      grouped[subjectName].push(a);
+      if (!grouped[subjectId]) {
+        grouped[subjectId] = { subjectId, subjectName, assignments: [] };
+      }
+      grouped[subjectId].assignments.push(a);
     }
-    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+    return Object.values(grouped).sort((a, b) => a.subjectName.localeCompare(b.subjectName));
   }, [sortedAssignments]);
+
+  // Auto-expand selected subject when a specific subject filter is applied.
+  useEffect(() => {
+    if (selectedSubject === "all") {
+      setExpandedSubjectId(null);
+      return;
+    }
+    const exists = groupedAssignments.some((g) => g.subjectId === selectedSubject);
+    setExpandedSubjectId(exists ? selectedSubject : null);
+  }, [selectedSubject, groupedAssignments]);
+
+  // Highlight subject groups when navigated from dashboard with ?highlight=true
+  useEffect(() => {
+    if (
+      !loading &&
+      searchParams.get("highlight") === "true" &&
+      groupedAssignments.length > 0 &&
+      !highlightTriggeredRef.current
+    ) {
+      highlightTriggeredRef.current = true;
+      document.getElementById("assignment-subject-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setShouldHighlight(true);
+      const timer = setTimeout(() => setShouldHighlight(false), 1800);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, searchParams, groupedAssignments.length]);
 
   const completedCount = assignments.filter((a) => completedIds.has(a._id)).length;
   const totalCount = assignments.length;
@@ -394,39 +427,86 @@ export default function AssignmentsPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
-          {groupedAssignments.map(([subjectName, subjectAssignments]) => (
-            <Card key={subjectName} className="rounded-2xl">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    📝 {subjectName}
-                    <Badge variant="secondary" className="rounded-full text-xs">
-                      {subjectAssignments.length}
-                    </Badge>
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {subjectAssignments.map((assignment) => (
-                    <AssignmentCard
-                      key={assignment._id}
-                      id={assignment._id}
-                      title={assignment.title}
-                      description={assignment.description}
-                      subjectName={assignment.subject?.name}
-                      deadline={assignment.deadline}
-                      fileUrl={assignment.file_url}
-                      createdAt={assignment.createdAt}
-                      completed={completedIds.has(assignment._id)}
-                      onToggleComplete={toggleComplete}
+        <div className="space-y-3 scroll-mt-4" id="assignment-subject-list">
+          {groupedAssignments.map((group) => {
+            const isExpanded =
+              selectedSubject === "all"
+                ? expandedSubjectId === group.subjectId
+                : group.subjectId === selectedSubject;
+
+            return (
+              <Card
+                key={group.subjectId}
+                className={`rounded-2xl overflow-hidden ${
+                  shouldHighlight ? "animate-subject-highlight" : ""
+                } py-0 gap-0`}
+              >
+                <CardHeader className="p-0">
+                  <button
+                    type="button"
+                    className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors duration-150 hover:bg-muted/50 ${
+                      selectedSubject !== "all" ? "cursor-default" : "cursor-pointer"
+                    }`}
+                    onClick={() => {
+                      if (selectedSubject !== "all") return;
+                      setExpandedSubjectId((prev) =>
+                        prev === group.subjectId ? null : group.subjectId
+                      );
+                    }}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="flex-shrink-0 flex items-center justify-center h-6 w-6 rounded-md bg-muted text-xs">
+                        📝
+                      </span>
+                      <CardTitle className="text-sm font-medium truncate">
+                        {group.subjectName}
+                      </CardTitle>
+                      <Badge
+                        variant="secondary"
+                        className="rounded-full text-xs flex-shrink-0"
+                      >
+                        {group.assignments.length}
+                      </Badge>
+                    </div>
+                    <ChevronDown
+                      className={`flex-shrink-0 h-4 w-4 text-muted-foreground transition-transform duration-300 ease-in-out ${
+                        isExpanded ? "rotate-180" : ""
+                      }`}
                     />
-                  ))}
+                  </button>
+                </CardHeader>
+
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${
+                    isExpanded
+                      ? "grid-rows-[1fr] opacity-100"
+                      : "grid-rows-[0fr] opacity-0"
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <CardContent className="pt-2 pb-5">
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {group.assignments.map((assignment) => (
+                          <AssignmentCard
+                            key={assignment._id}
+                            id={assignment._id}
+                            title={assignment.title}
+                            description={assignment.description}
+                            subjectName={assignment.subject?.name}
+                            deadline={assignment.deadline}
+                            fileUrl={assignment.file_url}
+                            createdAt={assignment.createdAt}
+                            completed={completedIds.has(assignment._id)}
+                            onToggleComplete={toggleComplete}
+                          />
+                        ))}
+                      </div>
+                    </CardContent>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

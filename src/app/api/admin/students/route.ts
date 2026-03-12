@@ -14,6 +14,7 @@ import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
 import AdminRequest from "@/models/AdminRequest";
 import Notification from "@/models/Notification";
+import { sendMail, approvalEmailHTML } from "@/lib/mail";
 
 // GET /api/admin/students - List all students
 export async function GET(request: Request) {
@@ -118,9 +119,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, college_id, password, role, semester } = parsed.data;
+    const { name, college_id, email, password, role, semester } = parsed.data;
     const stream = body.stream || null;
     let section = body.section || null;
+    const normalizedEmail = email ? email.trim().toLowerCase() : null;
 
     const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
     const adminSection = request.headers.get("x-user-section");
@@ -136,6 +138,16 @@ export async function POST(request: Request) {
       );
     }
 
+    if (normalizedEmail) {
+      const existingEmailUser = await User.findOne({ email: normalizedEmail });
+      if (existingEmailUser) {
+        return NextResponse.json(
+          { error: "A user with this email already exists" },
+          { status: 409 }
+        );
+      }
+    }
+
     // Sub-admin creating an admin → send approval request to super admin
     if (role === "admin" && !isSuperAdmin) {
       const passwordHash = await bcrypt.hash(password, 10);
@@ -146,6 +158,7 @@ export async function POST(request: Request) {
         data: {
           name,
           college_id,
+          email: normalizedEmail,
           password_hash: passwordHash,
           stream,
           section,
@@ -189,6 +202,7 @@ export async function POST(request: Request) {
     const user = await User.create({
       name,
       college_id,
+      email: normalizedEmail,
       password_hash: passwordHash,
       role,
       stream,
@@ -205,9 +219,25 @@ export async function POST(request: Request) {
       section: section || null,
     });
 
+    let emailSent = false;
+    if (normalizedEmail) {
+      try {
+        await sendMail({
+          to: normalizedEmail,
+          subject: "Your Acadex Account Is Ready",
+          html: approvalEmailHTML(name, college_id, password),
+        });
+        emailSent = true;
+      } catch (emailError) {
+        console.error("Failed to send new-user credentials email:", emailError);
+        // User creation should still succeed even if email delivery fails.
+      }
+    }
+
     return NextResponse.json(
       {
         success: true,
+        emailSent,
         student: {
           id: user._id,
           name: user.name,

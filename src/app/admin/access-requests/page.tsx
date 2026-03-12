@@ -62,6 +62,7 @@ type FilterStatus = "all" | "pending" | "approved" | "denied";
 export default function AccessRequestsPage() {
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentIsSuperAdmin, setCurrentIsSuperAdmin] = useState(false);
   const [filter, setFilter] = useState<FilterStatus>("pending");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "college_id" | "date">("date");
@@ -74,6 +75,7 @@ export default function AccessRequestsPage() {
   // Action dialog (approve/deny)
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<"approve" | "deny">("approve");
+  const [approvalRole, setApprovalRole] = useState<"student" | "admin">("student");
   const [adminNote, setAdminNote] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -91,9 +93,18 @@ export default function AccessRequestsPage() {
 
   const fetchRequests = async () => {
     try {
-      const res = await fetch("/api/admin/access-requests");
-      const data = await res.json();
-      if (res.ok) setRequests(data.requests || []);
+      const [reqRes, meRes] = await Promise.all([
+        fetch("/api/admin/access-requests"),
+        fetch("/api/auth/me"),
+      ]);
+
+      const data = await reqRes.json();
+      if (reqRes.ok) setRequests(data.requests || []);
+
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        setCurrentIsSuperAdmin(Boolean(meData.user?.isSuperAdmin));
+      }
     } catch {
       toast.error("Failed to fetch access requests");
     } finally {
@@ -147,6 +158,7 @@ export default function AccessRequestsPage() {
   // ─── Open action dialog from detail ─────────────
   const openActionDialog = (type: "approve" | "deny") => {
     setActionType(type);
+    setApprovalRole("student");
     setAdminNote("");
     setApprovalResult(null);
     setDetailDialogOpen(false);
@@ -170,6 +182,7 @@ export default function AccessRequestsPage() {
         body: JSON.stringify({
           requestId: selectedRequest._id,
           action: actionType,
+          role: actionType === "approve" ? approvalRole : undefined,
           admin_note: adminNote,
         }),
       });
@@ -812,6 +825,32 @@ export default function AccessRequestsPage() {
             </div>
           ) : (
             <div className="space-y-3 py-2">
+              {actionType === "approve" && (
+                <div className="space-y-2">
+                  <Label>Create Account As</Label>
+                  <Select
+                    value={approvalRole}
+                    onValueChange={(value) =>
+                      setApprovalRole(value as "student" | "admin")
+                    }
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="student">Student (default)</SelectItem>
+                      {currentIsSuperAdmin && (
+                        <SelectItem value="admin">Admin</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {!currentIsSuperAdmin && (
+                    <p className="text-xs text-muted-foreground">
+                      Only super admins can approve a request as admin.
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>
                   Admin Note{" "}

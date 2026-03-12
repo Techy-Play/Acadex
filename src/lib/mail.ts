@@ -52,6 +52,8 @@ export async function sendMail({ to, subject, html }: SendMailOptions) {
  *  Shared light-theme email wrapper (FamApp style)
  * ─────────────────────────────────────────────────────────────── */
 function emailWrapper(body: string): string {
+  const logoUrl = `${getAppUrl()}/site-logo.png`;
+
   return `
     <div style="margin: 0; padding: 0; background-color: #f5f5f5; width: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 32px 16px;">
@@ -60,8 +62,8 @@ function emailWrapper(body: string): string {
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px;">
               <!-- Logo -->
               <tr>
-                <td style="padding: 0 0 5px 0;">
-                  <img src="${getAppUrl()}/site-logo.png" alt="Acadex" height="100" style="display: block; height: 80px; width: auto;" />
+                <td style="padding: 0 0 12px 0; text-align: center;">
+                  <img src="${logoUrl}" alt="Acadex" height="64" style="display: inline-block; height: 64px; width: auto;" />
                 </td>
               </tr>
               <!-- Main card -->
@@ -86,6 +88,15 @@ function emailWrapper(body: string): string {
       </table>
     </div>
   `;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 /* ── Approval email ── */
@@ -160,16 +171,37 @@ export function denialEmailHTML(name: string, reason: string) {
 }
 
 /* ── Contact reply email ── */
-export function contactReplyEmailHTML(name: string, subject: string, reply: string) {
+export function contactReplyEmailHTML(
+  name: string,
+  subject: string,
+  question: string,
+  reply: string
+) {
+  const safeName = escapeHtml(name || "Student");
+  const safeSubject = escapeHtml(subject || "Your message");
+  const safeQuestion = escapeHtml(question || "(No question text available)");
+  const safeReply = escapeHtml(reply || "");
+
   const body = `
-    <p style="color: #333333; font-size: 15px; margin: 0 0 6px 0;">Hey <strong style="color: #111111;">${name}</strong>,</p>
+    <p style="color: #333333; font-size: 15px; margin: 0 0 6px 0;">Hey <strong style="color: #111111;">${safeName}</strong>,</p>
     <p style="color: #555555; font-size: 14px; margin: 0 0 20px 0; line-height: 1.6;">
-      Thank you for reaching out! The admin has responded to your message regarding <strong style="color: #111111;">&ldquo;${subject}&rdquo;</strong>:
+      Thank you for reaching out. Here is a complete copy of your conversation with admin regarding <strong style="color: #111111;">&ldquo;${safeSubject}&rdquo;</strong>.
     </p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 14px 0;">
+      <tr>
+        <td style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 10px 10px 0; padding: 14px 18px;">
+          <p style="margin: 0 0 6px 0; color: #1d4ed8; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Your question</p>
+          <p style="margin: 0; color: #1e3a8a; font-size: 14px; line-height: 1.7; white-space: pre-wrap;">${safeQuestion}</p>
+        </td>
+      </tr>
+    </table>
+
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 20px 0;">
       <tr>
-        <td style="background-color: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 0 10px 10px 0; padding: 16px 20px;">
-          <p style="margin: 0; color: #166534; font-size: 14px; line-height: 1.7; white-space: pre-wrap;">${reply}</p>
+        <td style="background-color: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 0 10px 10px 0; padding: 14px 18px;">
+          <p style="margin: 0 0 6px 0; color: #15803d; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Admin reply</p>
+          <p style="margin: 0; color: #166534; font-size: 14px; line-height: 1.7; white-space: pre-wrap;">${safeReply}</p>
         </td>
       </tr>
     </table>

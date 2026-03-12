@@ -118,6 +118,7 @@ export default function UsersPage() {
   const [addLoading, setAddLoading] = useState(false);
   const [addName, setAddName] = useState("");
   const [addCollegeId, setAddCollegeId] = useState("");
+  const [addEmail, setAddEmail] = useState("");
   const [addPassword, setAddPassword] = useState("");
   const [addRole, setAddRole] = useState("student");
   const [addStream, setAddStream] = useState("none");
@@ -189,6 +190,7 @@ export default function UsersPage() {
         body: JSON.stringify({
           name: addName,
           college_id: addCollegeId,
+          email: addEmail.trim() || null,
           password: addPassword,
           role: addRole,
           stream: addStream === "none" ? null : addStream,
@@ -211,6 +213,7 @@ export default function UsersPage() {
       }
       setAddName("");
       setAddCollegeId("");
+      setAddEmail("");
       setAddPassword("");
       setAddRole("student");
       setAddStream("none");
@@ -527,6 +530,17 @@ export default function UsersPage() {
                   value={addCollegeId}
                   onChange={(e) => setAddCollegeId(e.target.value)}
                   required
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="add_email">Email</Label>
+                <Input
+                  id="add_email"
+                  type="email"
+                  placeholder="e.g. student@gmail.com"
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
                   className="rounded-xl"
                 />
               </div>

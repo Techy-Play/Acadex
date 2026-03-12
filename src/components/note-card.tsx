@@ -39,7 +39,7 @@ export function NoteCard({ title, subjectName, fileUrl, uploadedAt }: NoteCardPr
       gradientTo="var(--accent)"
       gradientOpacity={0.08}
     >
-      <div className="bg-card rounded-2xl">
+      <div className="bg-card rounded-2xl border border-border">
         <CardHeader className="pb-2 p-5">
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-1.5">

@@ -153,6 +153,16 @@
   }
 }
 
+/* ─── Subject Highlight Animation ─── */
+@keyframes subject-highlight {
+  0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  30%  { box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.45); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+.animate-subject-highlight {
+  animation: subject-highlight 1.8s ease-out forwards;
+}
+
 /* ─── Accent Color Themes ─── */
 
 /* ── Rose ── */

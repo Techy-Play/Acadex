@@ -325,7 +325,7 @@ export default function StudentDashboard() {
         {/* Assignments */}
         <Card
           className="rounded-2xl border-0 bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/20 cursor-pointer hover:scale-[1.02] transition-transform"
-          onClick={() => document.getElementById("section-progress")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          onClick={() => router.push("/user/dashboard/assignments?highlight=true")}
         >
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
@@ -345,7 +345,7 @@ export default function StudentDashboard() {
         {/* Practicals */}
         <Card
           className="rounded-2xl border-0 bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-lg shadow-teal-500/20 cursor-pointer hover:scale-[1.02] transition-transform"
-          onClick={() => document.getElementById("section-progress")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          onClick={() => router.push("/user/dashboard/practicals?highlight=true")}
         >
           <CardContent className="p-5">
             <div className="flex items-center justify-between">

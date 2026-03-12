@@ -114,6 +114,8 @@ export default function UserRequestsPanel() {
   const [subjects, setSubjects] = useState<SubjectOption[]>([]);
   const [sections, setSections] = useState<SectionOption[]>([]);
   const [user, setUser] = useState<{
+    name: string;
+    email: string | null;
     isSuperAdmin: boolean;
     section: string | null;
   } | null>(null);
@@ -131,6 +133,7 @@ export default function UserRequestsPanel() {
 
   /* --- new request dialog --- */
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [newRequestKind, setNewRequestKind] = useState<"upload" | "suggestion">("upload");
   const [formResourceType, setFormResourceType] = useState<string>("note");
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
@@ -138,6 +141,8 @@ export default function UserRequestsPanel() {
   const [formSubject, setFormSubject] = useState("");
   const [formSection, setFormSection] = useState("");
   const [formDeadline, setFormDeadline] = useState("");
+  const [suggestionSubject, setSuggestionSubject] = useState("");
+  const [suggestionMessage, setSuggestionMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   /* --- update request dialog --- */
@@ -182,8 +187,10 @@ export default function UserRequestsPanel() {
       if (meRes.ok) {
         const meData = await meRes.json();
         setUser({
+          name: meData.user?.name ?? "",
+          email: meData.user?.email ?? null,
           isSuperAdmin: meData.user?.isSuperAdmin ?? false,
-          section: meData.user?.section ?? null,
+          section: meData.user?.section?.id ?? null,
         });
       }
     } catch {
@@ -251,7 +258,7 @@ export default function UserRequestsPanel() {
           description: formDescription.trim(),
           file_url: formFileUrl.trim(),
           subject: formSubject,
-          section: formSection || undefined,
+          section: formSection && formSection !== "all" ? formSection : undefined,
           deadline: formDeadline || undefined,
         }),
       });
@@ -383,6 +390,7 @@ export default function UserRequestsPanel() {
   };
 
   const resetNewForm = () => {
+    setNewRequestKind("upload");
     setFormResourceType("note");
     setFormTitle("");
     setFormDescription("");
@@ -390,6 +398,44 @@ export default function UserRequestsPanel() {
     setFormSubject("");
     setFormSection("");
     setFormDeadline("");
+    setSuggestionSubject("");
+    setSuggestionMessage("");
+  };
+
+  /** Submit a suggestion/question message to admins */
+  const handleSubmitSuggestion = async () => {
+    if (!user?.name || !user?.email) {
+      toast.error("Please update your profile email before sending a suggestion.");
+      return;
+    }
+    if (!suggestionSubject.trim() || !suggestionMessage.trim()) {
+      toast.error("Subject and message are required");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: user.name,
+          email: user.email,
+          subject: suggestionSubject.trim(),
+          message: suggestionMessage.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+
+      toast.success("Your suggestion has been sent to admin.");
+      setShowNewDialog(false);
+      resetNewForm();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to send suggestion");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   /* ---------------------------------------------------------------- */
@@ -691,11 +737,54 @@ export default function UserRequestsPanel() {
           <DialogHeader>
             <DialogTitle>New Request</DialogTitle>
             <DialogDescription>
-              Submit a new resource for admin review.
+              Choose what you want to submit.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
+            <div>
+              <Label>Request Option</Label>
+              <Select
+                value={newRequestKind}
+                onValueChange={(value) =>
+                  setNewRequestKind(value as "upload" | "suggestion")
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="suggestion">Suggestion / Question to Admin</SelectItem>
+                  <SelectItem value="upload">Upload PDF (Needs Admin Approval)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {newRequestKind === "suggestion" ? (
+              <>
+                <div>
+                  <Label>Subject *</Label>
+                  <Input
+                    value={suggestionSubject}
+                    onChange={(e) => setSuggestionSubject(e.target.value)}
+                    placeholder="e.g. Need notes for Unit 4"
+                    maxLength={200}
+                  />
+                </div>
+
+                <div>
+                  <Label>Message *</Label>
+                  <Textarea
+                    value={suggestionMessage}
+                    onChange={(e) => setSuggestionMessage(e.target.value)}
+                    placeholder="Write your suggestion or question for admin"
+                    maxLength={2000}
+                    rows={5}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
             <div>
               <Label>Resource Type</Label>
               <Select
@@ -747,7 +836,7 @@ export default function UserRequestsPanel() {
                     <SelectValue placeholder="All sections" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All sections</SelectItem>
+                    <SelectItem value="all">All sections</SelectItem>
                     {sections.map((s) => (
                       <SelectItem key={s._id} value={s._id}>
                         {s.name}
@@ -788,18 +877,34 @@ export default function UserRequestsPanel() {
                 />
               </div>
             )}
+              </>
+            )}
           </div>
 
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowNewDialog(false)}
+              onClick={() => {
+                setShowNewDialog(false);
+                resetNewForm();
+              }}
               disabled={submitting}
             >
               Cancel
             </Button>
-            <Button onClick={handleSubmitNew} disabled={submitting}>
-              {submitting ? "Submitting…" : "Submit Request"}
+            <Button
+              onClick={
+                newRequestKind === "suggestion"
+                  ? handleSubmitSuggestion
+                  : handleSubmitNew
+              }
+              disabled={submitting}
+            >
+              {submitting
+                ? "Submitting…"
+                : newRequestKind === "suggestion"
+                  ? "Send to Admin"
+                  : "Submit Request"}
             </Button>
           </DialogFooter>
         </DialogContent>
