@@ -36,6 +36,7 @@ export interface IUser extends Document {
   mobileNavPosition: "top" | "bottom" | "left";
   dashboardView: "grid" | "list" | "detail";
   notificationPreferences: INotificationPreferences;
+  savedFilters: Record<string, unknown>;
   status: "active" | "banned" | "suspended";
   isAdminSubject: boolean;
   isAdminStream: boolean;
@@ -133,6 +134,10 @@ const UserSchema = new Schema<IUser>(
       admin_message: { type: Boolean, default: true },
       request_approved: { type: Boolean, default: true },
       request_denied: { type: Boolean, default: true },
+    },
+    savedFilters: {
+      type: Schema.Types.Mixed,
+      default: {},
     },
     status: {
       type: String,

@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +63,14 @@ interface Practical {
   uploadedBy?: { _id: string; name: string } | null;
 }
 
+interface AdminPracticalsSavedFilters {
+  selectedSubjectFilter?: string;
+  selectedSectionFilter?: string;
+  semesterFilter?: string;
+}
+
+const FILTER_KEY = "adminPracticals";
+
 export default function ManagePracticalsPage() {
   const [practicals, setPracticals] = useState<Practical[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -73,6 +81,9 @@ export default function ManagePracticalsPage() {
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>("all");
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>("all");
   const [userSectionId, setUserSectionId] = useState<string>("");
+  const [filtersHydrated, setFiltersHydrated] = useState(false);
+  const saveFiltersTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [expandedSubjects, setExpandedSubjects] = useState<Record<string, boolean>>({});
 
   // Add form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -157,10 +168,24 @@ export default function ManagePracticalsPage() {
         setIsSuperAdmin(superAdmin);
         const sectionId = data.user?.section?.id || "";
         setUserSectionId(sectionId);
-        setSelectedSectionFilter(superAdmin ? "all" : "my-section");
+
+        const saved = (data.user?.savedFilters?.[FILTER_KEY] || {}) as AdminPracticalsSavedFilters;
+        if (typeof saved.selectedSubjectFilter === "string") {
+          setSelectedSubjectFilter(saved.selectedSubjectFilter);
+        }
+        if (typeof saved.selectedSectionFilter === "string") {
+          setSelectedSectionFilter(saved.selectedSectionFilter);
+        } else {
+          setSelectedSectionFilter(superAdmin ? "all" : "my-section");
+        }
+        if (typeof saved.semesterFilter === "string") {
+          setSemesterFilter(saved.semesterFilter);
+        }
       }
     } catch {
       setIsSuperAdmin(false);
+    } finally {
+      setFiltersHydrated(true);
     }
   };
 
@@ -169,6 +194,36 @@ export default function ManagePracticalsPage() {
     fetchSections();
     fetchCurrentUser();
   }, []);
+
+  useEffect(() => {
+    if (!filtersHydrated) return;
+
+    if (saveFiltersTimerRef.current) {
+      clearTimeout(saveFiltersTimerRef.current);
+    }
+
+    saveFiltersTimerRef.current = setTimeout(() => {
+      void fetch("/api/profile/update-theme", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          savedFilters: {
+            [FILTER_KEY]: {
+              selectedSubjectFilter,
+              selectedSectionFilter,
+              semesterFilter,
+            },
+          },
+        }),
+      });
+    }, 350);
+
+    return () => {
+      if (saveFiltersTimerRef.current) {
+        clearTimeout(saveFiltersTimerRef.current);
+      }
+    };
+  }, [filtersHydrated, selectedSubjectFilter, selectedSectionFilter, semesterFilter]);
 
   useEffect(() => {
     fetchPracticals();
@@ -522,15 +577,36 @@ export default function ManagePracticalsPage() {
             .map(([subjectName, items]) => (
               <Card key={subjectName} className="rounded-2xl">
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between gap-3 text-left"
+                    onClick={() =>
+                      setExpandedSubjects((prev) => ({
+                        ...prev,
+                        [subjectName]: !(prev[subjectName] ?? true),
+                      }))
+                    }
+                  >
                     <CardTitle className="text-lg">🧪 {subjectName}</CardTitle>
-                    <Badge variant="secondary" className="rounded-full">
-                      {items.length} practical{items.length !== 1 ? "s" : ""}
-                    </Badge>
-                  </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="rounded-full">
+                        {items.length} practical{items.length !== 1 ? "s" : ""}
+                      </Badge>
+                      <svg
+                        className={`h-4 w-4 text-muted-foreground transition-transform ${(expandedSubjects[subjectName] ?? true) ? "rotate-180" : ""}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </button>
                 </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
+                {(expandedSubjects[subjectName] ?? true) && (
+                  <CardContent>
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -602,8 +678,9 @@ export default function ManagePracticalsPage() {
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
-                </CardContent>
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             ));
         })()

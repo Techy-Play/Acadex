@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   title: "Library",
   description:
     "Acadex Library will provide centralized academic indexing with advanced search and filtering for notes, assignments, practicals, and old year papers.",
+  alternates: {
+    canonical: "/library",
+  },
   openGraph: {
     title: "Library | Acadex",
     description:

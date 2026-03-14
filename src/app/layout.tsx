@@ -32,6 +32,9 @@ const siteDescription =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   applicationName: "Acadex",
+  alternates: {
+    canonical: "/",
+  },
 
   title: {
     default: "Acadex – Open Source Academic Resource Platform",
@@ -123,7 +126,7 @@ const jsonLd = {
       url: siteUrl,
       logo: {
         "@type": "ImageObject",
-        url: `${siteUrl}/site-logo.png`,
+        url: `${siteUrl}/images/site-logo.png`,
       },
       founder: {
         "@type": "Person",
@@ -136,14 +139,19 @@ const jsonLd = {
     {
       "@type": "WebSite",
       "@id": `${siteUrl}/#website`,
-      name: "Acadex",
-      alternateName: "Acadex",
       url: siteUrl,
+      name: "Acadex",
+      alternateName: "Acadex Academic Platform",
+      description:
+        "Structured academic resource management system designed to replace WhatsApp-based academic sharing.",
       publisher: {
         "@id": `${siteUrl}/#organization`,
       },
-      description:
-        "Structured academic resource management system designed to replace WhatsApp-based academic sharing.",
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${siteUrl}/search?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
     },
     {
       "@type": "SiteNavigationElement",
@@ -242,6 +250,7 @@ export default function RootLayout({
     <html lang="en-IN" suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#2563eb" />
+        <meta name="application-name" content="Acadex" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

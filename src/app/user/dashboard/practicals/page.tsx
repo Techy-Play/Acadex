@@ -21,6 +21,7 @@ import {
 interface Subject {
   _id: string;
   name: string;
+  type?: "theory" | "practical";
   semester?: number;
 }
 
@@ -60,6 +61,11 @@ export default function PracticalsPage() {
   const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
   const [shouldHighlight, setShouldHighlight] = useState(false);
   const highlightTriggeredRef = useRef(false);
+
+  const practicalFilterSubjects = useMemo(
+    () => subjects.filter((s) => s.type === "practical"),
+    [subjects]
+  );
 
   // Fetch completions from server
   useEffect(() => {
@@ -189,6 +195,12 @@ export default function PracticalsPage() {
     fetchPracticals();
   }, [selectedSubject, streamSubjectIds, selectedSection]);
 
+  useEffect(() => {
+    if (selectedSubject === "all") return;
+    const exists = practicalFilterSubjects.some((s) => s._id === selectedSubject);
+    if (!exists) setSelectedSubject("all");
+  }, [practicalFilterSubjects, selectedSubject]);
+
   // Filter by status then sort
   const sortedPracticals = useMemo(() => {
     const filtered = practicals.filter((p) => {
@@ -298,7 +310,7 @@ export default function PracticalsPage() {
             </SelectTrigger>
             <SelectContent className="rounded-xl">
               <SelectItem value="all">All Subjects</SelectItem>
-              {subjects.map((s) => (
+              {practicalFilterSubjects.map((s) => (
                 <SelectItem key={s._id} value={s._id}>
                   {s.name}
                 </SelectItem>

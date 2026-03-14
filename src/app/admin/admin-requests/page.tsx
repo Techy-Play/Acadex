@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,11 +59,19 @@ interface AdminRequestItem {
   createdAt: string;
 }
 
+interface AdminRequestsSavedFilters {
+  filterStatus?: "all" | "pending" | "approved" | "denied";
+}
+
+const FILTER_KEY = "adminRequests";
+
 export default function AdminRequestsPage() {
   const [requests, setRequests] = useState<AdminRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filtersHydrated, setFiltersHydrated] = useState(false);
+  const saveFiltersTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Detail dialog
   const [detailOpen, setDetailOpen] = useState(false);
@@ -86,17 +94,51 @@ export default function AdminRequestsPage() {
       if (meRes.ok) {
         const meData = await meRes.json();
         setIsSuperAdmin(!!meData.user?.isSuperAdmin);
+
+        const saved = (meData.user?.savedFilters?.[FILTER_KEY] || {}) as AdminRequestsSavedFilters;
+        if (saved.filterStatus === "all" || saved.filterStatus === "pending" || saved.filterStatus === "approved" || saved.filterStatus === "denied") {
+          setFilterStatus(saved.filterStatus);
+        }
       }
     } catch {
       toast.error("Failed to fetch admin requests");
     } finally {
       setLoading(false);
+      setFiltersHydrated(true);
     }
   };
 
   useEffect(() => {
     fetchRequests();
   }, []);
+
+  useEffect(() => {
+    if (!filtersHydrated) return;
+
+    if (saveFiltersTimerRef.current) {
+      clearTimeout(saveFiltersTimerRef.current);
+    }
+
+    saveFiltersTimerRef.current = setTimeout(() => {
+      void fetch("/api/profile/update-theme", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          savedFilters: {
+            [FILTER_KEY]: {
+              filterStatus,
+            },
+          },
+        }),
+      });
+    }, 350);
+
+    return () => {
+      if (saveFiltersTimerRef.current) {
+        clearTimeout(saveFiltersTimerRef.current);
+      }
+    };
+  }, [filtersHydrated, filterStatus]);
 
   const handleAction = async (action: "approve" | "deny") => {
     if (!detailRequest) return;

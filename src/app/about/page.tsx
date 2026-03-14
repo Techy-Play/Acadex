@@ -1,7 +1,8 @@
 /**
  * @page About (/about)
  * @description "About Us" page showcasing the team and technology stack.
- */import Link from "next/link";
+ */
+import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -10,6 +11,9 @@ export const metadata: Metadata = {
   title: "About Us – Meet the Team Behind Acadex",
   description:
     "Learn about Acadex, the open-source academic resource platform built by Lokesh Paneru (Mr Techie). Explore the tech stack, features, and how to contribute.",
+  alternates: {
+    canonical: "/about",
+  },
   openGraph: {
     title: "About Us – Meet the Team Behind Acadex | Acadex",
     description:

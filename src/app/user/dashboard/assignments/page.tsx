@@ -21,6 +21,7 @@ import {
 interface Subject {
   _id: string;
   name: string;
+  type?: "theory" | "practical";
   semester?: number;
 }
 
@@ -59,6 +60,11 @@ export default function AssignmentsPage() {
   const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
   const [shouldHighlight, setShouldHighlight] = useState(false);
   const highlightTriggeredRef = useRef(false);
+
+  const assignmentFilterSubjects = useMemo(
+    () => subjects.filter((s) => s.type !== "practical"),
+    [subjects]
+  );
 
   // Fetch completions from server
   useEffect(() => {
@@ -181,6 +187,12 @@ export default function AssignmentsPage() {
     fetchAssignments();
   }, [selectedSubject, streamSubjectIds, selectedSection]);
 
+  useEffect(() => {
+    if (selectedSubject === "all") return;
+    const exists = assignmentFilterSubjects.some((s) => s._id === selectedSubject);
+    if (!exists) setSelectedSubject("all");
+  }, [assignmentFilterSubjects, selectedSubject]);
+
   // Filter by status then sort
   const sortedAssignments = useMemo(() => {
     const filtered = assignments.filter((a) => {
@@ -301,7 +313,7 @@ export default function AssignmentsPage() {
             </SelectTrigger>
             <SelectContent className="rounded-xl">
               <SelectItem value="all">All Subjects</SelectItem>
-              {subjects.map((s) => (
+              {assignmentFilterSubjects.map((s) => (
                 <SelectItem key={s._id} value={s._id}>
                   {s.name}
                 </SelectItem>

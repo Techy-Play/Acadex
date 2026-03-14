@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +85,19 @@ interface UserDetails {
   updatedAt: string;
 }
 
+interface AdminUsersSavedFilters {
+  searchQuery?: string;
+  filterRole?: string;
+  filterStatus?: string;
+  filterStream?: string;
+  filterSection?: string;
+  filterSemester?: string;
+  sortBy?: "name" | "college_id" | "date";
+  sortOrder?: "asc" | "desc";
+}
+
+const FILTER_KEY = "adminUsers";
+
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [streams, setStreams] = useState<StreamItem[]>([]);
@@ -148,6 +161,8 @@ export default function UsersPage() {
   const [filterSemester, setFilterSemester] = useState("all");
   const [sortBy, setSortBy] = useState<"name" | "college_id" | "date">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [filtersHydrated, setFiltersHydrated] = useState(false);
+  const saveFiltersTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchUsers = async () => {
     try {
@@ -167,17 +182,77 @@ export default function UsersPage() {
       if (meRes.ok) {
         const meData = await meRes.json();
         setCurrentIsSuperAdmin(!!meData.user?.isSuperAdmin);
+
+        const saved = (meData.user?.savedFilters?.[FILTER_KEY] || {}) as AdminUsersSavedFilters;
+        if (typeof saved.searchQuery === "string") setSearchQuery(saved.searchQuery);
+        if (typeof saved.filterRole === "string") setFilterRole(saved.filterRole);
+        if (typeof saved.filterStatus === "string") setFilterStatus(saved.filterStatus);
+        if (typeof saved.filterStream === "string") setFilterStream(saved.filterStream);
+        if (typeof saved.filterSection === "string") setFilterSection(saved.filterSection);
+        if (typeof saved.filterSemester === "string") setFilterSemester(saved.filterSemester);
+        if (saved.sortBy === "name" || saved.sortBy === "college_id" || saved.sortBy === "date") {
+          setSortBy(saved.sortBy);
+        }
+        if (saved.sortOrder === "asc" || saved.sortOrder === "desc") {
+          setSortOrder(saved.sortOrder);
+        }
       }
     } catch {
       toast.error("Failed to fetch users");
     } finally {
       setLoading(false);
+      setFiltersHydrated(true);
     }
   };
 
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    if (!filtersHydrated) return;
+
+    if (saveFiltersTimerRef.current) {
+      clearTimeout(saveFiltersTimerRef.current);
+    }
+
+    saveFiltersTimerRef.current = setTimeout(() => {
+      void fetch("/api/profile/update-theme", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          savedFilters: {
+            [FILTER_KEY]: {
+              searchQuery,
+              filterRole,
+              filterStatus,
+              filterStream,
+              filterSection,
+              filterSemester,
+              sortBy,
+              sortOrder,
+            },
+          },
+        }),
+      });
+    }, 350);
+
+    return () => {
+      if (saveFiltersTimerRef.current) {
+        clearTimeout(saveFiltersTimerRef.current);
+      }
+    };
+  }, [
+    filtersHydrated,
+    searchQuery,
+    filterRole,
+    filterStatus,
+    filterStream,
+    filterSection,
+    filterSemester,
+    sortBy,
+    sortOrder,
+  ]);
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();

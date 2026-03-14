@@ -5,6 +5,19 @@ export const metadata: Metadata = {
   title: "Login",
   description:
     "Sign in to your Acadex account to access academic resources, notes, assignments, and practicals.",
+  alternates: {
+    canonical: "/login",
+  },
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+      "max-image-preview": "none",
+      "max-snippet": -1,
+    },
+  },
   openGraph: {
     title: "Login | Acadex",
     description:

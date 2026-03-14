@@ -88,6 +88,7 @@ export async function GET(request: Request) {
           accentColor: user.accentColor || "default",
           mobileNavPosition: user.mobileNavPosition || "bottom",
           dashboardView: user.dashboardView || "list",
+          savedFilters: user.savedFilters || {},
           notificationPreferences: user.notificationPreferences || {
             new_note: true,
             new_assignment: true,

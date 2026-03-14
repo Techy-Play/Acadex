@@ -5,6 +5,19 @@ export const metadata: Metadata = {
   title: "Apply for Access",
   description:
     "Request access to Acadex. Fill in your details and get approved to start using the academic resource platform.",
+  alternates: {
+    canonical: "/apply",
+  },
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+      "max-image-preview": "none",
+      "max-snippet": -1,
+    },
+  },
   openGraph: {
     title: "Apply for Access | Acadex",
     description:

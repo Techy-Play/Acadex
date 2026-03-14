@@ -964,7 +964,9 @@ export default function StudentDashboard() {
                       <p className="text-sm font-medium truncate">{subject.name}</p>
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                         <span className="text-emerald-600 dark:text-emerald-400">{noteCountBySubject[subject._id] || 0} notes</span>
-                        <span className="text-purple-600 dark:text-purple-400">{assignDone}/{assignTotal} assign</span>
+                        {isTheory && (
+                          <span className="text-purple-600 dark:text-purple-400">{assignDone}/{assignTotal} assign</span>
+                        )}
                         {subject.type === "practical" && <span className="text-teal-600 dark:text-teal-400">{pracDone}/{pracTotal} prac</span>}
                       </div>
                     </div>
@@ -989,7 +991,7 @@ export default function StudentDashboard() {
                   <tr className="bg-muted/50 text-left">
                     <th className="px-4 py-3 font-semibold text-muted-foreground">Subject</th>
                     <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Notes</th>
-                    <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Assignments</th>
+                    {isTheory && <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Assignments</th>}
                     {!isTheory && <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Practicals</th>}
                     <th className="px-4 py-3 font-semibold text-muted-foreground text-center">Progress</th>
                   </tr>
@@ -1021,9 +1023,11 @@ export default function StudentDashboard() {
                             {noteCountBySubject[subject._id] || 0}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="text-purple-600 dark:text-purple-400">{assignDone}/{assignTotal}</span>
-                        </td>
+                        {isTheory && (
+                          <td className="px-4 py-3 text-center">
+                            <span className="text-purple-600 dark:text-purple-400">{assignDone}/{assignTotal}</span>
+                          </td>
+                        )}
                         {!isTheory && (
                           <td className="px-4 py-3 text-center">
                             <span className="text-teal-600 dark:text-teal-400">{pracDone}/{pracTotal}</span>
@@ -1088,25 +1092,26 @@ export default function StudentDashboard() {
                       </span>
                     </div>
 
-                    <div className={`grid gap-4 ${!isTheory ? "sm:grid-cols-2" : ""}`}>
-                      {/* Assignment Progress */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground flex items-center gap-1.5">
-                            <svg className="h-3.5 w-3.5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                            </svg>
-                            Assignments
-                          </span>
-                          <span className="font-medium">{assignDone}/{assignTotal}</span>
+                    <div className="grid gap-4">
+                      {isTheory && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground flex items-center gap-1.5">
+                              <svg className="h-3.5 w-3.5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                              </svg>
+                              Assignments
+                            </span>
+                            <span className="font-medium">{assignDone}/{assignTotal}</span>
+                          </div>
+                          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${assignPct === 100 ? "bg-emerald-500" : "bg-primary"}`}
+                              style={{ width: `${assignPct}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${assignPct === 100 ? "bg-emerald-500" : "bg-primary"}`}
-                            style={{ width: `${assignPct}%` }}
-                          />
-                        </div>
-                      </div>
+                      )}
 
                       {!isTheory && (
                         <div className="space-y-2">

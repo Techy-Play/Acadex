@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +59,15 @@ interface AccessRequest {
 
 type FilterStatus = "all" | "pending" | "approved" | "denied";
 
+interface AccessRequestsSavedFilters {
+  filter?: FilterStatus;
+  searchQuery?: string;
+  sortBy?: "name" | "college_id" | "date";
+  sortOrder?: "asc" | "desc";
+}
+
+const FILTER_KEY = "adminAccessRequests";
+
 export default function AccessRequestsPage() {
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +76,8 @@ export default function AccessRequestsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "college_id" | "date">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [filtersHydrated, setFiltersHydrated] = useState(false);
+  const saveFiltersTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Detail dialog
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -104,17 +115,63 @@ export default function AccessRequestsPage() {
       if (meRes.ok) {
         const meData = await meRes.json();
         setCurrentIsSuperAdmin(Boolean(meData.user?.isSuperAdmin));
+
+        const saved = (meData.user?.savedFilters?.[FILTER_KEY] || {}) as AccessRequestsSavedFilters;
+        if (saved.filter === "all" || saved.filter === "pending" || saved.filter === "approved" || saved.filter === "denied") {
+          setFilter(saved.filter);
+        }
+        if (typeof saved.searchQuery === "string") {
+          setSearchQuery(saved.searchQuery);
+        }
+        if (saved.sortBy === "name" || saved.sortBy === "college_id" || saved.sortBy === "date") {
+          setSortBy(saved.sortBy);
+        }
+        if (saved.sortOrder === "asc" || saved.sortOrder === "desc") {
+          setSortOrder(saved.sortOrder);
+        }
       }
     } catch {
       toast.error("Failed to fetch access requests");
     } finally {
       setLoading(false);
+      setFiltersHydrated(true);
     }
   };
 
   useEffect(() => {
     fetchRequests();
   }, []);
+
+  useEffect(() => {
+    if (!filtersHydrated) return;
+
+    if (saveFiltersTimerRef.current) {
+      clearTimeout(saveFiltersTimerRef.current);
+    }
+
+    saveFiltersTimerRef.current = setTimeout(() => {
+      void fetch("/api/profile/update-theme", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          savedFilters: {
+            [FILTER_KEY]: {
+              filter,
+              searchQuery,
+              sortBy,
+              sortOrder,
+            },
+          },
+        }),
+      });
+    }, 350);
+
+    return () => {
+      if (saveFiltersTimerRef.current) {
+        clearTimeout(saveFiltersTimerRef.current);
+      }
+    };
+  }, [filtersHydrated, filter, searchQuery, sortBy, sortOrder]);
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;
   const approvedCount = requests.filter((r) => r.status === "approved").length;

@@ -71,6 +71,8 @@ export default function ManageSubjectsPage() {
   const [deleteSubject, setDeleteSubject] = useState<Subject | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [showTheorySubjects, setShowTheorySubjects] = useState(true);
+  const [showPracticalSubjects, setShowPracticalSubjects] = useState(true);
 
   const fetchSubjects = async () => {
     try {
@@ -311,14 +313,28 @@ export default function ManageSubjectsPage() {
             if (theorySubjects.length === 0) return null;
             return (
               <div>
-                <div className="flex items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 mb-3 text-left"
+                  onClick={() => setShowTheorySubjects((prev) => !prev)}
+                >
                   <span className="text-base">📖</span>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Theory</h3>
                   <Badge variant="secondary" className="rounded-full text-xs">{theorySubjects.length}</Badge>
                   <div className="flex-1 h-px bg-border" />
-                </div>
-                <Card className="rounded-2xl">
-                  <CardContent className="pt-4">
+                  <svg
+                    className={`h-4 w-4 text-muted-foreground transition-transform ${showTheorySubjects ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showTheorySubjects && (
+                  <Card className="rounded-2xl">
+                    <CardContent className="pt-4">
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
@@ -386,8 +402,9 @@ export default function ManageSubjectsPage() {
                         </TableBody>
                       </Table>
                     </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             );
           })()}
@@ -398,14 +415,28 @@ export default function ManageSubjectsPage() {
             if (practicalSubjects.length === 0) return null;
             return (
               <div>
-                <div className="flex items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 mb-3 text-left"
+                  onClick={() => setShowPracticalSubjects((prev) => !prev)}
+                >
                   <span className="text-base">🧪</span>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Practical / Lab</h3>
                   <Badge variant="secondary" className="rounded-full text-xs">{practicalSubjects.length}</Badge>
                   <div className="flex-1 h-px bg-border" />
-                </div>
-                <Card className="rounded-2xl">
-                  <CardContent className="pt-4">
+                  <svg
+                    className={`h-4 w-4 text-muted-foreground transition-transform ${showPracticalSubjects ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showPracticalSubjects && (
+                  <Card className="rounded-2xl">
+                    <CardContent className="pt-4">
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
@@ -473,8 +504,9 @@ export default function ManageSubjectsPage() {
                         </TableBody>
                       </Table>
                     </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             );
           })()}

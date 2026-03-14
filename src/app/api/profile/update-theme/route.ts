@@ -1,7 +1,7 @@
 /**
  * @module API/Profile/UpdateTheme
  * @description Authenticated. Updates user preferences: theme, accentColor,
- * mobileNavPosition, dashboardView, and notificationPreferences.
+ * mobileNavPosition, dashboardView, notificationPreferences, and savedFilters.
  */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
@@ -15,7 +15,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { theme, accentColor, mobileNavPosition, dashboardView, notificationPreferences } = body;
+    const { theme, accentColor, mobileNavPosition, dashboardView, notificationPreferences, savedFilters } = body;
 
     const validThemes = ["light", "dark", "system"];
     const validAccents = ["default", "rose", "ocean", "emerald", "violet", "sunset", "amoled", "pastel", "contrast"];
@@ -41,6 +41,15 @@ export async function PUT(request: Request) {
       for (const key of validNotifKeys) {
         if (typeof notificationPreferences[key] === "boolean") {
           update[`notificationPreferences.${key}`] = notificationPreferences[key];
+        }
+      }
+    }
+
+    if (savedFilters && typeof savedFilters === "object" && !Array.isArray(savedFilters)) {
+      for (const [key, value] of Object.entries(savedFilters)) {
+        if (!key || key.length > 100) continue;
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+          update[`savedFilters.${key}`] = value;
         }
       }
     }

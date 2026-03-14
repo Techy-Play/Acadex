@@ -1,7 +1,8 @@
 /**
  * @page WhyAcadex (/why-acadex)
  * @description Marketing page comparing Acadex to WhatsApp groups and ERP portals.
- */import Link from "next/link";
+ */
+import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -10,6 +11,9 @@ export const metadata: Metadata = {
   title: "Why Acadex – WhatsApp & ERP Alternative for Students",
   description:
     "Discover why Acadex replaces chaotic WhatsApp groups and outdated ERP systems with a structured, modern academic resource platform.",
+  alternates: {
+    canonical: "/why-acadex",
+  },
   openGraph: {
     title: "Why Acadex – WhatsApp & ERP Alternative for Students | Acadex",
     description:
