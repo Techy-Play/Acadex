@@ -10,6 +10,7 @@ import { ChevronDown } from "lucide-react";
 import { AssignmentCard } from "@/components/assignment-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { fetchMeCached } from "@/lib/client-auth";
 import {
   Select,
   SelectContent,
@@ -123,13 +124,13 @@ export default function PracticalsPage() {
   useEffect(() => {
     async function fetchInit() {
       try {
-        const [subjectsRes, meRes, sectionsRes] = await Promise.all([
+        const mePromise = fetchMeCached();
+        const [subjectsRes, sectionsRes] = await Promise.all([
           fetch("/api/subjects"),
-          fetch("/api/auth/me"),
           fetch("/api/sections"),
         ]);
         const subjectsData = await subjectsRes.json();
-        const meData = meRes.ok ? await meRes.json() : { user: {} };
+        const meData = await mePromise;
         const sectionsData = sectionsRes.ok ? await sectionsRes.json() : { sections: [] };
 
         setSections(sectionsData.sections || []);

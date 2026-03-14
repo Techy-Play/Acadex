@@ -21,7 +21,11 @@ export async function GET(request: Request) {
 
     await connectDB();
 
-    const user = await User.findById(userId).select("-password_hash");
+    const user = await User.findById(userId)
+      .select(
+        "name adminAlias college_id email role isSuperAdmin stream section semester must_change_password theme accentColor mobileNavPosition dashboardView savedFilters notificationPreferences status isAdminSubject isAdminStream isAdminSection createdAt"
+      )
+      .lean();
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
@@ -44,31 +48,34 @@ export async function GET(request: Request) {
       await setAuthCookie(token);
     }
 
-    // Fetch stream info if assigned
-    let streamData = null;
-    if (user.stream) {
-      void Subject; // Ensure Subject model is registered for populate
-      const stream = await Stream.findById(user.stream).populate("subjects");
-      if (stream) {
-        streamData = {
+    // Fetch stream and section in parallel when available.
+    void Subject; // Ensure Subject model is registered for populate
+    const [stream, section] = await Promise.all([
+      user.stream
+        ? Stream.findById(user.stream)
+            .select("name subjects")
+            .populate("subjects", "_id name type semester")
+            .lean()
+        : Promise.resolve(null),
+      user.section
+        ? Section.findById(user.section).select("name").lean()
+        : Promise.resolve(null),
+    ]);
+
+    const streamData = stream
+      ? {
           id: stream._id,
           name: stream.name,
           subjects: stream.subjects,
-        };
-      }
-    }
+        }
+      : null;
 
-    // Fetch section info if assigned
-    let sectionData = null;
-    if (user.section) {
-      const section = await Section.findById(user.section);
-      if (section) {
-        sectionData = {
+    const sectionData = section
+      ? {
           id: section._id,
           name: section.name,
-        };
-      }
-    }
+        }
+      : null;
 
     return NextResponse.json(
       {

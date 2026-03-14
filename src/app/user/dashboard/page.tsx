@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubjectCard } from "@/components/subject-card";
+import { fetchMeCached } from "@/lib/client-auth";
 
 interface Subject {
   _id: string;
@@ -74,6 +75,13 @@ export default function StudentDashboard() {
   const [progressPopup, setProgressPopup] = useState<"assignments" | "practicals" | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
+  const goToSubjectResources = (subject: Subject) => {
+    const resourcePath = subject.type === "practical"
+      ? "/user/dashboard/practicals"
+      : "/user/dashboard/notes";
+    router.push(`${resourcePath}?subject=${subject._id}`);
+  };
+
   const handleViewChange = (mode: ViewMode) => {
     setViewMode(mode);
     // Persist to DB
@@ -87,14 +95,14 @@ export default function StudentDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [subjectsRes, notesRes, assignmentsRes, completionsRes, practicalsRes, practicalCompletionsRes, meRes] = await Promise.all([
+        const mePromise = fetchMeCached();
+        const [subjectsRes, notesRes, assignmentsRes, completionsRes, practicalsRes, practicalCompletionsRes] = await Promise.all([
           fetch("/api/subjects"),
           fetch("/api/notes"),
           fetch("/api/assignments"),
           fetch("/api/completions"),
           fetch("/api/practicals"),
           fetch("/api/practical-completions"),
-          fetch("/api/auth/me"),
         ]);
 
         const subjectsData = await subjectsRes.json();
@@ -103,7 +111,7 @@ export default function StudentDashboard() {
         const completionsData = completionsRes.ok ? await completionsRes.json() : { completedIds: [] };
         const practicalsData = await practicalsRes.json();
         const practicalCompletionsData = practicalCompletionsRes.ok ? await practicalCompletionsRes.json() : { completedIds: [] };
-        const meData = meRes.ok ? await meRes.json() : { user: {} };
+        const meData = await mePromise;
 
         // Redirect banned/suspended users
         if (meData.user?.status === "banned" || meData.user?.status === "suspended") {
@@ -827,7 +835,7 @@ export default function StudentDashboard() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <Link
-                              href={`/user/dashboard/assignments?subject=${s._id}${remaining > 0 ? "" : ""}`}
+                              href={`/user/dashboard/notes?subject=${s._id}`}
                               onClick={() => setProgressPopup(null)}
                               className="text-sm font-medium truncate hover:text-purple-500 hover:underline transition-colors"
                             >
@@ -933,7 +941,7 @@ export default function StudentDashboard() {
                   completedCount={assignDone}
                   practicalCount={pracTotal}
                   practicalCompletedCount={pracDone}
-                  onClick={() => setSubjectPopup({ id: subject._id, name: subject.name, type: subject.type || "theory" })}
+                  onClick={() => goToSubjectResources(subject)}
                 />
               );
             })}
@@ -957,7 +965,7 @@ export default function StudentDashboard() {
                   <div
                     key={subject._id}
                     className="flex items-center gap-3 p-3 border rounded-xl hover:bg-muted/30 cursor-pointer transition-colors"
-                    onClick={() => setSubjectPopup({ id: subject._id, name: subject.name, type: subject.type || "theory" })}
+                    onClick={() => goToSubjectResources(subject)}
                   >
                     <span className="text-lg shrink-0">📚</span>
                     <div className="flex-1 min-w-0">
@@ -1010,7 +1018,7 @@ export default function StudentDashboard() {
                       <tr
                         key={subject._id}
                         className="hover:bg-muted/30 cursor-pointer transition-colors"
-                        onClick={() => setSubjectPopup({ id: subject._id, name: subject.name, type: subject.type || "theory" })}
+                        onClick={() => goToSubjectResources(subject)}
                       >
                         <td className="px-4 py-3 font-medium">
                           <div className="flex items-center gap-2">
@@ -1074,7 +1082,7 @@ export default function StudentDashboard() {
                 <Card
                   key={subject._id}
                   className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5"
-                  onClick={() => setSubjectPopup({ id: subject._id, name: subject.name, type: subject.type || "theory" })}
+                  onClick={() => goToSubjectResources(subject)}
                 >
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-4">

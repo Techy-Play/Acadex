@@ -54,6 +54,10 @@ const PracticalSchema = new Schema<IPractical>(
   }
 );
 
+// Common list/query patterns for dashboard and admin tables.
+PracticalSchema.index({ section: 1, subject: 1, createdAt: -1 });
+PracticalSchema.index({ uploadedBy: 1, createdAt: -1 });
+
 const Practical: Model<IPractical> =
   mongoose.models.Practical ||
   mongoose.model<IPractical>("Practical", PracticalSchema);

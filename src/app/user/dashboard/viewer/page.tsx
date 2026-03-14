@@ -6,7 +6,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
  *   https://drive.google.com/uc?id={FILE_ID}&…
  *
  * Output:
- *   https://drive.google.com/file/d/{FILE_ID}/preview
+ *   https://drive.google.com/file/d/{FILE_ID}/preview?rm=minimal
  *
  * Non-Drive URLs are returned as-is.
  */
@@ -27,34 +27,14 @@ function toEmbedUrl(url: string): string {
     // Pattern 1: /file/d/{id}/...
     const fileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
     if (fileMatch) {
-      return `https://drive.google.com/file/d/${fileMatch[1]}/preview`;
+      return `https://drive.google.com/file/d/${fileMatch[1]}/preview?rm=minimal`;
     }
 
     // Pattern 2: ?id={id}
     const parsed = new URL(url);
     const idParam = parsed.searchParams.get("id");
     if (parsed.hostname === "drive.google.com" && idParam) {
-      return `https://drive.google.com/file/d/${idParam}/preview`;
-    }
-  } catch {
-    // not a valid URL
-  }
-  return url;
-}
-
-/**
- * Convert a Google Drive URL to a direct download link.
- */
-function toDownloadUrl(url: string): string {
-  try {
-    const fileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (fileMatch) {
-      return `https://drive.google.com/uc?export=download&id=${fileMatch[1]}`;
-    }
-    const parsed = new URL(url);
-    const idParam = parsed.searchParams.get("id");
-    if (parsed.hostname === "drive.google.com" && idParam) {
-      return `https://drive.google.com/uc?export=download&id=${idParam}`;
+      return `https://drive.google.com/file/d/${idParam}/preview?rm=minimal`;
     }
   } catch {
     // not a valid URL
@@ -67,37 +47,8 @@ export default function PDFViewerPage() {
   const router = useRouter();
   const fileUrl = searchParams.get("url") || "";
   const title = searchParams.get("title") || "Document";
-  const [showExternalActions, setShowExternalActions] = useState(false);
 
   const embedUrl = useMemo(() => toEmbedUrl(fileUrl), [fileUrl]);
-  const downloadUrl = useMemo(() => toDownloadUrl(fileUrl), [fileUrl]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadViewerActionsAccess = async () => {
-      try {
-        const res = await fetch("/api/auth/me", { cache: "no-store" });
-        if (!res.ok) {
-          if (!cancelled) setShowExternalActions(false);
-          return;
-        }
-
-        const data = await res.json();
-        if (!cancelled) {
-          setShowExternalActions(data?.user?.role === "admin");
-        }
-      } catch {
-        if (!cancelled) setShowExternalActions(false);
-      }
-    };
-
-    void loadViewerActionsAccess();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   if (!fileUrl) {
     return (
@@ -133,35 +84,6 @@ export default function PDFViewerPage() {
           <div className="h-5 w-px bg-border flex-shrink-0" />
           <h1 className="text-sm font-semibold truncate">{title}</h1>
         </div>
-        {showExternalActions && (
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg gap-1.5 text-xs"
-              asChild
-            >
-              <a href={embedUrl.replace("/preview", "/view")} target="_blank" rel="noopener noreferrer">
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-                <span className="hidden sm:inline">Open in Drive</span>
-              </a>
-            </Button>
-            <Button
-              size="sm"
-              className="rounded-lg gap-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
-              asChild
-            >
-              <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                <span className="hidden sm:inline">Download</span>
-              </a>
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* PDF iframe */}
@@ -170,7 +92,7 @@ export default function PDFViewerPage() {
           src={embedUrl}
           className="absolute inset-0 w-full h-full border-0"
           allow="autoplay"
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+          sandbox="allow-scripts allow-same-origin allow-forms"
           title={title}
         />
       </div>

@@ -164,6 +164,9 @@ const UserSchema = new Schema<IUser>(
 
 // Sparse unique index — allows multiple null emails but enforces uniqueness for non-null
 UserSchema.index({ email: 1 }, { unique: true, sparse: true });
+// Common admin/student lookup patterns.
+UserSchema.index({ role: 1, section: 1, createdAt: -1 });
+UserSchema.index({ stream: 1, semester: 1, role: 1 });
 
 // Prevent model recompilation in development (hot reload)
 const User: Model<IUser> =

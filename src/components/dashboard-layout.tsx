@@ -13,6 +13,7 @@ import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/sidebar";
 import { BottomNav } from "@/components/bottom-nav";
 import { useAccentColor } from "@/components/theme-toggle";
+import { fetchMeCached } from "@/lib/client-auth";
 
 // Icons as inline SVGs
 const icons = {
@@ -145,12 +146,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function fetchUser() {
       try {
-        const res = await fetch("/api/auth/me");
-        if (!res.ok) {
-          router.push("/login");
-          return;
-        }
-        const data = await res.json();
+        const data = await fetchMeCached();
         setUser(data.user);
 
         // Apply server-saved theme preferences

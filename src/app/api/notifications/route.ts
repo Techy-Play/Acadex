@@ -31,32 +31,60 @@ async function generateDeadlineAlerts() {
       deadline: { $gte: currentDate, $lte: in24h },
     })
       .populate("subject", "name")
+      .select("_id title deadline subject")
       .lean();
 
-    for (const a of upcomingAssignments) {
-      // Don't create duplicate deadline alerts
-      const existing = await Notification.findOne({
-        type: "deadline_alert",
-        link: `/user/dashboard/assignments`,
-        message: { $regex: a._id.toString() },
-      });
-      if (!existing) {
-        const subjectName =
-          (a.subject as { name?: string })?.name || "Unknown";
-        const deadlineStr = new Date(a.deadline!).toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        await Notification.create({
-          type: "deadline_alert",
-          title: "Assignment Deadline Approaching",
-          message: `"${a.title}" (${subjectName}) is due ${deadlineStr} [${a._id}]`,
-          link: "/user/dashboard/assignments",
-          targetRole: "student",
-        });
+    if (upcomingAssignments.length === 0) return;
+
+    // Fetch existing recent deadline alerts once and derive assignment IDs from message suffix: [<assignmentId>]
+    const existingAlerts = await Notification.find({
+      type: "deadline_alert",
+      link: "/user/dashboard/assignments",
+      createdAt: { $gte: new Date(currentDate.getTime() - 24 * 60 * 60 * 1000) },
+    })
+      .select("message")
+      .lean();
+
+    const existingAssignmentIds = new Set<string>();
+    for (const alert of existingAlerts) {
+      const match = /\[([a-fA-F0-9]{24})\]$/.exec(alert.message || "");
+      if (match?.[1]) {
+        existingAssignmentIds.add(match[1]);
       }
+    }
+
+    const toCreate: Array<{
+      type: "deadline_alert";
+      title: string;
+      message: string;
+      link: string;
+      targetRole: "student";
+    }> = [];
+
+    for (const a of upcomingAssignments) {
+      const assignmentId = a._id.toString();
+      if (existingAssignmentIds.has(assignmentId)) continue;
+
+      const subjectName =
+        (a.subject as { name?: string } | null)?.name || "Unknown";
+      const deadlineStr = new Date(a.deadline!).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      toCreate.push({
+        type: "deadline_alert",
+        title: "Assignment Deadline Approaching",
+        message: `"${a.title}" (${subjectName}) is due ${deadlineStr} [${assignmentId}]`,
+        link: "/user/dashboard/assignments",
+        targetRole: "student",
+      });
+    }
+
+    if (toCreate.length > 0) {
+      await Notification.insertMany(toCreate, { ordered: false });
     }
   } catch {
     // Don't fail — silently skip deadline check

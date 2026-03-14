@@ -47,6 +47,11 @@ const NoteSchema = new Schema<INote>({
   },
 });
 
+// Common list/query patterns for student and admin note pages.
+NoteSchema.index({ section: 1, subject: 1, uploadedAt: -1 });
+NoteSchema.index({ uploadedBy: 1, uploadedAt: -1 });
+NoteSchema.index({ subject: 1, uploadedAt: -1 });
+
 const Note: Model<INote> =
   mongoose.models.Note || mongoose.model<INote>("Note", NoteSchema);
 

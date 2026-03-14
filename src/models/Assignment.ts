@@ -59,6 +59,11 @@ const AssignmentSchema = new Schema<IAssignment>(
   }
 );
 
+// Common list/query patterns for dashboard and admin tables.
+AssignmentSchema.index({ section: 1, subject: 1, createdAt: -1 });
+AssignmentSchema.index({ uploadedBy: 1, createdAt: -1 });
+AssignmentSchema.index({ deadline: 1 });
+
 const Assignment: Model<IAssignment> =
   mongoose.models.Assignment ||
   mongoose.model<IAssignment>("Assignment", AssignmentSchema);

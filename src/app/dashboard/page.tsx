@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubjectCard } from "@/components/subject-card";
+import { fetchMeCached } from "@/lib/client-auth";
 
 interface Subject {
   _id: string;
@@ -77,14 +78,14 @@ export default function StudentDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [subjectsRes, notesRes, assignmentsRes, completionsRes, practicalsRes, practicalCompletionsRes, meRes] = await Promise.all([
+        const mePromise = fetchMeCached();
+        const [subjectsRes, notesRes, assignmentsRes, completionsRes, practicalsRes, practicalCompletionsRes] = await Promise.all([
           fetch("/api/subjects"),
           fetch("/api/notes"),
           fetch("/api/assignments"),
           fetch("/api/completions"),
           fetch("/api/practicals"),
           fetch("/api/practical-completions"),
-          fetch("/api/auth/me"),
         ]);
 
         const subjectsData = await subjectsRes.json();
@@ -93,7 +94,7 @@ export default function StudentDashboard() {
         const completionsData = completionsRes.ok ? await completionsRes.json() : { completedIds: [] };
         const practicalsData = await practicalsRes.json();
         const practicalCompletionsData = practicalCompletionsRes.ok ? await practicalCompletionsRes.json() : { completedIds: [] };
-        const meData = meRes.ok ? await meRes.json() : { user: {} };
+        const meData = await mePromise;
 
         // Set stream info
         if (meData.user?.stream) {
