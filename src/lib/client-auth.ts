@@ -3,8 +3,48 @@
  * Dedupe concurrent /api/auth/me calls and reuse a short-lived cache.
  */
 
+interface MeSubject {
+  _id: string;
+  name: string;
+  type?: "theory" | "practical";
+  semester?: number;
+}
+
+interface MeStream {
+  id: string;
+  name: string;
+  subjects: MeSubject[];
+}
+
+interface MeSection {
+  id: string;
+  name: string;
+}
+
+interface MeUser {
+  id: string;
+  name: string;
+  college_id: string;
+  role: "admin" | "student";
+  must_change_password: boolean;
+  adminAlias?: string | null;
+  isSuperAdmin?: boolean;
+  isAdminSubject?: boolean;
+  isAdminStream?: boolean;
+  isAdminSection?: boolean;
+  status?: string;
+  stream?: MeStream | null;
+  section?: MeSection | null;
+  semester?: number | null;
+  dashboardView?: "grid" | "list" | "detail";
+  theme?: string;
+  accentColor?: string;
+  mobileNavPosition?: "top" | "bottom" | "left";
+  [key: string]: unknown;
+}
+
 interface MePayload {
-  user: Record<string, unknown>;
+  user: MeUser;
 }
 
 let meCache: { data: MePayload; expiresAt: number } | null = null;
