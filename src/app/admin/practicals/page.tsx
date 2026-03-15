@@ -5,6 +5,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,7 @@ interface AdminPracticalsSavedFilters {
 const FILTER_KEY = "adminPracticals";
 
 export default function ManagePracticalsPage() {
+  const router = useRouter();
   const [practicals, setPracticals] = useState<Practical[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
@@ -94,7 +96,7 @@ export default function ManagePracticalsPage() {
   const [addDescription, setAddDescription] = useState("");
   const [addFileUrl, setAddFileUrl] = useState("");
   const [addDeadline, setAddDeadline] = useState("");
-  const [addSection, setAddSection] = useState("");
+  const [addSections, setAddSections] = useState<string[]>([]);
 
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -104,7 +106,7 @@ export default function ManagePracticalsPage() {
   const [editFileUrl, setEditFileUrl] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
   const [editSubject, setEditSubject] = useState("");
-  const [editSection, setEditSection] = useState("");
+  const [editSections, setEditSections] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Delete state
@@ -253,7 +255,7 @@ export default function ManagePracticalsPage() {
           description: addDescription || undefined,
           file_url: addFileUrl.trim(),
           deadline: addDeadline || null,
-          ...(isSuperAdmin && addSection && { section: addSection }),
+          ...(isSuperAdmin && addSections.length > 0 && { sectionIds: addSections }),
         }),
       });
 
@@ -270,7 +272,7 @@ export default function ManagePracticalsPage() {
       setAddFileUrl("");
       setAddDeadline("");
       setAddSubject("");
-      setAddSection("");
+      setAddSections([]);
       setShowAddForm(false);
       fetchPracticals();
     } catch {
@@ -290,7 +292,7 @@ export default function ManagePracticalsPage() {
       p.deadline ? new Date(p.deadline).toISOString().slice(0, 16) : ""
     );
     setEditSubject(p.subject._id);
-    setEditSection(p.section?._id || "");
+    setEditSections(p.section?._id ? [p.section._id] : []);
     setEditDialogOpen(true);
   };
 
@@ -308,7 +310,12 @@ export default function ManagePracticalsPage() {
           file_url: editFileUrl,
           deadline: editDeadline || null,
           subject: editSubject,
-          ...(editSection && { section: editSection }),
+          ...(isSuperAdmin
+            ? {
+                section: editSections[0] || null,
+                ...(editSections.length > 0 && { sectionIds: editSections }),
+              }
+            : {}),
         }),
       });
 
@@ -406,7 +413,7 @@ export default function ManagePracticalsPage() {
               )}
               <SelectItem value="all">All Sections</SelectItem>
               {sections
-                .filter((s) => !userSectionId || s._id !== userSectionId)
+                .filter((s) => isSuperAdmin || !userSectionId || s._id !== userSectionId)
                 .map((s) => (
                   <SelectItem key={s._id} value={s._id}>
                     🏫 {s.name}
@@ -522,19 +529,43 @@ export default function ManagePracticalsPage() {
                 </div>
                 {isSuperAdmin && sections.length > 0 ? (
                   <div className="space-y-2">
-                    <Label>Section</Label>
-                    <Select value={addSection} onValueChange={setAddSection}>
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="Select section (optional)" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {sections.map((s) => (
-                          <SelectItem key={s._id} value={s._id}>
-                            🏫 {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Sections (Optional)</Label>
+                      {addSections.length > 0 && (
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline"
+                          onClick={() => setAddSections([])}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {sections.map((s) => {
+                        const selected = addSections.includes(s._id);
+                        return (
+                          <Button
+                            key={s._id}
+                            type="button"
+                            variant={selected ? "default" : "outline"}
+                            className="justify-start rounded-xl"
+                            onClick={() => {
+                              setAddSections((prev) =>
+                                prev.includes(s._id)
+                                  ? prev.filter((id) => id !== s._id)
+                                  : [...prev, s._id]
+                              );
+                            }}
+                          >
+                            {selected ? "✓ " : ""}🏫 {s.name}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      If none are selected, the practical is visible to all sections.
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -644,9 +675,8 @@ export default function ManagePracticalsPage() {
                             className={p.file_url ? "cursor-pointer hover:bg-muted/50" : ""}
                             onClick={() => {
                               if (p.file_url) {
-                                window.open(
-                                  `/user/dashboard/viewer?url=${encodeURIComponent(p.file_url)}&title=${encodeURIComponent(p.title)}`,
-                                  "_blank"
+                                router.push(
+                                  `/user/dashboard/viewer?url=${encodeURIComponent(p.file_url)}&title=${encodeURIComponent(p.title)}`
                                 );
                               }
                             }}
@@ -763,19 +793,43 @@ export default function ManagePracticalsPage() {
               />
             {sections.length > 0 && (
               <div className="space-y-2">
-                <Label>Section</Label>
-                <Select value={editSection} onValueChange={setEditSection}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="No section" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {sections.map((s) => (
-                      <SelectItem key={s._id} value={s._id}>
-                        🏫 {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Sections</Label>
+                  {editSections.length > 0 && (
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => setEditSections([])}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {sections.map((s) => {
+                    const selected = editSections.includes(s._id);
+                    return (
+                      <Button
+                        key={s._id}
+                        type="button"
+                        variant={selected ? "default" : "outline"}
+                        className="justify-start rounded-xl"
+                        onClick={() => {
+                          setEditSections((prev) =>
+                            prev.includes(s._id)
+                              ? prev.filter((id) => id !== s._id)
+                              : [...prev, s._id]
+                          );
+                        }}
+                      >
+                        {selected ? "✓ " : ""}🏫 {s.name}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Selecting multiple sections updates this practical and mirrors it to the selected sections.
+                </p>
               </div>
             )}
             </div>

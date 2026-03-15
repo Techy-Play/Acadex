@@ -6,7 +6,7 @@ import User from "@/models/User";
 type AudienceInput =
   | { targetType: "all" }
   | { targetType: "semester"; semester: number }
-  | { targetType: "section"; sectionId: string }
+  | { targetType: "section"; sectionId?: string; sectionIds?: string[] }
   | { targetType: "users"; userIds: string[] };
 
 export async function resolveUserIdsForAudience(input: AudienceInput): Promise<string[]> {
@@ -39,10 +39,20 @@ export async function resolveUserIdsForAudience(input: AudienceInput): Promise<s
     return users.map((u) => u._id.toString());
   }
 
+  const sectionIds = Array.from(
+    new Set((input.sectionIds || []).filter(Boolean))
+  );
+  if (sectionIds.length === 0 && input.sectionId) {
+    sectionIds.push(input.sectionId);
+  }
+  if (sectionIds.length === 0) {
+    return [];
+  }
+
   const users = await User.find({
     role: "student",
     status: "active",
-    section: input.sectionId,
+    section: { $in: sectionIds },
   })
     .select("_id")
     .lean();

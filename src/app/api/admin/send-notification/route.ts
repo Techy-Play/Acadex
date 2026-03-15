@@ -28,6 +28,7 @@ export async function POST(request: Request) {
       targetType,
       semester,
       sectionId,
+      sectionIds,
       title,
       message,
     } = body as {
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
       targetType?: AudienceType;
       semester?: number;
       sectionId?: string;
+      sectionIds?: string[];
       title?: string;
       message?: string;
     };
@@ -64,12 +66,16 @@ export async function POST(request: Request) {
         semester: Number(semester),
       });
     } else if (audience === "section") {
-      if (!sectionId) {
-        return NextResponse.json({ error: "sectionId is required" }, { status: 400 });
+      const normalizedSectionIds = Array.isArray(sectionIds)
+        ? sectionIds.filter(Boolean)
+        : [];
+      if (!sectionId && normalizedSectionIds.length === 0) {
+        return NextResponse.json({ error: "sectionId or sectionIds is required" }, { status: 400 });
       }
       targetUserIds = await resolveUserIdsForAudience({
         targetType: "section",
         sectionId,
+        sectionIds: normalizedSectionIds,
       });
     } else {
       const normalized = Array.isArray(userIds)

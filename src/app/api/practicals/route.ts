@@ -164,37 +164,67 @@ export async function POST(request: Request) {
       );
     }
 
-    let sectionId = parsed.data.section || null;
-    if (!isSuperAdmin) {
-      sectionId = adminSection || null;
-    }
+    const normalizedSectionIds = Array.from(
+      new Set((parsed.data.sectionIds || []).filter(Boolean))
+    );
+
+    const targetSectionIds: Array<string | null> = !isSuperAdmin
+      ? [adminSection || null]
+      : normalizedSectionIds.length > 0
+        ? normalizedSectionIds
+        : parsed.data.section
+          ? [parsed.data.section]
+          : [null];
 
     await connectDB();
     void Subject;
     void Section;
 
-    const practical = await Practical.create({
-      subject: parsed.data.subject,
-      title: parsed.data.title,
-      description: parsed.data.description || "",
-      file_url: parsed.data.file_url || "",
-      deadline: parsed.data.deadline ? new Date(parsed.data.deadline) : null,
-      section: sectionId,
-      uploadedBy: adminId,
-    });
+    const createdPracticals = await Promise.all(
+      targetSectionIds.map((sectionId) =>
+        Practical.create({
+          subject: parsed.data.subject,
+          title: parsed.data.title,
+          description: parsed.data.description || "",
+          file_url: parsed.data.file_url || "",
+          deadline: parsed.data.deadline ? new Date(parsed.data.deadline) : null,
+          section: sectionId,
+          uploadedBy: adminId,
+        })
+      )
+    );
 
-    const populated = await practical.populate([
-      { path: "subject", select: "name type" },
-      { path: "section", select: "name" },
-    ]);
+    const populatedPracticals = await Practical.find({
+      _id: { $in: createdPracticals.map((p) => p._id) },
+    })
+      .populate([
+        { path: "subject", select: "name type" },
+        { path: "section", select: "name" },
+      ])
+      .sort({ createdAt: -1 });
 
     // Log activity
     await ActivityLog.create({
       user: adminId!,
       action: "PRACTICAL_ADDED",
-      details: `Added practical: ${parsed.data.title}`,
-      section: sectionId || null,
+      details:
+        targetSectionIds.length > 1
+          ? `Added practical: ${parsed.data.title} for ${targetSectionIds.length} sections`
+          : `Added practical: ${parsed.data.title}`,
+      section: targetSectionIds[0] || null,
     });
+
+    const targetUserIds = Array.from(
+      new Set(
+        (
+          await Promise.all(
+            targetSectionIds.map((sectionId) =>
+              resolveStudentUserIdsForSubject(parsed.data.subject, sectionId)
+            )
+          )
+        ).flat()
+      )
+    );
 
     // Notify students
     await Notification.create({
@@ -202,20 +232,17 @@ export async function POST(request: Request) {
       title: "New Practical Added",
       message: `"${parsed.data.title}" has been uploaded`,
       link: `/user/dashboard/practicals?subject=${parsed.data.subject}`,
-      targetRole: "student",
+      ...(targetSectionIds.length === 1 && targetSectionIds[0] === null
+        ? { targetRole: "student" }
+        : { targetUsers: targetUserIds }),
     });
-
-    const targetUserIds = await resolveStudentUserIdsForSubject(
-      parsed.data.subject,
-      sectionId
-    );
 
     if (targetUserIds.length > 0) {
       await sendPushToUsers({
         userIds: targetUserIds,
         preferenceKey: "new_practical",
         payload: practicalUploadedPayload(
-          (populated.subject as { name?: string } | undefined)?.name || "this subject",
+          (populatedPracticals[0]?.subject as { name?: string } | undefined)?.name || "this subject",
           parsed.data.subject,
           parsed.data.title
         ),
@@ -223,7 +250,11 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { success: true, practical: populated },
+      {
+        success: true,
+        practical: populatedPracticals[0] || null,
+        createdCount: populatedPracticals.length,
+      },
       { status: 201 }
     );
   } catch (error) {

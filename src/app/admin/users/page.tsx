@@ -149,7 +149,7 @@ export default function UsersPage() {
   const [notifMessage, setNotifMessage] = useState("");
   const [notifTargetType, setNotifTargetType] = useState<"users" | "all" | "semester" | "section">("users");
   const [notifTargetSemester, setNotifTargetSemester] = useState("all");
-  const [notifTargetSection, setNotifTargetSection] = useState("all");
+  const [notifTargetSections, setNotifTargetSections] = useState<string[]>([]);
   const [sendingNotif, setSendingNotif] = useState(false);
 
   // Status update
@@ -490,11 +490,11 @@ export default function UsersPage() {
     }
 
     if (notifTargetType === "section") {
-      if (notifTargetSection === "all") {
-        toast.error("Select a section");
+      if (notifTargetSections.length === 0) {
+        toast.error("Select at least one section");
         return;
       }
-      payload.sectionId = notifTargetSection;
+      payload.sectionIds = notifTargetSections;
     }
 
     setSendingNotif(true);
@@ -515,7 +515,7 @@ export default function UsersPage() {
       setNotifMessage("");
       setNotifTargetType("users");
       setNotifTargetSemester("all");
-      setNotifTargetSection("all");
+      setNotifTargetSections([]);
     } catch {
       toast.error("Something went wrong");
     } finally {
@@ -593,6 +593,7 @@ export default function UsersPage() {
               setNotifTargetType("all");
               setNotifTitle("");
               setNotifMessage("");
+              setNotifTargetSections([]);
               setNotifDialogOpen(true);
             }}
           >
@@ -1461,18 +1462,40 @@ export default function UsersPage() {
 
             {notifTargetType === "section" && (
               <div className="space-y-2">
-                <Label>Section</Label>
-                <Select value={notifTargetSection} onValueChange={setNotifTargetSection}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Select section" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="all">Select section</SelectItem>
-                    {sections.map((s) => (
-                      <SelectItem key={s._id} value={s._id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Sections</Label>
+                  {notifTargetSections.length > 0 && (
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => setNotifTargetSections([])}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {sections.map((s) => {
+                    const selected = notifTargetSections.includes(s._id);
+                    return (
+                      <Button
+                        key={s._id}
+                        type="button"
+                        variant={selected ? "default" : "outline"}
+                        className="justify-start rounded-xl"
+                        onClick={() => {
+                          setNotifTargetSections((prev) =>
+                            prev.includes(s._id)
+                              ? prev.filter((id) => id !== s._id)
+                              : [...prev, s._id]
+                          );
+                        }}
+                      >
+                        {selected ? "✓ " : ""}🏫 {s.name}
+                      </Button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

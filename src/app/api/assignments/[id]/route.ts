@@ -49,6 +49,8 @@ export async function PUT(
   try {
     const userRole = request.headers.get("x-user-role");
     const adminId = request.headers.get("x-user-id");
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
 
     if (userRole !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -64,6 +66,14 @@ export async function PUT(
       return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
     }
 
+    // Section admin can only edit their own section's assignments
+    if (!isSuperAdmin && assignment.section?.toString() !== adminSection) {
+      return NextResponse.json(
+        { error: "You can only edit assignments from your own section" },
+        { status: 403 }
+      );
+    }
+
     // Update allowed fields
     if (body.title !== undefined) assignment.title = body.title;
     if (body.description !== undefined) assignment.description = body.description;
@@ -72,19 +82,54 @@ export async function PUT(
     if (body.deadline !== undefined) {
       assignment.deadline = body.deadline ? new Date(body.deadline) : null;
     }
-    if (body.section !== undefined) assignment.section = body.section || null;
+    const normalizedSectionIds = Array.isArray(body.sectionIds)
+      ? Array.from(new Set(body.sectionIds.filter(Boolean)))
+      : [];
 
-    // Section admin can only edit their own section's assignments
-    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
-    const adminSection = request.headers.get("x-user-section");
-    if (!isSuperAdmin && assignment.section?.toString() !== adminSection) {
-      return NextResponse.json(
-        { error: "You can only edit assignments from your own section" },
-        { status: 403 }
-      );
+    if (isSuperAdmin) {
+      if (normalizedSectionIds.length > 0) {
+        assignment.section = normalizedSectionIds[0];
+      } else if (body.section !== undefined) {
+        assignment.section = body.section || null;
+      }
+    } else {
+      assignment.section = adminSection || null;
     }
 
     await assignment.save();
+
+    let replicatedCount = 0;
+    if (isSuperAdmin && normalizedSectionIds.length > 1) {
+      const siblingSectionIds = normalizedSectionIds.slice(1);
+      for (const sectionId of siblingSectionIds) {
+        const existingSibling = await Assignment.findOne({
+          _id: { $ne: assignment._id },
+          subject: assignment.subject,
+          section: sectionId,
+          title: assignment.title,
+          file_url: assignment.file_url,
+          uploadedBy: assignment.uploadedBy,
+        });
+
+        if (existingSibling) {
+          existingSibling.description = assignment.description;
+          existingSibling.deadline = assignment.deadline;
+          await existingSibling.save();
+        } else {
+          await Assignment.create({
+            subject: assignment.subject,
+            title: assignment.title,
+            description: assignment.description,
+            file_url: assignment.file_url,
+            deadline: assignment.deadline,
+            section: sectionId,
+            uploadedBy: assignment.uploadedBy,
+          });
+        }
+        replicatedCount += 1;
+      }
+    }
+
     const populated = await assignment.populate(populateFields);
 
     await ActivityLog.create({
@@ -94,7 +139,7 @@ export async function PUT(
       section: assignment.section || null,
     });
 
-    return NextResponse.json({ success: true, assignment: populated });
+    return NextResponse.json({ success: true, assignment: populated, replicatedCount });
   } catch (error) {
     console.error("Update assignment error:", error);
     return NextResponse.json(

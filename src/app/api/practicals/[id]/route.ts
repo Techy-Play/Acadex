@@ -54,6 +54,8 @@ export async function PUT(
   try {
     const userRole = request.headers.get("x-user-role");
     const adminId = request.headers.get("x-user-id");
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
 
     if (userRole !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -73,19 +75,7 @@ export async function PUT(
       );
     }
 
-    // Update allowed fields
-    if (body.title !== undefined) practical.title = body.title;
-    if (body.description !== undefined) practical.description = body.description;
-    if (body.file_url !== undefined) practical.file_url = body.file_url;
-    if (body.subject !== undefined) practical.subject = body.subject;
-    if (body.section !== undefined) practical.section = body.section || null;
-    if (body.deadline !== undefined) {
-      practical.deadline = body.deadline ? new Date(body.deadline) : null;
-    }
-
     // Section admin can only edit their own section's practicals
-    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
-    const adminSection = request.headers.get("x-user-section");
     if (!isSuperAdmin && practical.section?.toString() !== adminSection) {
       return NextResponse.json(
         { error: "You can only edit practicals from your own section" },
@@ -93,7 +83,63 @@ export async function PUT(
       );
     }
 
+    // Update allowed fields
+    if (body.title !== undefined) practical.title = body.title;
+    if (body.description !== undefined) practical.description = body.description;
+    if (body.file_url !== undefined) practical.file_url = body.file_url;
+    if (body.subject !== undefined) practical.subject = body.subject;
+    if (body.deadline !== undefined) {
+      practical.deadline = body.deadline ? new Date(body.deadline) : null;
+    }
+
+    const normalizedSectionIds = Array.isArray(body.sectionIds)
+      ? Array.from(new Set(body.sectionIds.filter(Boolean)))
+      : [];
+
+    if (isSuperAdmin) {
+      if (normalizedSectionIds.length > 0) {
+        practical.section = normalizedSectionIds[0];
+      } else if (body.section !== undefined) {
+        practical.section = body.section || null;
+      }
+    } else {
+      practical.section = adminSection || null;
+    }
+
     await practical.save();
+
+    let replicatedCount = 0;
+    if (isSuperAdmin && normalizedSectionIds.length > 1) {
+      const siblingSectionIds = normalizedSectionIds.slice(1);
+      for (const sectionId of siblingSectionIds) {
+        const existingSibling = await Practical.findOne({
+          _id: { $ne: practical._id },
+          subject: practical.subject,
+          section: sectionId,
+          title: practical.title,
+          file_url: practical.file_url,
+          uploadedBy: practical.uploadedBy,
+        });
+
+        if (existingSibling) {
+          existingSibling.description = practical.description;
+          existingSibling.deadline = practical.deadline;
+          await existingSibling.save();
+        } else {
+          await Practical.create({
+            subject: practical.subject,
+            title: practical.title,
+            description: practical.description,
+            file_url: practical.file_url,
+            deadline: practical.deadline,
+            section: sectionId,
+            uploadedBy: practical.uploadedBy,
+          });
+        }
+        replicatedCount += 1;
+      }
+    }
+
     const populated = await practical.populate(populateFields);
 
     await ActivityLog.create({
@@ -103,7 +149,7 @@ export async function PUT(
       section: practical.section || null,
     });
 
-    return NextResponse.json({ success: true, practical: populated });
+    return NextResponse.json({ success: true, practical: populated, replicatedCount });
   } catch (error) {
     console.error("Update practical error:", error);
     return NextResponse.json(

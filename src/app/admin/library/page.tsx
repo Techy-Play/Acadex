@@ -107,7 +107,7 @@ export default function ManageLibraryPage() {
   const [addType, setAddType] = useState("");
   const [addTags, setAddTags] = useState("");
   const [addFileUrl, setAddFileUrl] = useState("");
-  const [addSection, setAddSection] = useState("");
+  const [addSections, setAddSections] = useState<string[]>([]);
 
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -120,7 +120,7 @@ export default function ManageLibraryPage() {
   const [editType, setEditType] = useState("");
   const [editTags, setEditTags] = useState("");
   const [editFileUrl, setEditFileUrl] = useState("");
-  const [editSection, setEditSection] = useState("");
+  const [editSections, setEditSections] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Delete state
@@ -202,7 +202,7 @@ export default function ManageLibraryPage() {
             .map((t) => t.trim())
             .filter(Boolean),
           fileUrl: addFileUrl,
-          ...(addSection && { section: addSection }),
+          ...(addSections.length > 0 && { sectionIds: addSections }),
         }),
       });
 
@@ -222,7 +222,7 @@ export default function ManageLibraryPage() {
       setAddType("");
       setAddTags("");
       setAddFileUrl("");
-      setAddSection("");
+      setAddSections([]);
       setShowAddForm(false);
       fetchResources();
     } catch {
@@ -244,7 +244,7 @@ export default function ManageLibraryPage() {
     setEditType(r.resourceType);
     setEditTags(r.tags.join(", "));
     setEditFileUrl(r.fileUrl);
-    setEditSection(r.section?._id || "");
+    setEditSections(r.section?._id ? [r.section._id] : []);
     setEditDialogOpen(true);
   };
 
@@ -268,7 +268,8 @@ export default function ManageLibraryPage() {
             .map((t) => t.trim())
             .filter(Boolean),
           fileUrl: editFileUrl,
-          ...(editSection && { section: editSection }),
+          section: editSections[0] || null,
+          ...(editSections.length > 0 && { sectionIds: editSections }),
         }),
       });
 
@@ -539,22 +540,43 @@ export default function ManageLibraryPage() {
                 </div>
                 {sections.length > 0 && (
                   <div className="space-y-2">
-                    <Label>Section (Optional)</Label>
-                    <Select
-                      value={addSection}
-                      onValueChange={setAddSection}
-                    >
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="Auto (your section)" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {sections.map((s) => (
-                          <SelectItem key={s._id} value={s._id}>
-                            🏫 {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Sections (Optional)</Label>
+                      {addSections.length > 0 && (
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline"
+                          onClick={() => setAddSections([])}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {sections.map((s) => {
+                        const selected = addSections.includes(s._id);
+                        return (
+                          <Button
+                            key={s._id}
+                            type="button"
+                            variant={selected ? "default" : "outline"}
+                            className="justify-start rounded-xl"
+                            onClick={() => {
+                              setAddSections((prev) =>
+                                prev.includes(s._id)
+                                  ? prev.filter((id) => id !== s._id)
+                                  : [...prev, s._id]
+                              );
+                            }}
+                          >
+                            {selected ? "✓ " : ""}🏫 {s.name}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      If none are selected, the resource is visible to all sections.
+                    </p>
                   </div>
                 )}
               </div>
@@ -690,7 +712,6 @@ export default function ManageLibraryPage() {
                         >
                           <Link
                             href={`/user/dashboard/viewer?url=${encodeURIComponent(r.fileUrl)}&title=${encodeURIComponent(r.title)}`}
-                            target="_blank"
                           >
                             Open
                           </Link>
@@ -822,19 +843,43 @@ export default function ManageLibraryPage() {
             </div>
             {sections.length > 0 && (
               <div className="space-y-2">
-                <Label>Section</Label>
-                <Select value={editSection} onValueChange={setEditSection}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="No section" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {sections.map((s) => (
-                      <SelectItem key={s._id} value={s._id}>
-                        🏫 {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Sections</Label>
+                  {editSections.length > 0 && (
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => setEditSections([])}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {sections.map((s) => {
+                    const selected = editSections.includes(s._id);
+                    return (
+                      <Button
+                        key={s._id}
+                        type="button"
+                        variant={selected ? "default" : "outline"}
+                        className="justify-start rounded-xl"
+                        onClick={() => {
+                          setEditSections((prev) =>
+                            prev.includes(s._id)
+                              ? prev.filter((id) => id !== s._id)
+                              : [...prev, s._id]
+                          );
+                        }}
+                      >
+                        {selected ? "✓ " : ""}🏫 {s.name}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Selecting multiple sections updates this resource and mirrors it to the selected sections.
+                </p>
               </div>
             )}
           </div>
