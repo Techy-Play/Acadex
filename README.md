@@ -71,4 +71,13 @@ Protect this route with either:
 - `Authorization: Bearer <CRON_SECRET>`
 - `x-cron-secret: <CRON_SECRET>`
 
-For Vercel Cron, call this route on a schedule (for example every 15 minutes).
+For Vercel Hobby, this route must run at most once per day. The current
+configuration uses:
+
+```text
+0 8 * * *
+```
+
+That means Vercel will invoke the reminder job once daily, around 8:00 UTC
+with Hobby-plan timing precision. If you need reminders more frequently than
+once per day, you will need either Vercel Pro or an external scheduler.
