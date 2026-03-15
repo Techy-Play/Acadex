@@ -58,7 +58,7 @@ VAPID_EMAIL=mailto:you@example.com
 CRON_SECRET=your_strong_random_secret
 ```
 
-### 3) Scheduled reminder job
+### 3) Scheduled reminder job endpoint
 
 Deadline reminders are exposed at:
 
@@ -71,13 +71,30 @@ Protect this route with either:
 - `Authorization: Bearer <CRON_SECRET>`
 - `x-cron-secret: <CRON_SECRET>`
 
-For Vercel Hobby, this route must run at most once per day. The current
-configuration uses:
+Use this route with either header:
 
 ```text
-0 8 * * *
+Authorization: Bearer <CRON_SECRET>
+x-cron-secret: <CRON_SECRET>
 ```
 
-That means Vercel will invoke the reminder job once daily, around 8:00 UTC
-with Hobby-plan timing precision. If you need reminders more frequently than
-once per day, you will need either Vercel Pro or an external scheduler.
+### 4) GitHub Actions scheduler (recommended for Vercel Hobby)
+
+This repository includes a workflow at:
+
+`.github/workflows/deadline-reminders.yml`
+
+It runs every 15 minutes and calls your deployed endpoint.
+
+Add these GitHub repository secrets:
+
+```text
+APP_URL=https://your-production-domain
+CRON_SECRET=the-same-secret-from-env
+```
+
+Notes:
+
+- Keep `CRON_SECRET` in both Vercel environment variables and GitHub secrets.
+- Do not include a trailing slash in `APP_URL`.
+- You can also run the job manually from the Actions tab using `workflow_dispatch`.
