@@ -54,7 +54,12 @@ export async function middleware(request: NextRequest) {
         if (payload.mustChangePassword) {
           return NextResponse.redirect(new URL("/change-password", request.url));
         }
-        const dest = payload.role === "admin" ? "/admin" : "/user/dashboard";
+        const dest =
+          payload.role === "admin"
+            ? payload.isSuperAdmin
+              ? "/admin"
+              : "/user/dashboard"
+            : "/user/dashboard";
         return NextResponse.redirect(new URL(dest, request.url));
       }
     }
@@ -187,5 +192,6 @@ export const config = {
     "/api/contact/:path*",
     "/api/user-uploads/:path*",
     "/api/user-requests/:path*",
+    "/api/push/:path*",
   ],
 };

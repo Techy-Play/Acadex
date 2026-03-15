@@ -47,6 +47,7 @@ export function Navbar({ userName, userRole, onMenuToggle, isAdmin, isOnAdminRou
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevUnreadRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -82,12 +83,20 @@ export function Navbar({ userName, userRole, onMenuToggle, isAdmin, isOnAdminRou
   }, []);
 
   useEffect(() => {
-    fetchData();
+    const initialTimer = setTimeout(() => {
+      void fetchData();
+    }, 0);
     pollRef.current = setInterval(fetchData, 60000);
     return () => {
+      clearTimeout(initialTimer);
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [fetchData]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Notification actions
   const handleMarkAllRead = async () => {
@@ -182,7 +191,7 @@ export function Navbar({ userName, userRole, onMenuToggle, isAdmin, isOnAdminRou
   };
 
   function timeAgo(dateStr: string) {
-    const diff = Date.now() - new Date(dateStr).getTime();
+    const diff = nowMs - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return "Just now";
     if (mins < 60) return `${mins}m ago`;

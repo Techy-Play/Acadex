@@ -110,6 +110,7 @@ export const addPracticalSchema = z.object({
     .max(255, "Title too long"),
   description: z.string().optional().default(""),
   file_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  deadline: z.string().optional().nullable(),
   section: z.string().optional().nullable(),
 });
 

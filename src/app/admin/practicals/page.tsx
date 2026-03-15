@@ -57,6 +57,7 @@ interface Practical {
   title: string;
   description: string;
   file_url: string;
+  deadline?: string | null;
   createdAt: string;
   subject: { _id: string; name: string; semester?: number };
   section?: { _id: string; name: string } | null;
@@ -92,6 +93,7 @@ export default function ManagePracticalsPage() {
   const [addTitle, setAddTitle] = useState("");
   const [addDescription, setAddDescription] = useState("");
   const [addFileUrl, setAddFileUrl] = useState("");
+  const [addDeadline, setAddDeadline] = useState("");
   const [addSection, setAddSection] = useState("");
 
   // Edit state
@@ -100,6 +102,7 @@ export default function ManagePracticalsPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editFileUrl, setEditFileUrl] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
   const [editSubject, setEditSubject] = useState("");
   const [editSection, setEditSection] = useState("");
   const [saving, setSaving] = useState(false);
@@ -249,6 +252,7 @@ export default function ManagePracticalsPage() {
           title: addTitle,
           description: addDescription || undefined,
           file_url: addFileUrl.trim(),
+          deadline: addDeadline || null,
           ...(isSuperAdmin && addSection && { section: addSection }),
         }),
       });
@@ -264,6 +268,7 @@ export default function ManagePracticalsPage() {
       setAddTitle("");
       setAddDescription("");
       setAddFileUrl("");
+      setAddDeadline("");
       setAddSubject("");
       setAddSection("");
       setShowAddForm(false);
@@ -281,6 +286,9 @@ export default function ManagePracticalsPage() {
     setEditTitle(p.title);
     setEditDescription(p.description || "");
     setEditFileUrl(p.file_url || "");
+    setEditDeadline(
+      p.deadline ? new Date(p.deadline).toISOString().slice(0, 16) : ""
+    );
     setEditSubject(p.subject._id);
     setEditSection(p.section?._id || "");
     setEditDialogOpen(true);
@@ -298,6 +306,7 @@ export default function ManagePracticalsPage() {
           title: editTitle,
           description: editDescription,
           file_url: editFileUrl,
+          deadline: editDeadline || null,
           subject: editSubject,
           ...(editSection && { section: editSection }),
         }),
@@ -488,7 +497,7 @@ export default function ManagePracticalsPage() {
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="addFileUrl">PDF / File URL</Label>
                   <Input
@@ -498,6 +507,16 @@ export default function ManagePracticalsPage() {
                     value={addFileUrl}
                     onChange={(e) => setAddFileUrl(e.target.value)}
                     required
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="addDeadline">Deadline (Optional)</Label>
+                  <Input
+                    id="addDeadline"
+                    type="datetime-local"
+                    value={addDeadline}
+                    onChange={(e) => setAddDeadline(e.target.value)}
                     className="rounded-xl"
                   />
                 </div>
@@ -611,6 +630,7 @@ export default function ManagePracticalsPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Title</TableHead>
+                          <TableHead>Deadline</TableHead>
                           <TableHead>Section</TableHead>
                           <TableHead>Uploaded By</TableHead>
                           <TableHead>Created</TableHead>
@@ -635,6 +655,20 @@ export default function ManagePracticalsPage() {
                               {p.title}
                               {p.file_url && (
                                 <span className="ml-2 text-xs text-primary">📄</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {p.deadline ? (
+                                <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                                  {new Date(p.deadline).toLocaleString("en-IN", {
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
                               )}
                             </TableCell>
                             <TableCell>
@@ -751,6 +785,15 @@ export default function ManagePracticalsPage() {
                 value={editFileUrl}
                 onChange={(e) => setEditFileUrl(e.target.value)}
                 placeholder="https://drive.google.com/..."
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Deadline (Optional)</Label>
+              <Input
+                type="datetime-local"
+                value={editDeadline}
+                onChange={(e) => setEditDeadline(e.target.value)}
                 className="rounded-xl"
               />
             </div>

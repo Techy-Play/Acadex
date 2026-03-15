@@ -17,6 +17,8 @@ import User from "@/models/User";
 // Run at most once every 15 minutes across all requests (in-memory per instance)
 let lastDeadlineCheck = 0;
 const DEADLINE_CHECK_INTERVAL = 15 * 60 * 1000; // 15 minutes
+const ENABLE_INLINE_DEADLINE_ALERTS =
+  process.env.ENABLE_INLINE_DEADLINE_ALERTS === "true";
 
 async function generateDeadlineAlerts() {
   const now = Date.now();
@@ -103,8 +105,10 @@ export async function GET(request: Request) {
 
     await connectDB();
 
-    // Generate deadline alerts (throttled — at most once per 15 min)
-    await generateDeadlineAlerts();
+    // Optional legacy mode: generate deadline alerts inline on read requests.
+    if (ENABLE_INLINE_DEADLINE_ALERTS) {
+      await generateDeadlineAlerts();
+    }
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const userObjId = new mongoose.Types.ObjectId(userId);
@@ -139,9 +143,10 @@ export async function GET(request: Request) {
         { targetRole: userRole },
         { targetUsers: userObjId },
       ],
+      type: { $nin: ["comment_reply"] },
     };
     if (mutedTypes.length > 0) {
-      query.type = { $nin: mutedTypes };
+      query.type = { $nin: [...mutedTypes, "comment_reply"] };
     }
 
     const notifications = await Notification.find(query)

@@ -13,6 +13,9 @@ import Section from "@/models/Section";
 import User from "@/models/User";
 import ActivityLog from "@/models/ActivityLog";
 import Notification from "@/models/Notification";
+import { practicalUploadedPayload } from "@/lib/push/payloads";
+import { sendPushToUsers } from "@/lib/push/send";
+import { resolveStudentUserIdsForSubject } from "@/lib/push/targets";
 
 // GET /api/practicals - List practicals (optionally filter by subject and/or section)
 export async function GET(request: Request) {
@@ -175,6 +178,7 @@ export async function POST(request: Request) {
       title: parsed.data.title,
       description: parsed.data.description || "",
       file_url: parsed.data.file_url || "",
+      deadline: parsed.data.deadline ? new Date(parsed.data.deadline) : null,
       section: sectionId,
       uploadedBy: adminId,
     });
@@ -197,9 +201,26 @@ export async function POST(request: Request) {
       type: "new_practical",
       title: "New Practical Added",
       message: `"${parsed.data.title}" has been uploaded`,
-      link: "/user/dashboard/practicals",
+      link: `/user/dashboard/practicals?subject=${parsed.data.subject}`,
       targetRole: "student",
     });
+
+    const targetUserIds = await resolveStudentUserIdsForSubject(
+      parsed.data.subject,
+      sectionId
+    );
+
+    if (targetUserIds.length > 0) {
+      await sendPushToUsers({
+        userIds: targetUserIds,
+        preferenceKey: "new_practical",
+        payload: practicalUploadedPayload(
+          (populated.subject as { name?: string } | undefined)?.name || "this subject",
+          parsed.data.subject,
+          parsed.data.title
+        ),
+      });
+    }
 
     return NextResponse.json(
       { success: true, practical: populated },

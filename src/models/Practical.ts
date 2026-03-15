@@ -13,6 +13,7 @@ export interface IPractical extends Document {
   title: string;
   description: string;
   file_url: string;
+  deadline: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,6 +49,10 @@ const PracticalSchema = new Schema<IPractical>(
       type: String,
       default: "",
     },
+    deadline: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -57,6 +62,7 @@ const PracticalSchema = new Schema<IPractical>(
 // Common list/query patterns for dashboard and admin tables.
 PracticalSchema.index({ section: 1, subject: 1, createdAt: -1 });
 PracticalSchema.index({ uploadedBy: 1, createdAt: -1 });
+PracticalSchema.index({ deadline: 1 });
 
 const Practical: Model<IPractical> =
   mongoose.models.Practical ||

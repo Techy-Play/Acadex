@@ -34,3 +34,41 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Web Push Setup
+
+This project supports browser/device notifications using the Web Push standard.
+
+### 1) Generate VAPID keys
+
+Run this once:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+### 2) Add environment variables
+
+Create `.env.local` and set:
+
+```bash
+VAPID_PUBLIC_KEY=your_public_key
+VAPID_PRIVATE_KEY=your_private_key
+VAPID_EMAIL=mailto:you@example.com
+CRON_SECRET=your_strong_random_secret
+```
+
+### 3) Scheduled reminder job
+
+Deadline reminders are exposed at:
+
+```text
+GET /api/jobs/deadline-reminders
+```
+
+Protect this route with either:
+
+- `Authorization: Bearer <CRON_SECRET>`
+- `x-cron-secret: <CRON_SECRET>`
+
+For Vercel Cron, call this route on a schedule (for example every 15 minutes).

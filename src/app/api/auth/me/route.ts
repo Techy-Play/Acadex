@@ -102,6 +102,8 @@ export async function GET(request: Request) {
             new_practical: true,
             deadline_alert: true,
             admin_message: true,
+            request_approved: true,
+            request_denied: true,
           },
           status: user.status || "active",
           isAdminSubject: user.isSuperAdmin || user.isAdminSubject || false,

@@ -72,7 +72,7 @@ function LoginPageInner() {
       if (data.user.must_change_password) {
         router.push("/change-password");
       } else if (data.user.role === "admin") {
-        router.push("/admin");
+        router.push(data.user.isSuperAdmin ? "/admin" : "/user/dashboard");
       } else {
         router.push("/user/dashboard");
       }

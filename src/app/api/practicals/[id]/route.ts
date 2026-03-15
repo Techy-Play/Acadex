@@ -79,6 +79,9 @@ export async function PUT(
     if (body.file_url !== undefined) practical.file_url = body.file_url;
     if (body.subject !== undefined) practical.subject = body.subject;
     if (body.section !== undefined) practical.section = body.section || null;
+    if (body.deadline !== undefined) {
+      practical.deadline = body.deadline ? new Date(body.deadline) : null;
+    }
 
     // Section admin can only edit their own section's practicals
     const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";

@@ -12,6 +12,9 @@ import Section from "@/models/Section";
 import User from "@/models/User";
 import ActivityLog from "@/models/ActivityLog";
 import Notification from "@/models/Notification";
+import { noteUploadedPayload } from "@/lib/push/payloads";
+import { sendPushToUsers } from "@/lib/push/send";
+import { resolveStudentUserIdsForSubject } from "@/lib/push/targets";
 
 // GET /api/notes - List notes (optionally filter by subject and/or section)
 export async function GET(request: Request) {
@@ -198,9 +201,24 @@ export async function POST(request: Request) {
       type: "new_note",
       title: "New Note Added",
       message: `"${parsed.data.title}" has been uploaded`,
-      link: "/user/dashboard/notes",
+      link: `/user/dashboard/notes?subject=${parsed.data.subject}`,
       targetRole: "student",
     });
+
+    const targetUserIds = await resolveStudentUserIdsForSubject(
+      parsed.data.subject,
+      sectionId
+    );
+    if (targetUserIds.length > 0) {
+      await sendPushToUsers({
+        userIds: targetUserIds,
+        preferenceKey: "new_note",
+        payload: noteUploadedPayload(
+          (populated.subject as { name?: string } | undefined)?.name || "this subject",
+          parsed.data.subject
+        ),
+      });
+    }
 
     return NextResponse.json({ success: true, note: populated }, { status: 201 });
   } catch (error) {

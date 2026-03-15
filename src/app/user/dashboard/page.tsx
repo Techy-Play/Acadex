@@ -75,13 +75,6 @@ export default function StudentDashboard() {
   const [progressPopup, setProgressPopup] = useState<"assignments" | "practicals" | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
-  const goToSubjectResources = (subject: Subject) => {
-    const resourcePath = subject.type === "practical"
-      ? "/user/dashboard/practicals"
-      : "/user/dashboard/notes";
-    router.push(`${resourcePath}?subject=${subject._id}`);
-  };
-
   const handleViewChange = (mode: ViewMode) => {
     setViewMode(mode);
     // Persist to DB
@@ -90,6 +83,14 @@ export default function StudentDashboard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dashboardView: mode }),
     }).catch(() => {});
+  };
+
+  const openSubjectPopup = (subject: Subject) => {
+    setSubjectPopup({
+      id: subject._id,
+      name: subject.name,
+      type: subject.type || "theory",
+    });
   };
 
   useEffect(() => {
@@ -183,7 +184,7 @@ export default function StudentDashboard() {
       }
     }
     fetchData();
-  }, []);
+  }, [router]);
 
   // Compute per-subject counts
   const noteCountBySubject: Record<string, number> = {};
@@ -664,9 +665,9 @@ export default function StudentDashboard() {
         const getQuip = () => emptyQuips[Math.floor(Math.random() * emptyQuips.length)];
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSubjectPopup(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setSubjectPopup(null)}>
             <div
-              className="bg-card border rounded-2xl shadow-2xl p-6 w-[90vw] max-w-sm space-y-5 animate-in fade-in zoom-in-95 duration-200"
+              className="bg-card border rounded-2xl shadow-2xl p-6 w-[90vw] max-w-sm space-y-5 animate-scale-in"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -780,11 +781,11 @@ export default function StudentDashboard() {
       {/* Progress Details Popup */}
       {progressPopup && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
           onClick={() => setProgressPopup(null)}
         >
           <div
-            className="bg-card border rounded-2xl shadow-2xl p-6 w-[90vw] max-w-md max-h-[80vh] overflow-y-auto space-y-5 animate-in fade-in zoom-in-95 duration-200"
+            className="bg-card border rounded-2xl shadow-2xl p-6 w-[90vw] max-w-md max-h-[80vh] overflow-y-auto space-y-5 animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -827,7 +828,6 @@ export default function StudentDashboard() {
                   {theoryWithAssign.map((s, i) => {
                     const total = assignmentCountBySubject[s._id] || 0;
                     const done = completedBySubject[s._id] || 0;
-                    const remaining = total - done;
                     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
                     return (
                       <div key={s._id} className="flex items-center gap-3">
@@ -835,7 +835,7 @@ export default function StudentDashboard() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <Link
-                              href={`/user/dashboard/notes?subject=${s._id}`}
+                              href={`/user/dashboard/assignments?subject=${s._id}`}
                               onClick={() => setProgressPopup(null)}
                               className="text-sm font-medium truncate hover:text-purple-500 hover:underline transition-colors"
                             >
@@ -941,7 +941,7 @@ export default function StudentDashboard() {
                   completedCount={assignDone}
                   practicalCount={pracTotal}
                   practicalCompletedCount={pracDone}
-                  onClick={() => goToSubjectResources(subject)}
+                  onClick={() => openSubjectPopup(subject)}
                 />
               );
             })}
@@ -965,7 +965,7 @@ export default function StudentDashboard() {
                   <div
                     key={subject._id}
                     className="flex items-center gap-3 p-3 border rounded-xl hover:bg-muted/30 cursor-pointer transition-colors"
-                    onClick={() => goToSubjectResources(subject)}
+                    onClick={() => openSubjectPopup(subject)}
                   >
                     <span className="text-lg shrink-0">📚</span>
                     <div className="flex-1 min-w-0">
@@ -1018,7 +1018,7 @@ export default function StudentDashboard() {
                       <tr
                         key={subject._id}
                         className="hover:bg-muted/30 cursor-pointer transition-colors"
-                        onClick={() => goToSubjectResources(subject)}
+                        onClick={() => openSubjectPopup(subject)}
                       >
                         <td className="px-4 py-3 font-medium">
                           <div className="flex items-center gap-2">
@@ -1082,7 +1082,7 @@ export default function StudentDashboard() {
                 <Card
                   key={subject._id}
                   className="rounded-2xl cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5"
-                  onClick={() => goToSubjectResources(subject)}
+                  onClick={() => openSubjectPopup(subject)}
                 >
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-4">

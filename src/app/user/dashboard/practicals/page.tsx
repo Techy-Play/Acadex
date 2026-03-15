@@ -36,6 +36,7 @@ interface Practical {
   title: string;
   description: string;
   file_url: string;
+  deadline?: string | null;
   createdAt: string;
   subject: { _id: string; name: string };
   section?: { _id: string; name: string } | null;
@@ -67,6 +68,12 @@ export default function PracticalsPage() {
     () => subjects.filter((s) => s.type === "practical"),
     [subjects]
   );
+
+  // Keep subject filter in sync when navigating to this page with a query subject.
+  useEffect(() => {
+    const querySubject = searchParams.get("subject") || "all";
+    setSelectedSubject((prev) => (prev === querySubject ? prev : querySubject));
+  }, [searchParams]);
 
   // Fetch completions from server
   useEffect(() => {
@@ -198,6 +205,7 @@ export default function PracticalsPage() {
 
   useEffect(() => {
     if (selectedSubject === "all") return;
+    if (practicalFilterSubjects.length === 0) return;
     const exists = practicalFilterSubjects.some((s) => s._id === selectedSubject);
     if (!exists) setSelectedSubject("all");
   }, [practicalFilterSubjects, selectedSubject]);
@@ -242,10 +250,7 @@ export default function PracticalsPage() {
 
   // Auto-expand selected subject when a specific subject filter is applied.
   useEffect(() => {
-    if (selectedSubject === "all") {
-      setExpandedSubjectId(null);
-      return;
-    }
+    if (selectedSubject === "all") return;
     const exists = groupedPracticals.some((g) => g.subjectId === selectedSubject);
     setExpandedSubjectId(exists ? selectedSubject : null);
   }, [selectedSubject, groupedPracticals]);

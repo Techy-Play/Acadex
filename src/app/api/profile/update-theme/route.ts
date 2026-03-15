@@ -21,7 +21,15 @@ export async function PUT(request: Request) {
     const validAccents = ["default", "rose", "ocean", "emerald", "violet", "sunset", "amoled", "pastel", "contrast"];
     const validNavPositions = ["top", "bottom", "left"];
     const validViews = ["grid", "list", "detail"];
-    const validNotifKeys = ["new_note", "new_assignment", "new_practical", "deadline_alert", "admin_message"];
+    const validNotifKeys = [
+      "new_note",
+      "new_assignment",
+      "new_practical",
+      "deadline_alert",
+      "admin_message",
+      "request_approved",
+      "request_denied",
+    ];
 
     const update: Record<string, unknown> = {};
 

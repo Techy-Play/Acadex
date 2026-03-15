@@ -12,6 +12,9 @@ import Section from "@/models/Section";
 import User from "@/models/User";
 import ActivityLog from "@/models/ActivityLog";
 import Notification from "@/models/Notification";
+import { assignmentUploadedPayload } from "@/lib/push/payloads";
+import { sendPushToUsers } from "@/lib/push/send";
+import { resolveStudentUserIdsForSubject } from "@/lib/push/targets";
 
 // GET /api/assignments - List assignments (optionally filter by subject and/or section)
 export async function GET(request: Request) {
@@ -200,9 +203,24 @@ export async function POST(request: Request) {
       type: "new_assignment",
       title: "New Assignment Added",
       message: `"${parsed.data.title}"${deadlineInfo} has been posted`,
-      link: "/user/dashboard/assignments",
+      link: `/user/dashboard/assignments?subject=${parsed.data.subject}`,
       targetRole: "student",
     });
+
+    const targetUserIds = await resolveStudentUserIdsForSubject(
+      parsed.data.subject,
+      sectionId
+    );
+    if (targetUserIds.length > 0) {
+      await sendPushToUsers({
+        userIds: targetUserIds,
+        preferenceKey: "new_assignment",
+        payload: assignmentUploadedPayload(
+          (populated.subject as { name?: string } | undefined)?.name || "this subject",
+          parsed.data.subject
+        ),
+      });
+    }
 
     return NextResponse.json(
       { success: true, assignment: populated },

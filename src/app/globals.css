@@ -163,6 +163,36 @@
   animation: subject-highlight 1.8s ease-out forwards;
 }
 
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+  animation: toast-in 220ms ease-out;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-removed="true"] {
+  animation: toast-out 180ms ease-in forwards;
+}
+
 /* ─── Accent Color Themes ─── */
 
 /* ── Rose ── */

@@ -87,6 +87,7 @@ export async function POST(request: Request) {
         name: user.name,
         college_id: user.college_id,
         role: user.role,
+        isSuperAdmin: user.isSuperAdmin || false,
         must_change_password: user.must_change_password,
       },
     });

@@ -67,6 +67,12 @@ export default function AssignmentsPage() {
     [subjects]
   );
 
+  // Keep subject filter in sync when navigating to this page with a query subject.
+  useEffect(() => {
+    const querySubject = searchParams.get("subject") || "all";
+    setSelectedSubject((prev) => (prev === querySubject ? prev : querySubject));
+  }, [searchParams]);
+
   // Fetch completions from server
   useEffect(() => {
     async function fetchCompletions() {
@@ -190,6 +196,7 @@ export default function AssignmentsPage() {
 
   useEffect(() => {
     if (selectedSubject === "all") return;
+    if (assignmentFilterSubjects.length === 0) return;
     const exists = assignmentFilterSubjects.some((s) => s._id === selectedSubject);
     if (!exists) setSelectedSubject("all");
   }, [assignmentFilterSubjects, selectedSubject]);
@@ -238,10 +245,7 @@ export default function AssignmentsPage() {
 
   // Auto-expand selected subject when a specific subject filter is applied.
   useEffect(() => {
-    if (selectedSubject === "all") {
-      setExpandedSubjectId(null);
-      return;
-    }
+    if (selectedSubject === "all") return;
     const exists = groupedAssignments.some((g) => g.subjectId === selectedSubject);
     setExpandedSubjectId(exists ? selectedSubject : null);
   }, [selectedSubject, groupedAssignments]);

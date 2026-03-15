@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { subscribeBrowserPush, unsubscribeBrowserPush } from "@/lib/push/client";
 
 interface UserData {
   id: string;
@@ -72,9 +73,16 @@ export default function ProfilePage() {
     request_denied: true,
   });
   const [notifSaving, setNotifSaving] = useState<string | null>(null);
+  const [browserPushPermission, setBrowserPushPermission] = useState<NotificationPermission | "unsupported">("default");
+  const [browserPushBusy, setBrowserPushBusy] = useState(false);
 
   useEffect(() => {
     fetchUser();
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setBrowserPushPermission(Notification.permission);
+    } else {
+      setBrowserPushPermission("unsupported");
+    }
   }, []);
 
   useEffect(() => {
@@ -324,6 +332,59 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleEnableDeviceNotifications() {
+    setBrowserPushBusy(true);
+    try {
+      if (!("Notification" in window)) {
+        toast.error("This browser does not support notifications");
+        return;
+      }
+
+      let permission = Notification.permission;
+      if (permission === "default") {
+        permission = await Notification.requestPermission();
+      }
+
+      setBrowserPushPermission(permission);
+
+      if (permission !== "granted") {
+        toast.error("Notification permission was not granted");
+        return;
+      }
+
+      const ok = await subscribeBrowserPush();
+      if (!ok) {
+        toast.error("Failed to connect device notifications");
+        return;
+      }
+      toast.success("Device notifications are now enabled");
+    } catch {
+      toast.error("Failed to enable device notifications");
+    } finally {
+      setBrowserPushBusy(false);
+    }
+  }
+
+  async function handleDisableDeviceNotifications() {
+    setBrowserPushBusy(true);
+    try {
+      await unsubscribeBrowserPush();
+      await fetch("/api/push/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clearAll: true }),
+      });
+      toast.success("Device notifications disabled for this account");
+    } catch {
+      toast.error("Failed to disable device notifications");
+    } finally {
+      setBrowserPushBusy(false);
+      if ("Notification" in window) {
+        setBrowserPushPermission(Notification.permission);
+      }
+    }
+  }
+
   const initials = user.name
     .split(" ")
     .map((n) => n[0])
@@ -524,13 +585,42 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 rounded-xl border bg-muted/40 p-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold">Device Notifications</p>
+                <p className="text-xs text-muted-foreground">
+                  Permission: {browserPushPermission === "unsupported" ? "Not supported" : browserPushPermission}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  className="rounded-lg"
+                  onClick={handleEnableDeviceNotifications}
+                  disabled={browserPushBusy || browserPushPermission === "unsupported"}
+                >
+                  Enable
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-lg"
+                  onClick={handleDisableDeviceNotifications}
+                  disabled={browserPushBusy || browserPushPermission === "unsupported"}
+                >
+                  Disable
+                </Button>
+              </div>
+            </div>
+          </div>
           <div className="space-y-3">
             {([
               { key: "new_note" as const, label: "New Notes", icon: "📄", desc: "When new notes are uploaded" },
               { key: "new_assignment" as const, label: "New Assignments", icon: "📝", desc: "When new assignments are posted" },
               { key: "new_practical" as const, label: "New Practicals", icon: "🧪", desc: "When new practicals are added" },
               { key: "deadline_alert" as const, label: "Deadline Alerts", icon: "⏰", desc: "Assignment deadline reminders" },
-              { key: "admin_message" as const, label: "Admin Messages", icon: "💬", desc: "Direct messages from admins" },
+              { key: "admin_message" as const, label: "Admin Announcements", icon: "💬", desc: "Messages and announcements from admins" },
               { key: "request_approved" as const, label: "Request Approved", icon: "✅", desc: "When your request is approved" },
               { key: "request_denied" as const, label: "Request Denied", icon: "❌", desc: "When your request is denied" },
             ]).map((item) => (

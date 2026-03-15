@@ -147,6 +147,9 @@ export default function UsersPage() {
   const [notifDialogOpen, setNotifDialogOpen] = useState(false);
   const [notifTitle, setNotifTitle] = useState("");
   const [notifMessage, setNotifMessage] = useState("");
+  const [notifTargetType, setNotifTargetType] = useState<"users" | "all" | "semester" | "section">("users");
+  const [notifTargetSemester, setNotifTargetSemester] = useState("all");
+  const [notifTargetSection, setNotifTargetSection] = useState("all");
   const [sendingNotif, setSendingNotif] = useState(false);
 
   // Status update
@@ -462,27 +465,57 @@ export default function UsersPage() {
   };
 
   const handleSendNotification = async () => {
-    if (!detailUser || !notifTitle.trim() || !notifMessage.trim()) return;
+    if (!notifTitle.trim() || !notifMessage.trim()) return;
+
+    const payload: Record<string, unknown> = {
+      title: notifTitle,
+      message: notifMessage,
+      targetType: notifTargetType,
+    };
+
+    if (notifTargetType === "users") {
+      if (!detailUser?._id) {
+        toast.error("Pick a user or choose another target type");
+        return;
+      }
+      payload.userId = detailUser._id;
+    }
+
+    if (notifTargetType === "semester") {
+      if (notifTargetSemester === "all") {
+        toast.error("Select a semester");
+        return;
+      }
+      payload.semester = Number(notifTargetSemester);
+    }
+
+    if (notifTargetType === "section") {
+      if (notifTargetSection === "all") {
+        toast.error("Select a section");
+        return;
+      }
+      payload.sectionId = notifTargetSection;
+    }
+
     setSendingNotif(true);
     try {
       const res = await fetch("/api/admin/send-notification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: detailUser._id,
-          title: notifTitle,
-          message: notifMessage,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
         toast.error(data.error || "Failed to send notification");
         return;
       }
-      toast.success(`Notification sent to ${detailUser.name}!`);
+      toast.success(`Notification sent to ${data.sentTo || 1} user(s)`);
       setNotifDialogOpen(false);
       setNotifTitle("");
       setNotifMessage("");
+      setNotifTargetType("users");
+      setNotifTargetSemester("all");
+      setNotifTargetSection("all");
     } catch {
       toast.error("Something went wrong");
     } finally {
@@ -551,26 +584,41 @@ export default function UsersPage() {
             {users.length} registered user{users.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          {showAddForm ? (
-            <span className="flex items-center gap-2">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Cancel
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-              </svg>
-              Add Student
-            </span>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="rounded-xl"
+            onClick={() => {
+              setDetailUser(null);
+              setNotifTargetType("all");
+              setNotifTitle("");
+              setNotifMessage("");
+              setNotifDialogOpen(true);
+            }}
+          >
+            Broadcast
+          </Button>
+          <Button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {showAddForm ? (
+              <span className="flex items-center gap-2">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                Add Student
+              </span>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Add Student Form */}
@@ -1315,6 +1363,7 @@ export default function UsersPage() {
                       size="sm"
                       className="rounded-xl text-xs"
                       onClick={() => {
+                        setNotifTargetType("users");
                         setNotifTitle("");
                         setNotifMessage("");
                         setNotifDialogOpen(true);
@@ -1369,10 +1418,64 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle>Send Notification</DialogTitle>
             <DialogDescription>
-              Send a notification to <strong>{detailUser?.name}</strong> ({detailUser?.college_id})
+              {notifTargetType === "users" && detailUser
+                ? <>Send a notification to <strong>{detailUser.name}</strong> ({detailUser.college_id})</>
+                : "Send a custom message to your selected audience."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            <div className="space-y-2">
+              <Label>Audience</Label>
+              <Select
+                value={notifTargetType}
+                onValueChange={(v: "users" | "all" | "semester" | "section") => setNotifTargetType(v)}
+              >
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="users">Specific User</SelectItem>
+                  <SelectItem value="all">All Users</SelectItem>
+                  <SelectItem value="semester">Specific Semester</SelectItem>
+                  <SelectItem value="section">Specific Section</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {notifTargetType === "semester" && (
+              <div className="space-y-2">
+                <Label>Semester</Label>
+                <Select value={notifTargetSemester} onValueChange={setNotifTargetSemester}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Select semester" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all">Select semester</SelectItem>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                      <SelectItem key={n} value={String(n)}>Semester {n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {notifTargetType === "section" && (
+              <div className="space-y-2">
+                <Label>Section</Label>
+                <Select value={notifTargetSection} onValueChange={setNotifTargetSection}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Select section" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all">Select section</SelectItem>
+                    {sections.map((s) => (
+                      <SelectItem key={s._id} value={s._id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Title</Label>
               <Input

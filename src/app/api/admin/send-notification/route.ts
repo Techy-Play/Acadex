@@ -6,7 +6,11 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Notification from "@/models/Notification";
-import User from "@/models/User";
+import { adminMessagePayload } from "@/lib/push/payloads";
+import { sendPushToUsers } from "@/lib/push/send";
+import { resolveUserIdsForAudience } from "@/lib/push/targets";
+
+type AudienceType = "all" | "semester" | "section" | "users";
 
 // POST /api/admin/send-notification — Send notification to individual user
 export async function POST(request: Request) {
@@ -18,35 +22,86 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { userId, title, message } = body;
+    const {
+      userId,
+      userIds,
+      targetType,
+      semester,
+      sectionId,
+      title,
+      message,
+    } = body as {
+      userId?: string;
+      userIds?: string[];
+      targetType?: AudienceType;
+      semester?: number;
+      sectionId?: string;
+      title?: string;
+      message?: string;
+    };
 
-    if (!userId || !title?.trim() || !message?.trim()) {
+    if (!title?.trim() || !message?.trim()) {
       return NextResponse.json(
-        { error: "userId, title, and message are required" },
+        { error: "title and message are required" },
         { status: 400 }
       );
     }
 
     await connectDB();
 
-    // Verify target user exists
-    const targetUser = await User.findById(userId);
-    if (!targetUser) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+    const audience: AudienceType =
+      targetType || (Array.isArray(userIds) ? "users" : userId ? "users" : "all");
+
+    let targetUserIds: string[] = [];
+    if (audience === "all") {
+      targetUserIds = await resolveUserIdsForAudience({ targetType: "all" });
+    } else if (audience === "semester") {
+      if (!semester || Number.isNaN(Number(semester))) {
+        return NextResponse.json({ error: "semester is required" }, { status: 400 });
+      }
+      targetUserIds = await resolveUserIdsForAudience({
+        targetType: "semester",
+        semester: Number(semester),
+      });
+    } else if (audience === "section") {
+      if (!sectionId) {
+        return NextResponse.json({ error: "sectionId is required" }, { status: 400 });
+      }
+      targetUserIds = await resolveUserIdsForAudience({
+        targetType: "section",
+        sectionId,
+      });
+    } else {
+      const normalized = Array.isArray(userIds)
+        ? userIds
+        : userId
+          ? [userId]
+          : [];
+      targetUserIds = await resolveUserIdsForAudience({
+        targetType: "users",
+        userIds: normalized,
+      });
+    }
+
+    if (targetUserIds.length === 0) {
+      return NextResponse.json({ error: "No eligible users found" }, { status: 404 });
     }
 
     await Notification.create({
       type: "admin_message",
       title: title.trim().slice(0, 200),
       message: message.trim().slice(0, 500),
-      link: null,
-      targetUsers: [userId],
+      link: "/user/dashboard/messages",
+      targetUsers: targetUserIds,
     });
 
-    return NextResponse.json({ success: true });
+    await sendPushToUsers({
+      userIds: targetUserIds,
+      preferenceKey: "admin_message",
+      payload: adminMessagePayload(title.trim().slice(0, 200), message.trim().slice(0, 500)),
+    });
+
+    return NextResponse.json({ success: true, sentTo: targetUserIds.length });
   } catch (error) {
     console.error("Send notification error:", error);
     return NextResponse.json(
