@@ -12,7 +12,7 @@ import { sendPushToUsers } from "@/lib/push/send";
 import { resolveStudentUserIdsForSubject } from "@/lib/push/targets";
 
 export const dynamic = "force-dynamic";
-
+// this is for Next.js to not cache the response of this API route, since it will be called by an external cron job and we want it to always run the logic
 function isDuplicateKeyError(error: unknown): boolean {
   return (
     typeof error === "object" &&
