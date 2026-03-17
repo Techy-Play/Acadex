@@ -351,7 +351,7 @@ export default function ApplyPage() {
                           <Input
                             id="apply_name"
                             type="text"
-                            placeholder="eg. Ritik Kumar"
+                            placeholder="eg. Khushbu Tewari"
                             value={applyName}
                             onChange={(e) => setApplyName(e.target.value)}
                             required
