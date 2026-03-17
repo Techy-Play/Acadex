@@ -25,6 +25,8 @@ export async function GET(request: Request) {
     }
 
     const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
+
     await connectDB();
 
     // Sub-admins can only see users from their own section
@@ -123,6 +125,7 @@ export async function POST(request: Request) {
     const normalizedEmail = email ? email.trim().toLowerCase() : null;
 
     const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+
     await connectDB();
 
     // Check if college_id already exists

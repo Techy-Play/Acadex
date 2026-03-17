@@ -6,10 +6,30 @@
  * - DELETE → removes the note (admin only).
  */
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
 import Note from "@/models/Note";
 import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
+
+const asObjectId = (value: unknown): Types.ObjectId | null =>
+  typeof value === "string" && Types.ObjectId.isValid(value)
+    ? new Types.ObjectId(value)
+    : null;
+
+const normalizeSectionIds = (value: unknown): Types.ObjectId[] => {
+  if (!Array.isArray(value)) return [];
+
+  const uniqueIds = new Set(
+    value
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .map((item) => item.trim())
+  );
+
+  return Array.from(uniqueIds)
+    .map((item) => asObjectId(item))
+    .filter((item): item is Types.ObjectId => item !== null);
+};
 
 const populateFields = [
   { path: "subject", select: "name type" },
@@ -78,18 +98,16 @@ export async function PUT(
     if (body.title !== undefined) note.title = body.title;
     if (body.file_url !== undefined) note.file_url = body.file_url;
     if (body.subject !== undefined) note.subject = body.subject;
-    const normalizedSectionIds = Array.isArray(body.sectionIds)
-      ? Array.from(new Set(body.sectionIds.filter(Boolean)))
-      : [];
+    const normalizedSectionIds = normalizeSectionIds(body.sectionIds);
 
     if (isSuperAdmin) {
       if (normalizedSectionIds.length > 0) {
         note.section = normalizedSectionIds[0];
       } else if (body.section !== undefined) {
-        note.section = body.section || null;
+        note.section = asObjectId(body.section);
       }
     } else {
-      note.section = adminSection || null;
+      note.section = asObjectId(adminSection);
     }
 
     await note.save();

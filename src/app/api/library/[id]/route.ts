@@ -6,11 +6,31 @@
  * - DELETE → removes the resource (admin only).
  */
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
 import LibraryResource from "@/models/LibraryResource";
 import Section from "@/models/Section";
 import User from "@/models/User";
 import ActivityLog from "@/models/ActivityLog";
+
+const asObjectId = (value: unknown): Types.ObjectId | null =>
+  typeof value === "string" && Types.ObjectId.isValid(value)
+    ? new Types.ObjectId(value)
+    : null;
+
+const normalizeSectionIds = (value: unknown): Types.ObjectId[] => {
+  if (!Array.isArray(value)) return [];
+
+  const uniqueIds = new Set(
+    value
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .map((item) => item.trim())
+  );
+
+  return Array.from(uniqueIds)
+    .map((item) => asObjectId(item))
+    .filter((item): item is Types.ObjectId => item !== null);
+};
 
 // GET /api/library/[id]
 export async function GET(
@@ -102,18 +122,16 @@ export async function PUT(
       }
     }
 
-    const normalizedSectionIds = Array.isArray(body.sectionIds)
-      ? Array.from(new Set(body.sectionIds.filter(Boolean)))
-      : [];
+    const normalizedSectionIds = normalizeSectionIds(body.sectionIds);
 
     if (isSuperAdmin) {
       if (normalizedSectionIds.length > 0) {
         resource.section = normalizedSectionIds[0];
       } else if (body.section !== undefined) {
-        resource.section = body.section || null;
+        resource.section = asObjectId(body.section);
       }
     } else {
-      resource.section = adminSection || null;
+      resource.section = asObjectId(adminSection);
     }
 
     await resource.save();
