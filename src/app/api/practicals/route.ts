@@ -111,19 +111,31 @@ export async function GET(request: Request) {
     }
 
     // Section filtering logic:
-    // - Super admins see all (unless they explicitly filter)
-    // - Sub-admins are hard-filtered to their own section
-    // - Students default to their section; can use ?section=all to see all
+    // - Super admins: unrestricted, unless explicit section filter is provided.
+    // - Sub-admins: only own section + global (section:null) by default.
+    // - Students: own section + global by default; ?section=all can view all.
     if (userRole === "admin" && !isSuperAdmin && userSection) {
-      if (sectionParam && sectionParam !== "all") {
-        filter.section = sectionParam;
-      } else if (sectionParam !== "all") {
+      if (sectionParam === "all" || !sectionParam) {
+        filter.$or = [{ section: userSection }, { section: null }];
+      } else if (sectionParam === "global") {
+        filter.section = null;
+      } else if (sectionParam === userSection) {
         filter.section = userSection;
+      } else {
+        return NextResponse.json({ practicals: [] });
+      }
+    } else if (userRole === "student" && userSection) {
+      if (sectionParam === "all") {
+        // no section filter
+      } else if (!sectionParam) {
+        filter.$or = [{ section: userSection }, { section: null }];
+      } else if (sectionParam === "global") {
+        filter.section = null;
+      } else {
+        filter.section = sectionParam;
       }
     } else if (sectionParam && sectionParam !== "all") {
-      filter.section = sectionParam;
-    } else if (userRole === "student" && userSection && sectionParam !== "all") {
-      filter.section = userSection;
+      filter.section = sectionParam === "global" ? null : sectionParam;
     }
 
     const practicals = await Practical.find(filter)
