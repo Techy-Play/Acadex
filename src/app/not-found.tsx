@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
 const jokes = [
@@ -156,11 +156,7 @@ const jokes = [
 ];
 
 export default function NotFound() {
-  const [joke, setJoke] = useState(jokes[0]);
-
-  useEffect(() => {
-    setJoke(jokes[Math.floor(Math.random() * jokes.length)]);
-  }, []);
+  const [joke] = useState(() => jokes[Math.floor(Math.random() * jokes.length)]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
