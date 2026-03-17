@@ -6,10 +6,30 @@
  * - DELETE → removes the assignment (admin only).
  */
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
 import Assignment from "@/models/Assignment";
 import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
+
+const asObjectId = (value: unknown): Types.ObjectId | null =>
+  typeof value === "string" && Types.ObjectId.isValid(value)
+    ? new Types.ObjectId(value)
+    : null;
+
+const normalizeSectionIds = (value: unknown): Types.ObjectId[] => {
+  if (!Array.isArray(value)) return [];
+
+  const uniqueIds = new Set(
+    value
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .map((item) => item.trim())
+  );
+
+  return Array.from(uniqueIds)
+    .map((item) => asObjectId(item))
+    .filter((item): item is Types.ObjectId => item !== null);
+};
 
 const populateFields = [
   { path: "subject", select: "name type" },
@@ -82,18 +102,16 @@ export async function PUT(
     if (body.deadline !== undefined) {
       assignment.deadline = body.deadline ? new Date(body.deadline) : null;
     }
-    const normalizedSectionIds = Array.isArray(body.sectionIds)
-      ? Array.from(new Set(body.sectionIds.filter(Boolean)))
-      : [];
+    const normalizedSectionIds = normalizeSectionIds(body.sectionIds);
 
     if (isSuperAdmin) {
       if (normalizedSectionIds.length > 0) {
         assignment.section = normalizedSectionIds[0];
       } else if (body.section !== undefined) {
-        assignment.section = body.section || null;
+        assignment.section = asObjectId(body.section);
       }
     } else {
-      assignment.section = adminSection || null;
+      assignment.section = asObjectId(adminSection);
     }
 
     await assignment.save();

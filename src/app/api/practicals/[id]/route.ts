@@ -6,11 +6,31 @@
  * - DELETE → removes the practical (admin only).
  */
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
 import Subject from "@/models/Subject";
 import Practical from "@/models/Practical";
 import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
+
+const asObjectId = (value: unknown): Types.ObjectId | null =>
+  typeof value === "string" && Types.ObjectId.isValid(value)
+    ? new Types.ObjectId(value)
+    : null;
+
+const normalizeSectionIds = (value: unknown): Types.ObjectId[] => {
+  if (!Array.isArray(value)) return [];
+
+  const uniqueIds = new Set(
+    value
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .map((item) => item.trim())
+  );
+
+  return Array.from(uniqueIds)
+    .map((item) => asObjectId(item))
+    .filter((item): item is Types.ObjectId => item !== null);
+};
 
 const populateFields = [
   { path: "subject", select: "name type" },
@@ -92,18 +112,16 @@ export async function PUT(
       practical.deadline = body.deadline ? new Date(body.deadline) : null;
     }
 
-    const normalizedSectionIds = Array.isArray(body.sectionIds)
-      ? Array.from(new Set(body.sectionIds.filter(Boolean)))
-      : [];
+    const normalizedSectionIds = normalizeSectionIds(body.sectionIds);
 
     if (isSuperAdmin) {
       if (normalizedSectionIds.length > 0) {
         practical.section = normalizedSectionIds[0];
       } else if (body.section !== undefined) {
-        practical.section = body.section || null;
+        practical.section = asObjectId(body.section);
       }
     } else {
-      practical.section = adminSection || null;
+      practical.section = asObjectId(adminSection);
     }
 
     await practical.save();

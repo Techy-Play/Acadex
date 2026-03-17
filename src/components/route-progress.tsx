@@ -34,11 +34,14 @@ export function RouteProgress() {
 
   const completeProgress = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
-    setProgress(100);
-    setTimeout(() => {
-      setVisible(false);
-      setProgress(0);
-    }, 300);
+
+    requestAnimationFrame(() => {
+      setProgress(100);
+      setTimeout(() => {
+        setVisible(false);
+        setProgress(0);
+      }, 300);
+    });
   }, []);
 
   useEffect(() => {
