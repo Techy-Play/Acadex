@@ -19,6 +19,10 @@ jobs:
             exit 1
           fi
 
-          curl --fail --show-error --silent \
+          RESPONSE=$(curl --fail --show-error --silent --location \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$APP_URL/api/jobs/deadline-reminders"
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "x-api-key: $CRON_SECRET" \
+            "$APP_URL/api/jobs/deadline-reminders")
+
+          echo "Reminder job response: $RESPONSE"
