@@ -25,6 +25,7 @@ export interface INotification extends Document {
   title: string;
   message: string;
   link: string | null;
+  contextKey?: string | null;
   targetRole: "student" | "admin" | null;
   targetUsers: mongoose.Types.ObjectId[];
   readBy: mongoose.Types.ObjectId[];
@@ -67,6 +68,12 @@ const NotificationSchema = new Schema<INotification>(
       type: String,
       default: null,
     },
+    contextKey: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: 160,
+    },
     targetRole: {
       type: String,
       enum: ["student", "admin", null],
@@ -99,6 +106,7 @@ const NotificationSchema = new Schema<INotification>(
 // Index for efficient querying
 NotificationSchema.index({ targetRole: 1, createdAt: -1 });
 NotificationSchema.index({ targetUsers: 1, createdAt: -1 });
+NotificationSchema.index({ type: 1, contextKey: 1, createdAt: -1 });
 
 // TTL index — auto-delete notifications older than 30 days
 NotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });

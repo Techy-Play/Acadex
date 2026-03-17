@@ -21,6 +21,16 @@ import {
 void Stream;
 void Section;
 
+
+const ACCESS_REQUEST_NOTIFICATION_INTERVAL_MINUTES = Math.max(
+  1,
+  Number(process.env.ACCESS_REQUEST_NOTIFICATION_INTERVAL_MINUTES || 15)
+);
+
+function buildAccessRequestScopeKey(sectionId: string, semester: number | null): string {
+  return `section:${sectionId}|semester:${semester ?? "all"}`;
+}
+
 // GET /api/access-requests — public: fetch streams & sections for the apply form
 // POST /api/access-requests — public: submit a new access request
 export async function GET() {
@@ -137,42 +147,55 @@ export async function POST(request: Request) {
       );
     }
 
+    const normalizedSemester = semester ? Number(semester) : null;
+
     const accessRequest = await AccessRequest.create({
       name: name.trim(),
       college_id: college_id.trim(),
       email: email.trim().toLowerCase(),
       stream: stream || null,
       section: section,
-      semester: semester ? Number(semester) : null,
+      semester: normalizedSemester,
       reason: (reason || "").trim().slice(0, 500),
     });
 
-    // Notify only the admin(s) of that section + super admins
-    const sectionAdmins = await User.find({
+    // Notify corresponding section/semester admins (+ super admins), throttled by scope interval.
+    const targetAdmins = await User.find({
       role: "admin",
-      section: section,
-      isSuperAdmin: { $ne: true },
+      status: "active",
+      $or: [
+        { isSuperAdmin: true },
+        { section },
+        ...(normalizedSemester ? [{ semester: normalizedSemester }] : []),
+      ],
     })
       .select("_id")
       .lean();
 
-    const superAdmins = await User.find({ isSuperAdmin: true })
-      .select("_id")
-      .lean();
-
-    const targetAdminIds = [
-      ...sectionAdmins.map((a) => a._id),
-      ...superAdmins.map((a) => a._id),
-    ];
+    const targetAdminIds = Array.from(new Set(targetAdmins.map((a) => a._id.toString())));
 
     if (targetAdminIds.length > 0) {
-      await Notification.create({
+      const scopeKey = buildAccessRequestScopeKey(section, normalizedSemester);
+      const intervalMs = ACCESS_REQUEST_NOTIFICATION_INTERVAL_MINUTES * 60 * 1000;
+      const since = new Date(Date.now() - intervalMs);
+
+      const recentlyNotified = await Notification.exists({
         type: "new_access_request",
-        title: "New Access Request",
-        message: `${name.trim()} (${college_id.trim()}) requested access`,
         link: "/admin/access-requests",
-        targetUsers: targetAdminIds,
+        contextKey: scopeKey,
+        createdAt: { $gte: since },
       });
+
+      if (!recentlyNotified) {
+        await Notification.create({
+          type: "new_access_request",
+          title: "New Access Request",
+          message: `${name.trim()} (${college_id.trim()}) requested access`,
+          link: "/admin/access-requests",
+          contextKey: scopeKey,
+          targetUsers: targetAdminIds,
+        });
+      }
     }
 
     return NextResponse.json(
