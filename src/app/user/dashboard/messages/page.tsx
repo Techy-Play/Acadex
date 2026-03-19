@@ -109,14 +109,18 @@ export default function StudentMessagesPage() {
               style={{ animationDelay: `${Math.min(index * 50, 250)}ms` }}
             >
               <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center justify-between gap-2">
-                  <span className="truncate">{item.title}</span>
+                <CardTitle className="flex items-start justify-between gap-3 text-base">
+                  <span className="break-words leading-snug">{item.title}</span>
                   {!item.read && <span className="text-[10px] uppercase text-primary">New</span>}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm leading-relaxed">{item.message}</p>
-                <div className="flex items-center justify-between gap-3">
+                <div className="rounded-xl bg-muted/50 p-4">
+                  <p className="text-sm leading-7 whitespace-pre-wrap break-words text-foreground/90">
+                    {item.message}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-xs text-muted-foreground">
                     {new Date(item.createdAt).toLocaleString("en-IN", {
                       month: "short",
@@ -125,7 +129,7 @@ export default function StudentMessagesPage() {
                       minute: "2-digit",
                     })}
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {!item.read && (
                       <Button size="sm" variant="outline" onClick={() => markRead(item.id)}>
                         Mark read

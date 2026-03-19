@@ -61,7 +61,7 @@ const NotificationSchema = new Schema<INotification>(
       type: String,
       required: true,
       trim: true,
-      maxlength: 500,
+      maxlength: 2000,
     },
     link: {
       type: String,

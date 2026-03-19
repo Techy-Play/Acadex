@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     await Notification.create({
       type: "admin_message",
       title: title.trim().slice(0, 200),
-      message: message.trim().slice(0, 500),
+      message: message.trim().slice(0, 2000),
       link: "/user/dashboard/messages",
       targetUsers: targetUserIds,
     });
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     await sendPushToUsers({
       userIds: targetUserIds,
       preferenceKey: "admin_message",
-      payload: adminMessagePayload(title.trim().slice(0, 200), message.trim().slice(0, 500)),
+      payload: adminMessagePayload(title.trim().slice(0, 200), message.trim().slice(0, 2000)),
     });
 
     return NextResponse.json({ success: true, sentTo: targetUserIds.length });

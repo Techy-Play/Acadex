@@ -1489,13 +1489,16 @@ export default function UsersPage() {
             <div className="space-y-2">
               <Label>Message</Label>
               <Textarea
-                className="rounded-xl resize-none"
+                className="min-h-36 rounded-xl resize-y"
                 placeholder="Write your message here..."
                 value={notifMessage}
                 onChange={(e) => setNotifMessage(e.target.value)}
-                maxLength={500}
-                rows={3}
+                maxLength={2000}
+                rows={6}
               />
+              <p className="text-xs text-muted-foreground text-right">
+                {notifMessage.length}/2000 characters
+              </p>
             </div>
           </div>
           <DialogFooter>
