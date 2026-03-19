@@ -1,0 +1,35 @@
+[33mb7acf79[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m changed name
+[33m6ef064e[m V:2.2.3
+[33mf023f04[m V:2.2.2
+[33m661bd04[m V:2.2.1
+[33me1fbf0d[m V:2.2.0
+[33m0a5b466[m V:2.1.9
+[33mf957e1a[m V:2.0.8
+[33m9b7d995[m V:2.1.7
+[33mfca281c[m V:2.1.6
+[33mbc17ca9[m V:2.1.5
+[33m18e9de4[m V:2.1.4
+[33m2db240e[m V:2.1.3
+[33ma0cecd0[m V:2.1.1
+[33m45908fc[m V:2.1.0
+[33m6b1264a[m V:2.0.9
+[33mc417e58[m V:2.0.8
+[33m6784116[m V:2.0.7
+[33mcfcb26f[m V:2.0.6
+[33mdc61a9f[m V:2.0.5
+[33m18f158e[m V:2.0.4
+[33mbe60717[m V:2.0.3
+[33ma610b06[m V:2.0.2
+[33m3bec122[m V:2.0.1
+[33mae50357[m V:2.0 - Inplemented semester, user upload, improved mailing services, improved notifications logics, improved UI
+[33m9843ca4[m V10: Fixed Subjects list according to streams
+[33m60e5f40[m V9: Implemented for first year students
+[33me8af874[m V8: Patched library APIs and Updated UI
+[33m2388b70[m V7: The First Production ready build
+[33m4ac201b[m V6:updated Patches and UX
+[33m58074bd[m V5: Mobile UI improved- Admin dashboard, route transitions & UI/UX polished
+[33mdd56930[m V4: Improved
+[33md1de993[m  V3: Fixed bugs in password reset, improved GUI of Landing page.
+[33m1b81aae[m V2: Added features for Account creation, Course, Subject, themes selection
+[33mbe9350e[m V1
+[33m488323b[m Initial commit from Create Next App

@@ -10,7 +10,6 @@ import { ChevronDown } from "lucide-react";
 import { AssignmentCard } from "@/components/assignment-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { fetchMeCached } from "@/lib/client-auth";
 import {
   Select,
   SelectContent,
@@ -22,7 +21,6 @@ import {
 interface Subject {
   _id: string;
   name: string;
-  type?: "theory" | "practical";
   semester?: number;
 }
 
@@ -36,7 +34,6 @@ interface Practical {
   title: string;
   description: string;
   file_url: string;
-  deadline?: string | null;
   createdAt: string;
   subject: { _id: string; name: string };
   section?: { _id: string; name: string } | null;
@@ -63,17 +60,6 @@ export default function PracticalsPage() {
   const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
   const [shouldHighlight, setShouldHighlight] = useState(false);
   const highlightTriggeredRef = useRef(false);
-
-  const practicalFilterSubjects = useMemo(
-    () => subjects.filter((s) => s.type === "practical"),
-    [subjects]
-  );
-
-  // Keep subject filter in sync when navigating to this page with a query subject.
-  useEffect(() => {
-    const querySubject = searchParams.get("subject") || "all";
-    setSelectedSubject((prev) => (prev === querySubject ? prev : querySubject));
-  }, [searchParams]);
 
   // Fetch completions from server
   useEffect(() => {
@@ -131,13 +117,13 @@ export default function PracticalsPage() {
   useEffect(() => {
     async function fetchInit() {
       try {
-        const mePromise = fetchMeCached();
-        const [subjectsRes, sectionsRes] = await Promise.all([
+        const [subjectsRes, meRes, sectionsRes] = await Promise.all([
           fetch("/api/subjects"),
+          fetch("/api/auth/me"),
           fetch("/api/sections"),
         ]);
         const subjectsData = await subjectsRes.json();
-        const meData = await mePromise;
+        const meData = meRes.ok ? await meRes.json() : { user: {} };
         const sectionsData = sectionsRes.ok ? await sectionsRes.json() : { sections: [] };
 
         setSections(sectionsData.sections || []);
@@ -203,13 +189,6 @@ export default function PracticalsPage() {
     fetchPracticals();
   }, [selectedSubject, streamSubjectIds, selectedSection]);
 
-  useEffect(() => {
-    if (selectedSubject === "all") return;
-    if (practicalFilterSubjects.length === 0) return;
-    const exists = practicalFilterSubjects.some((s) => s._id === selectedSubject);
-    if (!exists) setSelectedSubject("all");
-  }, [practicalFilterSubjects, selectedSubject]);
-
   // Filter by status then sort
   const sortedPracticals = useMemo(() => {
     const filtered = practicals.filter((p) => {
@@ -250,7 +229,10 @@ export default function PracticalsPage() {
 
   // Auto-expand selected subject when a specific subject filter is applied.
   useEffect(() => {
-    if (selectedSubject === "all") return;
+    if (selectedSubject === "all") {
+      setExpandedSubjectId(null);
+      return;
+    }
     const exists = groupedPracticals.some((g) => g.subjectId === selectedSubject);
     setExpandedSubjectId(exists ? selectedSubject : null);
   }, [selectedSubject, groupedPracticals]);
@@ -316,7 +298,7 @@ export default function PracticalsPage() {
             </SelectTrigger>
             <SelectContent className="rounded-xl">
               <SelectItem value="all">All Subjects</SelectItem>
-              {practicalFilterSubjects.map((s) => (
+              {subjects.map((s) => (
                 <SelectItem key={s._id} value={s._id}>
                   {s.name}
                 </SelectItem>
