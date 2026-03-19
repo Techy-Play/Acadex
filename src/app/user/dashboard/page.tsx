@@ -72,7 +72,9 @@ export default function StudentDashboard() {
   const [section, setSection] = useState<SectionData | null>(null);
   const [semester, setSemester] = useState<number | null>(null);
   const [subjectPopup, setSubjectPopup] = useState<{ id: string; name: string; type: string } | null>(null);
+  const [subjectPopupClosing, setSubjectPopupClosing] = useState(false);
   const [progressPopup, setProgressPopup] = useState<"assignments" | "practicals" | null>(null);
+  const [progressPopupClosing, setProgressPopupClosing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const handleViewChange = (mode: ViewMode) => {
@@ -86,11 +88,28 @@ export default function StudentDashboard() {
   };
 
   const openSubjectPopup = (subject: Subject) => {
+    setSubjectPopupClosing(false);
     setSubjectPopup({
       id: subject._id,
       name: subject.name,
       type: subject.type || "theory",
     });
+  };
+
+  const closeSubjectPopup = () => {
+    setSubjectPopupClosing(true);
+    window.setTimeout(() => {
+      setSubjectPopup(null);
+      setSubjectPopupClosing(false);
+    }, 180);
+  };
+
+  const closeProgressPopup = () => {
+    setProgressPopupClosing(true);
+    window.setTimeout(() => {
+      setProgressPopup(null);
+      setProgressPopupClosing(false);
+    }, 180);
   };
 
   useEffect(() => {
@@ -665,9 +684,12 @@ export default function StudentDashboard() {
         const getQuip = () => emptyQuips[Math.floor(Math.random() * emptyQuips.length)];
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setSubjectPopup(null)}>
+          <div
+            className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm ${subjectPopupClosing ? "animate-fade-out" : "animate-fade-in"}`}
+            onClick={closeSubjectPopup}
+          >
             <div
-              className="bg-card border rounded-2xl shadow-2xl p-6 w-[90vw] max-w-sm space-y-5 animate-scale-in"
+              className={`bg-card border rounded-2xl shadow-2xl p-6 w-[90vw] max-w-sm space-y-5 ${subjectPopupClosing ? "animate-scale-out" : "animate-scale-in"}`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -682,7 +704,7 @@ export default function StudentDashboard() {
               <div className="space-y-2.5">
                 {/* Notes */}
                 <button
-                  onClick={() => { router.push(`/user/dashboard/notes?subject=${subjectPopup.id}`); setSubjectPopup(null); }}
+                  onClick={() => { router.push(`/user/dashboard/notes?subject=${subjectPopup.id}`); closeSubjectPopup(); }}
                   className="w-full flex items-center gap-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-3.5 text-left hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
                 >
                   <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500 text-white shrink-0">
@@ -705,7 +727,7 @@ export default function StudentDashboard() {
                 {/* Assignments — only for theory subjects */}
                 {!isLab && (
                   <button
-                    onClick={() => { router.push(`/user/dashboard/assignments?subject=${subjectPopup.id}`); setSubjectPopup(null); }}
+                    onClick={() => { router.push(`/user/dashboard/assignments?subject=${subjectPopup.id}`); closeSubjectPopup(); }}
                     className="w-full flex items-center gap-3 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40 px-4 py-3.5 text-left hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors"
                   >
                     <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500 text-white shrink-0">
@@ -737,7 +759,7 @@ export default function StudentDashboard() {
                 {/* Practicals — only for lab subjects */}
                 {isLab && (
                   <button
-                    onClick={() => { router.push(`/user/dashboard/practicals?subject=${subjectPopup.id}`); setSubjectPopup(null); }}
+                    onClick={() => { router.push(`/user/dashboard/practicals?subject=${subjectPopup.id}`); closeSubjectPopup(); }}
                     className="w-full flex items-center gap-3 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 px-4 py-3.5 text-left hover:bg-teal-100 dark:hover:bg-teal-900/50 transition-colors"
                   >
                     <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-500 text-white shrink-0">
@@ -768,7 +790,7 @@ export default function StudentDashboard() {
               </div>
 
               <button
-                onClick={() => setSubjectPopup(null)}
+                onClick={closeSubjectPopup}
                 className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors pt-1"
               >
                 Cancel
@@ -781,11 +803,11 @@ export default function StudentDashboard() {
       {/* Progress Details Popup */}
       {progressPopup && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
-          onClick={() => setProgressPopup(null)}
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm ${progressPopupClosing ? "animate-fade-out" : "animate-fade-in"}`}
+          onClick={closeProgressPopup}
         >
           <div
-            className="bg-card border rounded-2xl shadow-2xl p-6 w-[90vw] max-w-md max-h-[80vh] overflow-y-auto space-y-5 animate-scale-in"
+            className={`bg-card border rounded-2xl shadow-2xl p-6 w-[90vw] max-w-md max-h-[80vh] overflow-y-auto space-y-5 ${progressPopupClosing ? "animate-scale-out" : "animate-scale-in"}`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -808,7 +830,7 @@ export default function StudentDashboard() {
                 )}
               </h3>
               <button
-                onClick={() => setProgressPopup(null)}
+                onClick={closeProgressPopup}
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -836,7 +858,7 @@ export default function StudentDashboard() {
                           <div className="flex items-center justify-between mb-1">
                             <Link
                               href={`/user/dashboard/assignments?subject=${s._id}`}
-                              onClick={() => setProgressPopup(null)}
+                              onClick={closeProgressPopup}
                               className="text-sm font-medium truncate hover:text-purple-500 hover:underline transition-colors"
                             >
                               {s.name}
@@ -878,7 +900,7 @@ export default function StudentDashboard() {
                           <div className="flex items-center justify-between mb-1">
                             <Link
                               href={`/user/dashboard/practicals?subject=${s._id}`}
-                              onClick={() => setProgressPopup(null)}
+                              onClick={closeProgressPopup}
                               className="text-sm font-medium truncate hover:text-teal-500 hover:underline transition-colors"
                             >
                               {s.name}
@@ -902,7 +924,7 @@ export default function StudentDashboard() {
             })()}
 
             <button
-              onClick={() => setProgressPopup(null)}
+              onClick={closeProgressPopup}
               className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors pt-1"
             >
               Close
