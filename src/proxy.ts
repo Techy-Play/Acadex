@@ -34,7 +34,7 @@ async function verifyJWT(token: string) {
   }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public pages that DON'T redirect logged-in users
