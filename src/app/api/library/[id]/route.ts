@@ -53,6 +53,8 @@ export async function PUT(
   try {
     const userRole = request.headers.get("x-user-role");
     const adminId = request.headers.get("x-user-id");
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
 
     if (userRole !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -70,6 +72,14 @@ export async function PUT(
       return NextResponse.json(
         { error: "Resource not found" },
         { status: 404 }
+      );
+    }
+
+    // Section admin can only edit their own section resources
+    if (!isSuperAdmin && resource.section?.toString() !== adminSection) {
+      return NextResponse.json(
+        { error: "You can only edit resources from your own section" },
+        { status: 403 }
       );
     }
 
@@ -92,7 +102,59 @@ export async function PUT(
       }
     }
 
+    const normalizedSectionIds = Array.isArray(body.sectionIds)
+      ? Array.from(new Set(body.sectionIds.filter(Boolean)))
+      : [];
+
+    if (isSuperAdmin) {
+      if (normalizedSectionIds.length > 0) {
+        resource.section = normalizedSectionIds[0];
+      } else if (body.section !== undefined) {
+        resource.section = body.section || null;
+      }
+    } else {
+      resource.section = adminSection || null;
+    }
+
     await resource.save();
+
+    let replicatedCount = 0;
+    if (isSuperAdmin && normalizedSectionIds.length > 1) {
+      const siblingSectionIds = normalizedSectionIds.slice(1);
+      for (const sectionId of siblingSectionIds) {
+        const existingSibling = await LibraryResource.findOne({
+          _id: { $ne: resource._id },
+          subject: resource.subject,
+          section: sectionId,
+          title: resource.title,
+          fileUrl: resource.fileUrl,
+          uploadedBy: resource.uploadedBy,
+        });
+
+        if (existingSibling) {
+          existingSibling.description = resource.description;
+          existingSibling.semester = resource.semester;
+          existingSibling.academicYear = resource.academicYear;
+          existingSibling.resourceType = resource.resourceType;
+          existingSibling.tags = resource.tags;
+          await existingSibling.save();
+        } else {
+          await LibraryResource.create({
+            title: resource.title,
+            description: resource.description,
+            subject: resource.subject,
+            section: sectionId,
+            semester: resource.semester,
+            academicYear: resource.academicYear,
+            resourceType: resource.resourceType,
+            uploadedBy: resource.uploadedBy,
+            tags: resource.tags,
+            fileUrl: resource.fileUrl,
+          });
+        }
+        replicatedCount += 1;
+      }
+    }
 
     const populated = await resource.populate([
       { path: "subject", select: "name type" },
@@ -110,7 +172,7 @@ export async function PUT(
       /* non-critical */
     }
 
-    return NextResponse.json({ resource: populated });
+    return NextResponse.json({ resource: populated, replicatedCount });
   } catch (error) {
     console.error("Update library resource error:", error);
     return NextResponse.json(

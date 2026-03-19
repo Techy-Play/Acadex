@@ -2,7 +2,6 @@
 import type { Metadata } from "next";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { PushInit } from "@/components/push-init";
 
 export const metadata: Metadata = {
   title: {
@@ -28,7 +27,6 @@ export default function DashboardRootLayout({
 }) {
   return (
     <DashboardLayout>
-      <PushInit />
       {children}
     </DashboardLayout>
   );

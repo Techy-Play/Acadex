@@ -111,22 +111,31 @@ export async function GET(request: Request) {
     }
 
     // Section filtering logic:
-    // - Super admins see all (unless they explicitly filter)
-    // - Sub-admins are hard-filtered to their own section
-    // - Students default to their section; can use ?section=all to see all
+    // - Super admins: unrestricted, unless explicit section filter is provided.
+    // - Sub-admins: only own section + global (section:null) by default.
+    // - Students: own section + global by default; ?section=all can view all.
     if (userRole === "admin" && !isSuperAdmin && userSection) {
-      // Sub-admin: default to own section, but allow explicit section/all filter
-      if (sectionParam && sectionParam !== "all") {
-        filter.section = sectionParam;
-      } else if (sectionParam !== "all") {
+      if (sectionParam === "all" || !sectionParam) {
+        filter.$or = [{ section: userSection }, { section: null }];
+      } else if (sectionParam === "global") {
+        filter.section = null;
+      } else if (sectionParam === userSection) {
         filter.section = userSection;
+      } else {
+        return NextResponse.json({ notes: [] });
+      }
+    } else if (userRole === "student" && userSection) {
+      if (sectionParam === "all") {
+        // no section filter
+      } else if (!sectionParam) {
+        filter.$or = [{ section: userSection }, { section: null }];
+      } else if (sectionParam === "global") {
+        filter.section = null;
+      } else {
+        filter.section = sectionParam;
       }
     } else if (sectionParam && sectionParam !== "all") {
-      // Explicit section filter from query param
-      filter.section = sectionParam;
-    } else if (userRole === "student" && userSection && sectionParam !== "all") {
-      // Student: default to own section
-      filter.section = userSection;
+      filter.section = sectionParam === "global" ? null : sectionParam;
     }
 
     const notes = await Note.find(filter)
@@ -167,34 +176,64 @@ export async function POST(request: Request) {
       );
     }
 
-    // Determine section: super admin can choose any; section admin auto-fills their section
-    let sectionId = parsed.data.section || null;
-    if (!isSuperAdmin) {
-      sectionId = adminSection || null;
-    }
+    const normalizedSectionIds = Array.from(
+      new Set((parsed.data.sectionIds || []).filter(Boolean))
+    );
+
+    const targetSectionIds: Array<string | null> = !isSuperAdmin
+      ? [adminSection || null]
+      : normalizedSectionIds.length > 0
+        ? normalizedSectionIds
+        : parsed.data.section
+          ? [parsed.data.section]
+          : [null];
 
     await connectDB();
     void Section;
 
-    const note = await Note.create({
-      subject: parsed.data.subject,
-      title: parsed.data.title,
-      file_url: parsed.data.file_url,
-      section: sectionId,
-      uploadedBy: adminId,
-    });
+    const createdNotes = await Promise.all(
+      targetSectionIds.map((sectionId) =>
+        Note.create({
+          subject: parsed.data.subject,
+          title: parsed.data.title,
+          file_url: parsed.data.file_url,
+          section: sectionId,
+          uploadedBy: adminId,
+        })
+      )
+    );
 
-    const populated = await note.populate(["subject", "section"].map(f =>
-      f === "subject" ? { path: "subject", select: "name type" } : { path: "section", select: "name" }
-    ));
+    const populatedNotes = await Note.find({
+      _id: { $in: createdNotes.map((n) => n._id) },
+    })
+      .populate([
+        { path: "subject", select: "name type" },
+        { path: "section", select: "name" },
+      ])
+      .sort({ uploadedAt: -1 });
 
     // Log activity
     await ActivityLog.create({
       user: adminId!,
       action: "NOTE_ADDED",
-      details: `Added note: ${parsed.data.title}`,
-      section: sectionId || null,
+      details:
+        targetSectionIds.length > 1
+          ? `Added note: ${parsed.data.title} for ${targetSectionIds.length} sections`
+          : `Added note: ${parsed.data.title}`,
+      section: targetSectionIds[0] || null,
     });
+
+    const targetUserIds = Array.from(
+      new Set(
+        (
+          await Promise.all(
+            targetSectionIds.map((sectionId) =>
+              resolveStudentUserIdsForSubject(parsed.data.subject, sectionId)
+            )
+          )
+        ).flat()
+      )
+    );
 
     // Notify students
     await Notification.create({
@@ -202,25 +241,30 @@ export async function POST(request: Request) {
       title: "New Note Added",
       message: `"${parsed.data.title}" has been uploaded`,
       link: `/user/dashboard/notes?subject=${parsed.data.subject}`,
-      targetRole: "student",
+      ...(targetSectionIds.length === 1 && targetSectionIds[0] === null
+        ? { targetRole: "student" }
+        : { targetUsers: targetUserIds }),
     });
 
-    const targetUserIds = await resolveStudentUserIdsForSubject(
-      parsed.data.subject,
-      sectionId
-    );
     if (targetUserIds.length > 0) {
       await sendPushToUsers({
         userIds: targetUserIds,
         preferenceKey: "new_note",
         payload: noteUploadedPayload(
-          (populated.subject as { name?: string } | undefined)?.name || "this subject",
+          (populatedNotes[0]?.subject as { name?: string } | undefined)?.name || "this subject",
           parsed.data.subject
         ),
       });
     }
 
-    return NextResponse.json({ success: true, note: populated }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        note: populatedNotes[0] || null,
+        createdCount: populatedNotes.length,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Add note error:", error);
     return NextResponse.json(

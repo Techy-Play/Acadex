@@ -88,6 +88,7 @@ export const addNoteSchema = z.object({
     .url("Must be a valid URL")
     .min(1, "File URL is required"),
   section: z.string().optional().nullable(),
+  sectionIds: z.array(z.string().min(1)).optional().default([]),
 });
 
 export const addAssignmentSchema = z.object({
@@ -100,6 +101,7 @@ export const addAssignmentSchema = z.object({
   file_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   deadline: z.string().optional().nullable(),
   section: z.string().optional().nullable(),
+  sectionIds: z.array(z.string().min(1)).optional().default([]),
 });
 
 export const addPracticalSchema = z.object({
@@ -112,6 +114,7 @@ export const addPracticalSchema = z.object({
   file_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   deadline: z.string().optional().nullable(),
   section: z.string().optional().nullable(),
+  sectionIds: z.array(z.string().min(1)).optional().default([]),
 });
 
 export const addLibraryResourceSchema = z.object({
@@ -135,6 +138,7 @@ export const addLibraryResourceSchema = z.object({
     .url("Must be a valid URL")
     .min(1, "File URL is required"),
   section: z.string().optional().nullable(),
+  sectionIds: z.array(z.string().min(1)).optional().default([]),
 });
 
 export const accessRequestSchema = z.object({

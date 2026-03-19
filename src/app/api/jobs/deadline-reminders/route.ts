@@ -42,14 +42,26 @@ async function insertReminderLogsSafe(
 }
 
 function isAuthorized(request: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
+  const configuredSecrets = [
+    process.env.CRON_SECRET,
+    process.env.GITHUB_ACTIONS_CRON_SECRET,
+    process.env.GITHUB_CRON_SECRET,
+  ]
+    .map((s) => s?.trim())
+    .filter((s): s is string => Boolean(s));
+
+  if (configuredSecrets.length === 0) return false;
 
   const authHeader = request.headers.get("authorization");
   const cronHeader = request.headers.get("x-cron-secret");
-  const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const apiKeyHeader = request.headers.get("x-api-key");
+  const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+  const provided = [cronHeader?.trim(), apiKeyHeader?.trim(), bearer].filter(
+    (v): v is string => Boolean(v)
+  );
 
-  return cronHeader === secret || bearer === secret;
+  if (provided.length === 0) return false;
+  return provided.some((candidate) => configuredSecrets.includes(candidate));
 }
 
 function formatWindowKey(deadline: Date): string {

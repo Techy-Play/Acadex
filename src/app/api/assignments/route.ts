@@ -111,19 +111,31 @@ export async function GET(request: Request) {
     }
 
     // Section filtering logic:
-    // - Super admins see all (unless they explicitly filter)
-    // - Sub-admins are hard-filtered to their own section
-    // - Students default to their section; can use ?section=all to see all
+    // - Super admins: unrestricted, unless explicit section filter is provided.
+    // - Sub-admins: only own section + global (section:null) by default.
+    // - Students: own section + global by default; ?section=all can view all.
     if (userRole === "admin" && !isSuperAdmin && userSection) {
-      if (sectionParam && sectionParam !== "all") {
-        filter.section = sectionParam;
-      } else if (sectionParam !== "all") {
+      if (sectionParam === "all" || !sectionParam) {
+        filter.$or = [{ section: userSection }, { section: null }];
+      } else if (sectionParam === "global") {
+        filter.section = null;
+      } else if (sectionParam === userSection) {
         filter.section = userSection;
+      } else {
+        return NextResponse.json({ assignments: [] });
+      }
+    } else if (userRole === "student" && userSection) {
+      if (sectionParam === "all") {
+        // no section filter
+      } else if (!sectionParam) {
+        filter.$or = [{ section: userSection }, { section: null }];
+      } else if (sectionParam === "global") {
+        filter.section = null;
+      } else {
+        filter.section = sectionParam;
       }
     } else if (sectionParam && sectionParam !== "all") {
-      filter.section = sectionParam;
-    } else if (userRole === "student" && userSection && sectionParam !== "all") {
-      filter.section = userSection;
+      filter.section = sectionParam === "global" ? null : sectionParam;
     }
 
     const assignments = await Assignment.find(filter)
@@ -164,36 +176,66 @@ export async function POST(request: Request) {
       );
     }
 
-    let sectionId = parsed.data.section || null;
-    if (!isSuperAdmin) {
-      sectionId = adminSection || null;
-    }
+    const normalizedSectionIds = Array.from(
+      new Set((parsed.data.sectionIds || []).filter(Boolean))
+    );
+
+    const targetSectionIds: Array<string | null> = !isSuperAdmin
+      ? [adminSection || null]
+      : normalizedSectionIds.length > 0
+        ? normalizedSectionIds
+        : parsed.data.section
+          ? [parsed.data.section]
+          : [null];
 
     await connectDB();
     void Section;
 
-    const assignment = await Assignment.create({
-      subject: parsed.data.subject,
-      title: parsed.data.title,
-      description: parsed.data.description || "",
-      file_url: parsed.data.file_url || "",
-      deadline: parsed.data.deadline ? new Date(parsed.data.deadline) : null,
-      section: sectionId,
-      uploadedBy: adminId,
-    });
+    const createdAssignments = await Promise.all(
+      targetSectionIds.map((sectionId) =>
+        Assignment.create({
+          subject: parsed.data.subject,
+          title: parsed.data.title,
+          description: parsed.data.description || "",
+          file_url: parsed.data.file_url || "",
+          deadline: parsed.data.deadline ? new Date(parsed.data.deadline) : null,
+          section: sectionId,
+          uploadedBy: adminId,
+        })
+      )
+    );
 
-    const populated = await assignment.populate([
-      { path: "subject", select: "name type" },
-      { path: "section", select: "name" },
-    ]);
+    const populatedAssignments = await Assignment.find({
+      _id: { $in: createdAssignments.map((a) => a._id) },
+    })
+      .populate([
+        { path: "subject", select: "name type" },
+        { path: "section", select: "name" },
+      ])
+      .sort({ createdAt: -1 });
 
     // Log activity
     await ActivityLog.create({
       user: adminId!,
       action: "ASSIGNMENT_ADDED",
-      details: `Added assignment: ${parsed.data.title}`,
-      section: sectionId || null,
+      details:
+        targetSectionIds.length > 1
+          ? `Added assignment: ${parsed.data.title} for ${targetSectionIds.length} sections`
+          : `Added assignment: ${parsed.data.title}`,
+      section: targetSectionIds[0] || null,
     });
+
+    const targetUserIds = Array.from(
+      new Set(
+        (
+          await Promise.all(
+            targetSectionIds.map((sectionId) =>
+              resolveStudentUserIdsForSubject(parsed.data.subject, sectionId)
+            )
+          )
+        ).flat()
+      )
+    );
 
     // Notify students
     const deadlineInfo = parsed.data.deadline
@@ -204,26 +246,28 @@ export async function POST(request: Request) {
       title: "New Assignment Added",
       message: `"${parsed.data.title}"${deadlineInfo} has been posted`,
       link: `/user/dashboard/assignments?subject=${parsed.data.subject}`,
-      targetRole: "student",
+      ...(targetSectionIds.length === 1 && targetSectionIds[0] === null
+        ? { targetRole: "student" }
+        : { targetUsers: targetUserIds }),
     });
 
-    const targetUserIds = await resolveStudentUserIdsForSubject(
-      parsed.data.subject,
-      sectionId
-    );
     if (targetUserIds.length > 0) {
       await sendPushToUsers({
         userIds: targetUserIds,
         preferenceKey: "new_assignment",
         payload: assignmentUploadedPayload(
-          (populated.subject as { name?: string } | undefined)?.name || "this subject",
+          (populatedAssignments[0]?.subject as { name?: string } | undefined)?.name || "this subject",
           parsed.data.subject
         ),
       });
     }
 
     return NextResponse.json(
-      { success: true, assignment: populated },
+      {
+        success: true,
+        assignment: populatedAssignments[0] || null,
+        createdCount: populatedAssignments.length,
+      },
       { status: 201 }
     );
   } catch (error) {

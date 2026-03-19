@@ -12,6 +12,7 @@ import Section from "@/models/Section";
 import User from "@/models/User";
 import ActivityLog from "@/models/ActivityLog";
 import Notification from "@/models/Notification";
+import { resolveUserIdsForAudience } from "@/lib/push/targets";
 
 // GET /api/library - List library resources with optional filters
 export async function GET(request: Request) {
@@ -98,39 +99,57 @@ export async function POST(request: Request) {
       );
     }
 
-    let sectionId = parsed.data.section || null;
-    if (!isSuperAdmin) {
-      sectionId = adminSection || null;
-    }
+    const normalizedSectionIds = Array.from(
+      new Set((parsed.data.sectionIds || []).filter(Boolean))
+    );
+
+    const targetSectionIds: Array<string | null> = !isSuperAdmin
+      ? [adminSection || null]
+      : normalizedSectionIds.length > 0
+        ? normalizedSectionIds
+        : parsed.data.section
+          ? [parsed.data.section]
+          : [null];
 
     await connectDB();
     void Section;
 
-    const resource = await LibraryResource.create({
-      title: parsed.data.title,
-      description: parsed.data.description,
-      subject: parsed.data.subject,
-      semester: parsed.data.semester,
-      academicYear: parsed.data.academicYear,
-      resourceType: parsed.data.resourceType,
-      tags: parsed.data.tags,
-      fileUrl: parsed.data.fileUrl,
-      section: sectionId,
-      uploadedBy: adminId,
-    });
+    const createdResources = await Promise.all(
+      targetSectionIds.map((sectionId) =>
+        LibraryResource.create({
+          title: parsed.data.title,
+          description: parsed.data.description,
+          subject: parsed.data.subject,
+          semester: parsed.data.semester,
+          academicYear: parsed.data.academicYear,
+          resourceType: parsed.data.resourceType,
+          tags: parsed.data.tags,
+          fileUrl: parsed.data.fileUrl,
+          section: sectionId,
+          uploadedBy: adminId,
+        })
+      )
+    );
 
-    const populated = await resource.populate([
-      { path: "subject", select: "name type" },
-      { path: "section", select: "name" },
-      { path: "uploadedBy", select: "name" },
-    ]);
+    const populatedResources = await LibraryResource.find({
+      _id: { $in: createdResources.map((r) => r._id) },
+    })
+      .populate([
+        { path: "subject", select: "name type" },
+        { path: "section", select: "name" },
+        { path: "uploadedBy", select: "name" },
+      ])
+      .sort({ createdAt: -1 });
 
     // Activity log
     try {
       await ActivityLog.create({
         user: adminId!,
         action: "add_library_resource",
-        details: `Added library resource: ${parsed.data.title}`,
+        details:
+          targetSectionIds.length > 1
+            ? `Added library resource: ${parsed.data.title} for ${targetSectionIds.length} sections`
+            : `Added library resource: ${parsed.data.title}`,
       });
     } catch {
       /* non-critical */
@@ -138,17 +157,35 @@ export async function POST(request: Request) {
 
     // Notification
     try {
+      const targetUserIds =
+        targetSectionIds.length === 1 && targetSectionIds[0] === null
+          ? []
+          : await resolveUserIdsForAudience({
+              targetType: "section",
+              sectionIds: targetSectionIds.filter(
+                (s): s is string => typeof s === "string" && s.length > 0
+              ),
+            });
+
       await Notification.create({
         type: "admin_message",
         title: "New Library Resource",
         message: `New ${parsed.data.resourceType} added: ${parsed.data.title}`,
-        targetRole: "student",
+        ...(targetUserIds.length > 0
+          ? { targetUsers: targetUserIds }
+          : { targetRole: "student" }),
       });
     } catch {
       /* non-critical */
     }
 
-    return NextResponse.json({ resource: populated }, { status: 201 });
+    return NextResponse.json(
+      {
+        resource: populatedResources[0] || null,
+        createdCount: populatedResources.length,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Add library resource error:", error);
     return NextResponse.json(

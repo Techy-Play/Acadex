@@ -49,6 +49,8 @@ export async function PUT(
   try {
     const userRole = request.headers.get("x-user-role");
     const adminId = request.headers.get("x-user-id");
+    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
+    const adminSection = request.headers.get("x-user-section");
 
     if (userRole !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -64,15 +66,7 @@ export async function PUT(
       return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 
-    // Update allowed fields
-    if (body.title !== undefined) note.title = body.title;
-    if (body.file_url !== undefined) note.file_url = body.file_url;
-    if (body.subject !== undefined) note.subject = body.subject;
-    if (body.section !== undefined) note.section = body.section || null;
-
     // Section admin can only edit their own section's notes
-    const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
-    const adminSection = request.headers.get("x-user-section");
     if (!isSuperAdmin && note.section?.toString() !== adminSection) {
       return NextResponse.json(
         { error: "You can only edit notes from your own section" },
@@ -80,7 +74,52 @@ export async function PUT(
       );
     }
 
+    // Update allowed fields
+    if (body.title !== undefined) note.title = body.title;
+    if (body.file_url !== undefined) note.file_url = body.file_url;
+    if (body.subject !== undefined) note.subject = body.subject;
+    const normalizedSectionIds = Array.isArray(body.sectionIds)
+      ? Array.from(new Set(body.sectionIds.filter(Boolean)))
+      : [];
+
+    if (isSuperAdmin) {
+      if (normalizedSectionIds.length > 0) {
+        note.section = normalizedSectionIds[0];
+      } else if (body.section !== undefined) {
+        note.section = body.section || null;
+      }
+    } else {
+      note.section = adminSection || null;
+    }
+
     await note.save();
+
+    let replicatedCount = 0;
+    if (isSuperAdmin && normalizedSectionIds.length > 1) {
+      const siblingSectionIds = normalizedSectionIds.slice(1);
+      for (const sectionId of siblingSectionIds) {
+        const existingSibling = await Note.findOne({
+          _id: { $ne: note._id },
+          subject: note.subject,
+          section: sectionId,
+          title: note.title,
+          file_url: note.file_url,
+          uploadedBy: note.uploadedBy,
+        });
+
+        if (!existingSibling) {
+          await Note.create({
+            subject: note.subject,
+            title: note.title,
+            file_url: note.file_url,
+            section: sectionId,
+            uploadedBy: note.uploadedBy,
+          });
+        }
+        replicatedCount += 1;
+      }
+    }
+
     const populated = await note.populate(populateFields);
 
     await ActivityLog.create({
@@ -90,7 +129,7 @@ export async function PUT(
       section: note.section || null,
     });
 
-    return NextResponse.json({ success: true, note: populated });
+    return NextResponse.json({ success: true, note: populated, replicatedCount });
   } catch (error) {
     console.error("Update note error:", error);
     return NextResponse.json(

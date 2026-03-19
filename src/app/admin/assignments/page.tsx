@@ -5,6 +5,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,7 @@ interface AdminAssignmentsSavedFilters {
 const FILTER_KEY = "adminAssignments";
 
 export default function ManageAssignmentsPage() {
+  const router = useRouter();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
@@ -94,7 +96,7 @@ export default function ManageAssignmentsPage() {
   const [addDescription, setAddDescription] = useState("");
   const [addFileUrl, setAddFileUrl] = useState("");
   const [addDeadline, setAddDeadline] = useState("");
-  const [addSection, setAddSection] = useState("");
+  const [addSections, setAddSections] = useState<string[]>([]);
 
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -104,7 +106,7 @@ export default function ManageAssignmentsPage() {
   const [editFileUrl, setEditFileUrl] = useState("");
   const [editSubject, setEditSubject] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
-  const [editSection, setEditSection] = useState("");
+  const [editSections, setEditSections] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Delete state
@@ -251,7 +253,7 @@ export default function ManageAssignmentsPage() {
           description: addDescription || undefined,
           file_url: addFileUrl.trim(),
           deadline: addDeadline || undefined,
-          ...(isSuperAdmin && addSection && { section: addSection }),
+          ...(isSuperAdmin && addSections.length > 0 && { sectionIds: addSections }),
         }),
       });
 
@@ -268,7 +270,7 @@ export default function ManageAssignmentsPage() {
       setAddFileUrl("");
       setAddDeadline("");
       setAddSubject("");
-      setAddSection("");
+      setAddSections([]);
       setShowAddForm(false);
       fetchAssignments();
     } catch {
@@ -285,7 +287,7 @@ export default function ManageAssignmentsPage() {
     setEditDescription(a.description || "");
     setEditFileUrl(a.file_url || "");
     setEditSubject(a.subject._id);
-    setEditSection(a.section?._id || "");
+    setEditSections(a.section?._id ? [a.section._id] : []);
     setEditDeadline(
       a.deadline ? new Date(a.deadline).toISOString().slice(0, 16) : ""
     );
@@ -306,7 +308,12 @@ export default function ManageAssignmentsPage() {
           file_url: editFileUrl,
           subject: editSubject,
           deadline: editDeadline || null,
-          ...(editSection && { section: editSection }),
+          ...(isSuperAdmin
+            ? {
+                section: editSections[0] || null,
+                ...(editSections.length > 0 && { sectionIds: editSections }),
+              }
+            : {}),
         }),
       });
 
@@ -401,7 +408,7 @@ export default function ManageAssignmentsPage() {
               )}
               <SelectItem value="all">All Sections</SelectItem>
               {sections
-                .filter((s) => !userSectionId || s._id !== userSectionId)
+                .filter((s) => isSuperAdmin || !userSectionId || s._id !== userSectionId)
                 .map((s) => (
                   <SelectItem key={s._id} value={s._id}>
                     🏫 {s.name}
@@ -514,19 +521,43 @@ export default function ManageAssignmentsPage() {
 
               {isSuperAdmin && sections.length > 0 ? (
                 <div className="space-y-2">
-                  <Label>Section</Label>
-                  <Select value={addSection} onValueChange={setAddSection}>
-                    <SelectTrigger className="rounded-xl w-full sm:w-[200px]">
-                      <SelectValue placeholder="Select section (optional)" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {sections.map((s) => (
-                        <SelectItem key={s._id} value={s._id}>
-                          🏫 {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Sections (Optional)</Label>
+                    {addSections.length > 0 && (
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline"
+                        onClick={() => setAddSections([])}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {sections.map((s) => {
+                      const selected = addSections.includes(s._id);
+                      return (
+                        <Button
+                          key={s._id}
+                          type="button"
+                          variant={selected ? "default" : "outline"}
+                          className="justify-start rounded-xl"
+                          onClick={() => {
+                            setAddSections((prev) =>
+                              prev.includes(s._id)
+                                ? prev.filter((id) => id !== s._id)
+                                : [...prev, s._id]
+                            );
+                          }}
+                        >
+                          {selected ? "✓ " : ""}🏫 {s.name}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    If none are selected, the assignment is visible to all sections.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -639,9 +670,8 @@ export default function ManageAssignmentsPage() {
                               className={a.file_url ? "cursor-pointer hover:bg-muted/50" : ""}
                               onClick={() => {
                                 if (a.file_url) {
-                                  window.open(
-                                    `/user/dashboard/viewer?url=${encodeURIComponent(a.file_url)}&title=${encodeURIComponent(a.title)}`,
-                                    "_blank"
+                                  router.push(
+                                    `/user/dashboard/viewer?url=${encodeURIComponent(a.file_url)}&title=${encodeURIComponent(a.title)}`
                                   );
                                 }
                               }}
@@ -780,19 +810,43 @@ export default function ManageAssignmentsPage() {
             </div>
             {sections.length > 0 && (
               <div className="space-y-2">
-                <Label>Section</Label>
-                <Select value={editSection} onValueChange={setEditSection}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="No section" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {sections.map((s) => (
-                      <SelectItem key={s._id} value={s._id}>
-                        🏫 {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Sections</Label>
+                  {editSections.length > 0 && (
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => setEditSections([])}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {sections.map((s) => {
+                    const selected = editSections.includes(s._id);
+                    return (
+                      <Button
+                        key={s._id}
+                        type="button"
+                        variant={selected ? "default" : "outline"}
+                        className="justify-start rounded-xl"
+                        onClick={() => {
+                          setEditSections((prev) =>
+                            prev.includes(s._id)
+                              ? prev.filter((id) => id !== s._id)
+                              : [...prev, s._id]
+                          );
+                        }}
+                      >
+                        {selected ? "✓ " : ""}🏫 {s.name}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Selecting multiple sections updates this assignment and mirrors it to the selected sections.
+                </p>
               </div>
             )}
           </div>

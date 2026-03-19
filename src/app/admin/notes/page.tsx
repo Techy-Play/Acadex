@@ -5,6 +5,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,7 @@ interface AdminNotesSavedFilters {
 const FILTER_KEY = "adminNotes";
 
 export default function ManageNotesPage() {
+  const router = useRouter();
   const [notes, setNotes] = useState<Note[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
@@ -90,7 +92,7 @@ export default function ManageNotesPage() {
   const [addSubject, setAddSubject] = useState("");
   const [addTitle, setAddTitle] = useState("");
   const [addFileUrl, setAddFileUrl] = useState("");
-  const [addSection, setAddSection] = useState("");
+  const [addSections, setAddSections] = useState<string[]>([]);
 
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -98,7 +100,7 @@ export default function ManageNotesPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editFileUrl, setEditFileUrl] = useState("");
   const [editSubject, setEditSubject] = useState("");
-  const [editSection, setEditSection] = useState("");
+  const [editSections, setEditSections] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Delete state
@@ -241,7 +243,7 @@ export default function ManageNotesPage() {
           subject: addSubject,
           title: addTitle,
           file_url: addFileUrl.trim(),
-          ...(isSuperAdmin && addSection && { section: addSection }),
+          ...(isSuperAdmin && addSections.length > 0 && { sectionIds: addSections }),
         }),
       });
 
@@ -256,7 +258,7 @@ export default function ManageNotesPage() {
       setAddTitle("");
       setAddFileUrl("");
       setAddSubject("");
-      setAddSection("");
+      setAddSections([]);
       setShowAddForm(false);
       fetchNotes();
     } catch {
@@ -272,7 +274,7 @@ export default function ManageNotesPage() {
     setEditTitle(note.title);
     setEditFileUrl(note.file_url);
     setEditSubject(note.subject._id);
-    setEditSection(note.section?._id || "");
+    setEditSections(note.section?._id ? [note.section._id] : []);
     setEditDialogOpen(true);
   };
 
@@ -288,7 +290,12 @@ export default function ManageNotesPage() {
           title: editTitle,
           file_url: editFileUrl,
           subject: editSubject,
-          ...(editSection && { section: editSection }),
+          ...(isSuperAdmin
+            ? {
+                section: editSections[0] || null,
+                ...(editSections.length > 0 && { sectionIds: editSections }),
+              }
+            : {}),
         }),
       });
 
@@ -383,7 +390,7 @@ export default function ManageNotesPage() {
               )}
               <SelectItem value="all">All Sections</SelectItem>
               {sections
-                .filter((s) => !userSectionId || s._id !== userSectionId)
+                .filter((s) => isSuperAdmin || !userSectionId || s._id !== userSectionId)
                 .map((s) => (
                   <SelectItem key={s._id} value={s._id}>
                     🏫 {s.name}
@@ -475,19 +482,43 @@ export default function ManageNotesPage() {
                 </div>
                 {isSuperAdmin && sections.length > 0 ? (
                   <div className="space-y-2">
-                    <Label>Section</Label>
-                    <Select value={addSection} onValueChange={setAddSection}>
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="Select section (optional)" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {sections.map((s) => (
-                          <SelectItem key={s._id} value={s._id}>
-                            🏫 {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Sections (Optional)</Label>
+                      {addSections.length > 0 && (
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline"
+                          onClick={() => setAddSections([])}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {sections.map((s) => {
+                        const selected = addSections.includes(s._id);
+                        return (
+                          <Button
+                            key={s._id}
+                            type="button"
+                            variant={selected ? "default" : "outline"}
+                            className="justify-start rounded-xl"
+                            onClick={() => {
+                              setAddSections((prev) =>
+                                prev.includes(s._id)
+                                  ? prev.filter((id) => id !== s._id)
+                                  : [...prev, s._id]
+                              );
+                            }}
+                          >
+                            {selected ? "✓ " : ""}🏫 {s.name}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      If none are selected, the note is visible to all sections.
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -594,9 +625,8 @@ export default function ManageNotesPage() {
                           className={note.file_url ? "cursor-pointer hover:bg-muted/50" : ""}
                           onClick={() => {
                             if (note.file_url) {
-                              window.open(
-                                `/user/dashboard/viewer?url=${encodeURIComponent(note.file_url)}&title=${encodeURIComponent(note.title)}`,
-                                "_blank"
+                              router.push(
+                                `/user/dashboard/viewer?url=${encodeURIComponent(note.file_url)}&title=${encodeURIComponent(note.title)}`
                               );
                             }
                           }}
@@ -689,19 +719,43 @@ export default function ManageNotesPage() {
             </div>
             {sections.length > 0 && (
               <div className="space-y-2">
-                <Label>Section</Label>
-                <Select value={editSection} onValueChange={setEditSection}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="No section" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {sections.map((s) => (
-                      <SelectItem key={s._id} value={s._id}>
-                        🏫 {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Sections</Label>
+                  {editSections.length > 0 && (
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => setEditSections([])}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {sections.map((s) => {
+                    const selected = editSections.includes(s._id);
+                    return (
+                      <Button
+                        key={s._id}
+                        type="button"
+                        variant={selected ? "default" : "outline"}
+                        className="justify-start rounded-xl"
+                        onClick={() => {
+                          setEditSections((prev) =>
+                            prev.includes(s._id)
+                              ? prev.filter((id) => id !== s._id)
+                              : [...prev, s._id]
+                          );
+                        }}
+                      >
+                        {selected ? "✓ " : ""}🏫 {s.name}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Selecting multiple sections updates this note and mirrors it to the selected sections.
+                </p>
               </div>
             )}
           </div>

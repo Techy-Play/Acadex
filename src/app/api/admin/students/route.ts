@@ -26,7 +26,6 @@ export async function GET(request: Request) {
 
     const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
     const adminSection = request.headers.get("x-user-section");
-
     await connectDB();
 
     // Sub-admins can only see users from their own section
@@ -60,7 +59,7 @@ export async function GET(request: Request) {
     ];
 
     // Fetch streams in one query if any exist
-    let streamMap: Record<string, { _id: string; name: string }> = {};
+    const streamMap: Record<string, { _id: string; name: string }> = {};
     if (streamIds.length > 0) {
       const streams = await Stream.find({ _id: { $in: streamIds } })
         .select("_id name")
@@ -71,7 +70,7 @@ export async function GET(request: Request) {
     }
 
     // Fetch sections in one query if any exist
-    let sectionMap: Record<string, { _id: string; name: string }> = {};
+    const sectionMap: Record<string, { _id: string; name: string }> = {};
     if (sectionIds.length > 0) {
       const sections = await Section.find({ _id: { $in: sectionIds } })
         .select("_id name")
@@ -121,12 +120,10 @@ export async function POST(request: Request) {
 
     const { name, college_id, email, password, role, semester } = parsed.data;
     const stream = body.stream || null;
-    let section = body.section || null;
+    const section = body.section || null;
     const normalizedEmail = email ? email.trim().toLowerCase() : null;
 
     const isSuperAdmin = request.headers.get("x-user-is-super-admin") === "true";
-    const adminSection = request.headers.get("x-user-section");
-
     await connectDB();
 
     // Check if college_id already exists
