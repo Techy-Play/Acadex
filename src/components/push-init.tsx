@@ -31,7 +31,7 @@ export function PushInit() {
         const subscribed = await subscribeBrowserPush();
         if (subscribed && !sessionStorage.getItem("acadex-push-connected")) {
           sessionStorage.setItem("acadex-push-connected", "1");
-          toast.success("Device notifications enabled");
+          // toast.success("Welcome to Acadex! Swipe up to remove this message.");
         }
       } catch {
         // Non-blocking: app should continue even if push setup fails.
