@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import "@/models/Section";
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Assignment from "@/models/Assignment";
