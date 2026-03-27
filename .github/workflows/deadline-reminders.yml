@@ -15,10 +15,23 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "Missing APP_URL or CRON_SECRET GitHub secret"
+            echo "❌ Missing APP_URL or CRON_SECRET"
             exit 1
           fi
 
-          curl --fail --show-error --silent \
+          echo "🔗 Calling: $APP_URL/api/jobs/deadline-reminders"
+
+          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$APP_URL/api/jobs/deadline-reminders"
+            "$APP_URL/api/jobs/deadline-reminders")
+
+          echo "$response"
+
+          status=$(echo "$response" | grep HTTP_STATUS | cut -d: -f2)
+
+          if [ "$status" -ne 200 ]; then
+            echo "❌ Request failed with status $status"
+            exit 1
+          fi
+
+          echo "✅ Reminder job executed successfully"
