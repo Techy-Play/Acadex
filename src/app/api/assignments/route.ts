@@ -199,18 +199,29 @@ export async function POST(request: Request) {
     const deadlineInfo = parsed.data.deadline
       ? ` (Due: ${new Date(parsed.data.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })})`
       : "";
-    await Notification.create({
-      type: "new_assignment",
-      title: "New Assignment Added",
-      message: `"${parsed.data.title}"${deadlineInfo} has been posted`,
-      link: `/user/dashboard/assignments?subject=${parsed.data.subject}`,
-      targetRole: "student",
-    });
-
     const targetUserIds = await resolveStudentUserIdsForSubject(
       parsed.data.subject,
       sectionId
     );
+
+    if (targetUserIds.length > 0) {
+      await Notification.create({
+        type: "new_assignment",
+        title: "New Assignment Added",
+        message: `"${parsed.data.title}"${deadlineInfo} has been posted`,
+        link: `/user/dashboard/assignments?subject=${parsed.data.subject}`,
+        targetUsers: targetUserIds,
+      });
+    } else {
+      await Notification.create({
+        type: "new_assignment",
+        title: "New Assignment Added",
+        message: `"${parsed.data.title}"${deadlineInfo} has been posted`,
+        link: `/user/dashboard/assignments?subject=${parsed.data.subject}`,
+        targetRole: "student",
+      });
+    }
+
     if (targetUserIds.length > 0) {
       await sendPushToUsers({
         userIds: targetUserIds,

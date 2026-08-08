@@ -197,18 +197,28 @@ export async function POST(request: Request) {
     });
 
     // Notify students
-    await Notification.create({
-      type: "new_practical",
-      title: "New Practical Added",
-      message: `"${parsed.data.title}" has been uploaded`,
-      link: `/user/dashboard/practicals?subject=${parsed.data.subject}`,
-      targetRole: "student",
-    });
-
     const targetUserIds = await resolveStudentUserIdsForSubject(
       parsed.data.subject,
       sectionId
     );
+
+    if (targetUserIds.length > 0) {
+      await Notification.create({
+        type: "new_practical",
+        title: "New Practical Added",
+        message: `"${parsed.data.title}" has been uploaded`,
+        link: `/user/dashboard/practicals?subject=${parsed.data.subject}`,
+        targetUsers: targetUserIds,
+      });
+    } else {
+      await Notification.create({
+        type: "new_practical",
+        title: "New Practical Added",
+        message: `"${parsed.data.title}" has been uploaded`,
+        link: `/user/dashboard/practicals?subject=${parsed.data.subject}`,
+        targetRole: "student",
+      });
+    }
 
     if (targetUserIds.length > 0) {
       await sendPushToUsers({

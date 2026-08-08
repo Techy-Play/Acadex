@@ -197,18 +197,29 @@ export async function POST(request: Request) {
     });
 
     // Notify students
-    await Notification.create({
-      type: "new_note",
-      title: "New Note Added",
-      message: `"${parsed.data.title}" has been uploaded`,
-      link: `/user/dashboard/notes?subject=${parsed.data.subject}`,
-      targetRole: "student",
-    });
-
     const targetUserIds = await resolveStudentUserIdsForSubject(
       parsed.data.subject,
       sectionId
     );
+
+    if (targetUserIds.length > 0) {
+      await Notification.create({
+        type: "new_note",
+        title: "New Note Added",
+        message: `"${parsed.data.title}" has been uploaded`,
+        link: `/user/dashboard/notes?subject=${parsed.data.subject}`,
+        targetUsers: targetUserIds,
+      });
+    } else {
+      await Notification.create({
+        type: "new_note",
+        title: "New Note Added",
+        message: `"${parsed.data.title}" has been uploaded`,
+        link: `/user/dashboard/notes?subject=${parsed.data.subject}`,
+        targetRole: "student",
+      });
+    }
+
     if (targetUserIds.length > 0) {
       await sendPushToUsers({
         userIds: targetUserIds,

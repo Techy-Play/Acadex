@@ -1,7 +1,7 @@
-﻿/**
+/**
  * @module lib/mail
- * @description Nodemailer email transport and HTML template functions.
- * Templates use a light-themed wrapper and embed the site logo via CID.
+ * @description Resend email transport and HTML template functions.
+ * Templates use a light-themed responsive wrapper and embed the site logo.
  *
  * Exported templates:
  * - `approvalEmailHTML`  – access request approved (includes auto-fill login link)
@@ -10,7 +10,7 @@
  * - `otpEmailHTML`       – one-time password for signup email verification
  * - `profileUpdateOtpHTML` – OTP for password / email change
  */
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 function getAppUrl(): string {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
@@ -18,13 +18,17 @@ function getAppUrl(): string {
   return "http://localhost:3000";
 }
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // Gmail App Password
-  },
-});
+const DEFAULT_FROM =
+  process.env.RESEND_FROM_EMAIL || "Acadex <noreply@send.au-acadex.com>";
+
+let resendClient: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+}
 
 interface SendMailOptions {
   to: string;
@@ -33,19 +37,25 @@ interface SendMailOptions {
 }
 
 export async function sendMail({ to, subject, html }: SendMailOptions) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.warn("Email credentials not configured - skipping email send.");
+  if (!process.env.RESEND_API_KEY) {
+    console.warn("Resend API key not configured - skipping email send.");
     return null;
   }
 
-  const info = await transporter.sendMail({
-    from: `"Acadex" <${process.env.EMAIL_USER}>`,
+  const resend = getResendClient();
+  const { data, error } = await resend.emails.send({
+    from: DEFAULT_FROM,
     to,
     subject,
     html,
   });
 
-  return info;
+  if (error) {
+    console.error("Resend email error:", error);
+    throw new Error(`Failed to send email: ${error.message}`);
+  }
+
+  return data;
 }
 
 /* ───────────────────────────────────────────────────────────────
@@ -95,7 +105,7 @@ function escapeHtml(value: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
 
