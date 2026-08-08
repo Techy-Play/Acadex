@@ -57,8 +57,20 @@ export default function PracticalsPage() {
   const [userSectionId, setUserSectionId] = useState<string | null>(null);
   const [userSectionName, setUserSectionName] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string>("my-section");
-  const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
+  const [expandedSubjectIds, setExpandedSubjectIds] = useState<Set<string>>(new Set());
   const [shouldHighlight, setShouldHighlight] = useState(false);
+
+  const toggleExpandSubject = useCallback((subjectId: string) => {
+    setExpandedSubjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(subjectId)) {
+        next.delete(subjectId);
+      } else {
+        next.add(subjectId);
+      }
+      return next;
+    });
+  }, []);
   const highlightTriggeredRef = useRef(false);
 
   // Fetch completions from server
@@ -229,13 +241,10 @@ export default function PracticalsPage() {
 
   // Auto-expand selected subject when a specific subject filter is applied.
   useEffect(() => {
-    if (selectedSubject === "all") {
-      setExpandedSubjectId(null);
-      return;
+    if (selectedSubject !== "all") {
+      setExpandedSubjectIds(new Set([selectedSubject]));
     }
-    const exists = groupedPracticals.some((g) => g.subjectId === selectedSubject);
-    setExpandedSubjectId(exists ? selectedSubject : null);
-  }, [selectedSubject, groupedPracticals]);
+  }, [selectedSubject]);
 
   // Highlight subject groups when navigated from dashboard with ?highlight=true
   useEffect(() => {
@@ -394,7 +403,7 @@ export default function PracticalsPage() {
           {groupedPracticals.map((group) => {
             const isExpanded =
               selectedSubject === "all"
-                ? expandedSubjectId === group.subjectId
+                ? expandedSubjectIds.has(group.subjectId)
                 : group.subjectId === selectedSubject;
 
             return (
@@ -412,9 +421,7 @@ export default function PracticalsPage() {
                     }`}
                     onClick={() => {
                       if (selectedSubject !== "all") return;
-                      setExpandedSubjectId((prev) =>
-                        prev === group.subjectId ? null : group.subjectId
-                      );
+                      toggleExpandSubject(group.subjectId);
                     }}
                   >
                     <div className="flex items-center gap-2 min-w-0">
