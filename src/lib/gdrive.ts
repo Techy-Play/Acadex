@@ -22,7 +22,10 @@ function getDriveClient() {
 
   const auth = new google.auth.GoogleAuth({
     credentials,
-    scopes: ["https://www.googleapis.com/auth/drive.file"],
+    scopes: [
+      "https://www.googleapis.com/auth/drive",
+      "https://www.googleapis.com/auth/drive.file",
+    ],
   });
 
   return google.drive({ version: "v3", auth });
