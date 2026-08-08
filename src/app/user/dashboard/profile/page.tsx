@@ -14,8 +14,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Camera, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ImageCropModal } from "@/components/image-crop-modal";
 import { subscribeBrowserPush, unsubscribeBrowserPush } from "@/lib/push/client";
 
 interface UserData {
@@ -78,15 +79,29 @@ export default function ProfilePage() {
   const [browserPushPermission, setBrowserPushPermission] = useState<NotificationPermission | "unsupported">("default");
   const [browserPushBusy, setBrowserPushBusy] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleAvatarFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setSelectedImageSrc(reader.result);
+        setCropModalOpen(true);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ""; // Reset input
+  }
+
+  async function handleSaveCroppedAvatar(croppedBlob: Blob) {
     setUploadingAvatar(true);
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", croppedBlob, "profile-picture.png");
 
       const res = await fetch("/api/profile/upload-picture", {
         method: "POST",
@@ -457,7 +472,7 @@ export default function ProfilePage() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={handleAvatarChange}
+                  onChange={handleAvatarFileSelect}
                   className="hidden"
                   disabled={uploadingAvatar}
                 />
@@ -970,6 +985,13 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      <ImageCropModal
+        imageSrc={selectedImageSrc}
+        open={cropModalOpen}
+        onClose={() => setCropModalOpen(false)}
+        onCropSave={handleSaveCroppedAvatar}
+      />
     </div>
   );
 }

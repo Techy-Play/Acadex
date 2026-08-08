@@ -30,6 +30,8 @@ async function getOrCreateSubfolder(
     q,
     fields: "files(id, name)",
     spaces: "drive",
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
   });
 
   if (searchRes.data.files && searchRes.data.files.length > 0) {
@@ -43,6 +45,7 @@ async function getOrCreateSubfolder(
       parents: [parentFolderId],
     },
     fields: "id",
+    supportsAllDrives: true,
   });
 
   return createdFolder.data.id!;
@@ -83,6 +86,7 @@ export async function migrateUserProfilePicture(userId: string) {
     const existingFile = await drive.files.get({
       fileId: user.profileImageDriveId,
       fields: "id, parents, name",
+      supportsAllDrives: true,
     });
 
     const currentParents = existingFile.data.parents || [];
@@ -98,6 +102,7 @@ export async function migrateUserProfilePicture(userId: string) {
       addParents: newTargetFolderId,
       removeParents: previousParentsStr,
       fields: "id, parents",
+      supportsAllDrives: true,
     });
   } catch (err) {
     console.warn("Profile picture migration error:", err);

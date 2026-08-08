@@ -44,6 +44,8 @@ async function getOrCreateSubfolder(
     q,
     fields: "files(id, name)",
     spaces: "drive",
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
   });
 
   if (searchRes.data.files && searchRes.data.files.length > 0) {
@@ -58,6 +60,7 @@ async function getOrCreateSubfolder(
       parents: [parentFolderId],
     },
     fields: "id",
+    supportsAllDrives: true,
   });
 
   return createdFolder.data.id!;
@@ -114,6 +117,7 @@ export async function uploadToGoogleDriveHierarchy({
       body: readableStream,
     },
     fields: "id, name, webViewLink, webContentLink",
+    supportsAllDrives: true,
   });
 
   const fileId = fileUploadRes.data.id!;
@@ -125,6 +129,7 @@ export async function uploadToGoogleDriveHierarchy({
       role: "reader",
       type: "anyone",
     },
+    supportsAllDrives: true,
   });
 
   // Google Drive view URL compatible with Acadex inline viewer

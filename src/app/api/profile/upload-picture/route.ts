@@ -2,7 +2,8 @@
  * @module API/Profile/UploadPicture
  * @description Uploads user profile pictures directly to 5 TB Google Drive under:
  * Acadex Storage / Students / [Stream Name] / Semester [N] / [Section Name] / [FirstName][RollNumber].[ext]
- * If an old profile image exists, it automatically deletes the old file from Google Drive.
+ * (Or Acadex Storage / Admins / [FirstName]SuperAdmin.[ext] for admins).
+ * Automatically deletes any old profile picture file from Google Drive and passes supportsAllDrives: true to prevent 403 quota errors.
  */
 import { NextResponse } from "next/server";
 import { Readable } from "stream";
@@ -35,6 +36,8 @@ async function getOrCreateSubfolder(
     q,
     fields: "files(id, name)",
     spaces: "drive",
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
   });
 
   if (searchRes.data.files && searchRes.data.files.length > 0) {
@@ -48,6 +51,7 @@ async function getOrCreateSubfolder(
       parents: [parentFolderId],
     },
     fields: "id",
+    supportsAllDrives: true,
   });
 
   return createdFolder.data.id!;
@@ -92,29 +96,38 @@ export async function POST(request: Request) {
     // 1. Delete old profile image file from Google Drive if exists
     if (user.profileImageDriveId) {
       try {
-        await drive.files.delete({ fileId: user.profileImageDriveId });
+        await drive.files.delete({
+          fileId: user.profileImageDriveId,
+          supportsAllDrives: true,
+        });
       } catch (err) {
         console.warn("Could not delete old profile picture from Drive:", err);
       }
     }
 
-    // 2. Build folder hierarchy: Acadex Storage -> Students -> Stream -> Semester -> Section
-    const streamName = (user.stream as any)?.name || "General";
-    const semName = user.semester ? `Semester ${user.semester}` : "General";
-    const sectionName = (user.section as any)?.name || "General";
+    // 2. Build folder hierarchy based on role
+    let targetFolderId: string;
+    if (user.role === "admin") {
+      const adminsFolderId = await getOrCreateSubfolder(drive, rootFolderId, "Admins");
+      targetFolderId = adminsFolderId;
+    } else {
+      const streamName = (user.stream as any)?.name || "General";
+      const semName = user.semester ? `Semester ${user.semester}` : "General";
+      const sectionName = (user.section as any)?.name || "General";
 
-    const studentsFolderId = await getOrCreateSubfolder(drive, rootFolderId, "Students");
-    const streamFolderId = await getOrCreateSubfolder(drive, studentsFolderId, streamName);
-    const semFolderId = await getOrCreateSubfolder(drive, streamFolderId, semName);
-    const targetFolderId = await getOrCreateSubfolder(drive, semFolderId, sectionName);
+      const studentsFolderId = await getOrCreateSubfolder(drive, rootFolderId, "Students");
+      const streamFolderId = await getOrCreateSubfolder(drive, studentsFolderId, streamName);
+      const semFolderId = await getOrCreateSubfolder(drive, streamFolderId, semName);
+      targetFolderId = await getOrCreateSubfolder(drive, semFolderId, sectionName);
+    }
 
-    // 3. Format unique filename: [FirstName][RollNumber].[ext]
+    // 3. Format unique filename: [FirstName][RollNumber/Admin].[ext]
     const firstName = user.name.trim().split(" ")[0].replace(/[^a-zA-Z0-9]/g, "");
-    const rollNo = (user.college_id || user._id.toString()).replace(/[^a-zA-Z0-9]/g, "");
+    const rollNo = (user.college_id || (user.isSuperAdmin ? "SuperAdmin" : "Admin")).replace(/[^a-zA-Z0-9]/g, "");
     const ext = file.name.split(".").pop()?.toLowerCase() || "png";
     const uniqueFileName = `${firstName}${rollNo}.${ext}`;
 
-    // 4. Upload binary stream
+    // 4. Upload binary stream with supportsAllDrives: true
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const readableStream = new Readable();
@@ -130,18 +143,20 @@ export async function POST(request: Request) {
         mimeType: file.type || "image/png",
         body: readableStream,
       },
-      fields: "id, webViewLink, webContentLink",
+      fields: "id, name, webViewLink, webContentLink",
+      supportsAllDrives: true,
     });
 
     const newDriveId = uploadRes.data.id!;
 
-    // 5. Make publicly readable for avatar display
+    // 5. Make publicly readable for avatar display with supportsAllDrives: true
     await drive.permissions.create({
       fileId: newDriveId,
       requestBody: {
         role: "reader",
         type: "anyone",
       },
+      supportsAllDrives: true,
     });
 
     const publicUrl = `https://drive.google.com/uc?export=view&id=${newDriveId}`;
