@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FileUploadInput } from "@/components/file-upload-input";
 import {
   Select,
   SelectContent,
@@ -47,6 +48,7 @@ import { Badge } from "@/components/ui/badge";
 interface Subject {
   _id: string;
   name: string;
+  semester?: number;
 }
 
 interface SectionItem {
@@ -495,22 +497,14 @@ export default function ManageLibraryPage() {
 
               {/* Row 3 */}
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="addFileUrl">File URL</Label>
-                  <Input
-                    id="addFileUrl"
-                    type="url"
-                    placeholder="https://drive.google.com/..."
-                    value={addFileUrl}
-                    onChange={(e) => setAddFileUrl(e.target.value)}
-                    required
-                    className="rounded-xl"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Use a shared Google Drive or Dropbox link so students can
-                    access it.
-                  </p>
-                </div>
+                <FileUploadInput
+                  value={addFileUrl}
+                  onChange={setAddFileUrl}
+                  subjectName={subjects.find((s) => s._id === addSubject)?.name || "General"}
+                  semester={subjects.find((s) => s._id === addSubject)?.semester || "General"}
+                  resourceType="Library"
+                  label="PDF Document / File"
+                />
                 <div className="space-y-2">
                   <Label htmlFor="addTags">Tags (comma-separated)</Label>
                   <Input
@@ -804,14 +798,14 @@ export default function ManageLibraryPage() {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>File URL</Label>
-              <Input
-                value={editFileUrl}
-                onChange={(e) => setEditFileUrl(e.target.value)}
-                className="rounded-xl"
-              />
-            </div>
+            <FileUploadInput
+              value={editFileUrl}
+              onChange={setEditFileUrl}
+              subjectName={subjects.find((s) => s._id === editSubject)?.name || "General"}
+              semester={subjects.find((s) => s._id === editSubject)?.semester || "General"}
+              resourceType="Library"
+              label="PDF Document / File"
+            />
             <div className="space-y-2">
               <Label>Tags (comma-separated)</Label>
               <Input

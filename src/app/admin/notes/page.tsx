@@ -32,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FileUploadInput } from "@/components/file-upload-input";
 import {
   Select,
   SelectContent,
@@ -458,21 +459,14 @@ export default function ManageNotesPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="addFileUrl">File URL</Label>
-                  <Input
-                    id="addFileUrl"
-                    type="url"
-                    placeholder="https://drive.google.com/..."
-                    value={addFileUrl}
-                    onChange={(e) => setAddFileUrl(e.target.value)}
-                    required
-                    className="rounded-xl"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Use a shared Google Drive or Dropbox link so students can access it.
-                  </p>
-                </div>
+                <FileUploadInput
+                  value={addFileUrl}
+                  onChange={setAddFileUrl}
+                  subjectName={subjects.find((s) => s._id === addSubject)?.name || "General"}
+                  semester={subjects.find((s) => s._id === addSubject)?.semester || "General"}
+                  resourceType="Notes"
+                  label="PDF Document / File"
+                />
                 {isSuperAdmin && sections.length > 0 ? (
                   <div className="space-y-2">
                     <Label>Section</Label>
@@ -679,14 +673,14 @@ export default function ManageNotesPage() {
                 className="rounded-xl"
               />
             </div>
-            <div className="space-y-2">
-              <Label>File URL</Label>
-              <Input
-                value={editFileUrl}
-                onChange={(e) => setEditFileUrl(e.target.value)}
-                className="rounded-xl"
-              />
-            </div>
+            <FileUploadInput
+              value={editFileUrl}
+              onChange={setEditFileUrl}
+              subjectName={subjects.find((s) => s._id === editSubject)?.name || "General"}
+              semester={subjects.find((s) => s._id === editSubject)?.semester || "General"}
+              resourceType="Notes"
+              label="PDF Document / File"
+            />
             {sections.length > 0 && (
               <div className="space-y-2">
                 <Label>Section</Label>

@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FileUploadInput } from "@/components/file-upload-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -847,14 +848,13 @@ export default function UserRequestsPanel() {
               </div>
             )}
 
-            <div>
-              <Label>File URL *</Label>
-              <Input
-                value={formFileUrl}
-                onChange={(e) => setFormFileUrl(e.target.value)}
-                placeholder="Google Drive link"
-              />
-            </div>
+            <FileUploadInput
+              value={formFileUrl}
+              onChange={setFormFileUrl}
+              subjectName={subjects.find((s) => s._id === formSubject)?.name || "General"}
+              resourceType={formResourceType === "assignment" ? "Assignments" : formResourceType === "practical" ? "Practicals" : "Notes"}
+              label="PDF Document / File *"
+            />
 
             <div>
               <Label>Description</Label>
@@ -947,13 +947,13 @@ export default function UserRequestsPanel() {
               </Select>
             </div>
 
-            <div>
-              <Label>File URL *</Label>
-              <Input
-                value={updateFileUrl}
-                onChange={(e) => setUpdateFileUrl(e.target.value)}
-              />
-            </div>
+            <FileUploadInput
+              value={updateFileUrl}
+              onChange={setUpdateFileUrl}
+              subjectName={subjects.find((s) => s._id === updateSubject)?.name || "General"}
+              resourceType={updateTarget?.resourceType ? String(updateTarget.resourceType) : "Notes"}
+              label="PDF Document / File *"
+            />
 
             <div>
               <Label>Description</Label>

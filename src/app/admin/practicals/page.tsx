@@ -32,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FileUploadInput } from "@/components/file-upload-input";
 import {
   Select,
   SelectContent,
@@ -498,18 +499,14 @@ export default function ManagePracticalsPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="addFileUrl">PDF / File URL</Label>
-                  <Input
-                    id="addFileUrl"
-                    type="url"
-                    placeholder="https://drive.google.com/..."
-                    value={addFileUrl}
-                    onChange={(e) => setAddFileUrl(e.target.value)}
-                    required
-                    className="rounded-xl"
-                  />
-                </div>
+                <FileUploadInput
+                  value={addFileUrl}
+                  onChange={setAddFileUrl}
+                  subjectName={subjects.find((s) => s._id === addSubject)?.name || "General"}
+                  semester={subjects.find((s) => s._id === addSubject)?.semester || "General"}
+                  resourceType="Practicals"
+                  label="PDF Document / File"
+                />
                 <div className="space-y-2">
                   <Label htmlFor="addDeadline">Deadline (Optional)</Label>
                   <Input
@@ -779,15 +776,14 @@ export default function ManagePracticalsPage() {
               </div>
             )}
             </div>
-            <div className="space-y-2">
-              <Label>PDF / File URL</Label>
-              <Input
-                value={editFileUrl}
-                onChange={(e) => setEditFileUrl(e.target.value)}
-                placeholder="https://drive.google.com/..."
-                className="rounded-xl"
-              />
-            </div>
+            <FileUploadInput
+              value={editFileUrl}
+              onChange={setEditFileUrl}
+              subjectName={subjects.find((s) => s._id === editSubject)?.name || "General"}
+              semester={subjects.find((s) => s._id === editSubject)?.semester || "General"}
+              resourceType="Practicals"
+              label="PDF Document / File"
+            />
             <div className="space-y-2">
               <Label>Deadline (Optional)</Label>
               <Input

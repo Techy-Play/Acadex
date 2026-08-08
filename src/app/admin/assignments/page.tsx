@@ -32,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FileUploadInput } from "@/components/file-upload-input";
 import {
   Select,
   SelectContent,
@@ -488,18 +489,14 @@ export default function ManageAssignmentsPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="addFileUrl">PDF / File URL</Label>
-                  <Input
-                    id="addFileUrl"
-                    type="url"
-                    placeholder="https://drive.google.com/..."
-                    value={addFileUrl}
-                    onChange={(e) => setAddFileUrl(e.target.value)}
-                    required
-                    className="rounded-xl"
-                  />
-                </div>
+                <FileUploadInput
+                  value={addFileUrl}
+                  onChange={setAddFileUrl}
+                  subjectName={subjects.find((s) => s._id === addSubject)?.name || "General"}
+                  semester={subjects.find((s) => s._id === addSubject)?.semester || "General"}
+                  resourceType="Assignments"
+                  label="PDF Document / File"
+                />
                 <div className="space-y-2">
                   <Label htmlFor="addDeadline">Deadline (Optional)</Label>
                   <Input
@@ -760,15 +757,14 @@ export default function ManageAssignmentsPage() {
                 className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
               />
             </div>
-            <div className="space-y-2">
-              <Label>PDF / File URL</Label>
-              <Input
-                value={editFileUrl}
-                onChange={(e) => setEditFileUrl(e.target.value)}
-                placeholder="https://drive.google.com/..."
-                className="rounded-xl"
-              />
-            </div>
+            <FileUploadInput
+              value={editFileUrl}
+              onChange={setEditFileUrl}
+              subjectName={subjects.find((s) => s._id === editSubject)?.name || "General"}
+              semester={subjects.find((s) => s._id === editSubject)?.semester || "General"}
+              resourceType="Assignments"
+              label="PDF Document / File"
+            />
             <div className="space-y-2">
               <Label>Deadline</Label>
               <Input
