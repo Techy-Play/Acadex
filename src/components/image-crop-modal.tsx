@@ -1,7 +1,7 @@
 /**
  * @component ImageCropModal
  * @description Interactive 1:1 square image cropper and preview modal for user avatars.
- * Allows users to zoom, drag/pan, and export a cropped 512x512 square profile picture.
+ * Preserves high image quality up to 2048px 1:1 square resolution under 10 MB file size limit.
  */
 "use client";
 
@@ -16,6 +16,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ZoomIn, ZoomOut, RotateCcw, Loader2, Check } from "lucide-react";
+import { toast } from "sonner";
 
 interface ImageCropModalProps {
   imageSrc: string | null;
@@ -83,42 +84,52 @@ export function ImageCropModal({
     setSaving(true);
 
     try {
-      // Create a 512x512 square canvas
+      const img = imgRef.current;
+      const cropViewportSize = 256; // Viewport width/height in DOM px
+
+      // Dynamically preserve image resolution up to 2048px square
+      const baseDimension = Math.max(img.naturalWidth, img.naturalHeight);
+      const exportDimension = Math.min(2048, Math.max(512, baseDimension));
+
       const canvas = document.createElement("canvas");
-      canvas.width = 512;
-      canvas.height = 512;
+      canvas.width = exportDimension;
+      canvas.height = exportDimension;
       const ctx = canvas.getContext("2d");
 
       if (!ctx) throw new Error("Could not initialize canvas context.");
 
-      const img = imgRef.current;
-      const cropSize = 256; // Viewport crop size in px
-
-      // Draw background
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, 512, 512);
+      ctx.fillRect(0, 0, exportDimension, exportDimension);
 
-      // Compute scale ratio between crop viewport and exported 512x512 canvas
-      const exportRatio = 512 / cropSize;
+      const exportRatio = exportDimension / cropViewportSize;
+      const halfExport = exportDimension / 2;
 
       ctx.save();
-      // Center origin
-      ctx.translate(256, 256);
+      ctx.translate(halfExport, halfExport);
       ctx.translate(position.x * exportRatio, position.y * exportRatio);
       ctx.scale(scale * exportRatio, scale * exportRatio);
 
-      // Draw image centered
+      // Draw image centered in square frame
       ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
       ctx.restore();
 
       canvas.toBlob(
         async (blob) => {
-          if (blob) {
-            await onCropSave(blob);
-            onClose();
-          } else {
-            throw new Error("Failed to generate cropped image blob.");
+          if (!blob) {
+            toast.error("Failed to generate cropped image.");
+            setSaving(false);
+            return;
           }
+
+          // Strict 10 MB file size limit check
+          if (blob.size > 10 * 1024 * 1024) {
+            toast.error("Cropped image exceeds 10 MB limit. Please select a smaller photo.");
+            setSaving(false);
+            return;
+          }
+
+          await onCropSave(blob);
+          onClose();
           setSaving(false);
         },
         "image/png",
@@ -126,6 +137,7 @@ export function ImageCropModal({
       );
     } catch (err) {
       console.error("Image crop error:", err);
+      toast.error("Failed to crop image.");
       setSaving(false);
     }
   };
@@ -136,13 +148,13 @@ export function ImageCropModal({
         <DialogHeader>
           <DialogTitle>Crop Profile Picture</DialogTitle>
           <DialogDescription>
-            Drag and zoom to position your avatar inside the square frame.
+            Position your photo inside the 1:1 square frame (Max 10 MB).
           </DialogDescription>
         </DialogHeader>
 
         {imageSrc && (
           <div className="flex flex-col items-center gap-4 py-2">
-            {/* Square 1:1 Crop Viewport */}
+            {/* 1:1 Square Aspect Ratio Crop Viewport */}
             <div
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
@@ -151,7 +163,7 @@ export function ImageCropModal({
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-primary/30 bg-black/80 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none shadow-inner"
+              className="relative w-64 h-64 rounded-2xl overflow-hidden border-4 border-primary/30 bg-black/80 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none shadow-inner"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
