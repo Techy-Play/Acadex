@@ -26,6 +26,9 @@ function getDriveClient() {
       "https://www.googleapis.com/auth/drive",
       "https://www.googleapis.com/auth/drive.file",
     ],
+    clientOptions: process.env.GOOGLE_DRIVE_IMPERSONATE_USER
+      ? { subject: process.env.GOOGLE_DRIVE_IMPERSONATE_USER }
+      : undefined,
   });
 
   return google.drive({ version: "v3", auth });
