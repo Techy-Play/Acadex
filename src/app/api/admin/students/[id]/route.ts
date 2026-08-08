@@ -179,6 +179,10 @@ export async function PATCH(
 
     await user.save();
 
+    // Migrate profile picture in Google Drive if stream/semester/section changed
+    const { migrateUserProfilePicture } = await import("@/lib/profile-migration");
+    void migrateUserProfilePicture(user._id.toString());
+
     // Log activity
     await ActivityLog.create({
       user: adminId!,

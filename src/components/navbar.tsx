@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface NotificationItem {
   id: string;
@@ -35,6 +35,7 @@ interface NotificationItem {
 interface NavbarProps {
   userName: string;
   userRole: "admin" | "student";
+  profileImage?: string | null;
   onMenuToggle?: () => void;
   isAdmin?: boolean;
   isOnAdminRoute?: boolean;
@@ -42,7 +43,7 @@ interface NavbarProps {
   mobileNavPosition?: "top" | "bottom" | "left";
 }
 
-export function Navbar({ userName, userRole, onMenuToggle, isAdmin, isOnAdminRoute, onViewToggle, mobileNavPosition = "top" }: NavbarProps) {
+export function Navbar({ userName, userRole, profileImage, onMenuToggle, isAdmin, isOnAdminRoute, onViewToggle, mobileNavPosition = "top" }: NavbarProps) {
   const router = useRouter();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -412,7 +413,10 @@ export function Navbar({ userName, userRole, onMenuToggle, isAdmin, isOnAdminRou
                 variant="ghost"
                 className="relative h-9 w-9 rounded-full"
               >
-                <Avatar className="h-9 w-9">
+                <Avatar className="h-9 w-9 border border-border">
+                  {profileImage && (
+                    <AvatarImage src={profileImage} alt={userName} />
+                  )}
                   <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
                     {initials}
                   </AvatarFallback>

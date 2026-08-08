@@ -41,6 +41,8 @@ export interface IUser extends Document {
   isAdminSubject: boolean;
   isAdminStream: boolean;
   isAdminSection: boolean;
+  profileImage: string | null;
+  profileImageDriveId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -155,6 +157,14 @@ const UserSchema = new Schema<IUser>(
     isAdminSection: {
       type: Boolean,
       default: false,
+    },
+    profileImage: {
+      type: String,
+      default: null,
+    },
+    profileImageDriveId: {
+      type: String,
+      default: null,
     },
   },
   {

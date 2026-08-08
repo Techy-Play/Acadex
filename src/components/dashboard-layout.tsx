@@ -120,6 +120,7 @@ interface UserData {
   adminAlias?: string | null;
   college_id: string;
   role: "admin" | "student";
+  profileImage?: string | null;
   isSuperAdmin?: boolean;
   isAdminSubject?: boolean;
   isAdminStream?: boolean;
@@ -215,6 +216,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <Navbar
         userName={showingAdminView && user.adminAlias ? user.adminAlias : user.name}
         userRole={user.role}
+        profileImage={user.profileImage}
         onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
         isAdmin={isAdmin}
         isOnAdminRoute={isOnAdminRoute}

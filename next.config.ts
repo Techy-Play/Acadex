@@ -3,6 +3,13 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   compress: true,
 
+  turbopack: {},
+  serverExternalPackages: ["pdfjs-dist"],
+  webpack: (config) => {
+    config.resolve.alias.canvas = false;
+    return config;
+  },
+
   images: {
     formats: ["image/avif", "image/webp"],
   },

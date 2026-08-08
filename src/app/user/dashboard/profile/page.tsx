@@ -13,8 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Camera, Loader2 } from "lucide-react";
 import { subscribeBrowserPush, unsubscribeBrowserPush } from "@/lib/push/client";
 
 interface UserData {
@@ -24,6 +25,7 @@ interface UserData {
   college_id: string;
   email: string | null;
   role: "admin" | "student";
+  profileImage?: string | null;
   isSuperAdmin?: boolean;
   stream: { id: string; name: string } | null;
   section?: { id: string; name: string } | null;
@@ -75,6 +77,33 @@ export default function ProfilePage() {
   const [notifSaving, setNotifSaving] = useState<string | null>(null);
   const [browserPushPermission, setBrowserPushPermission] = useState<NotificationPermission | "unsupported">("default");
   const [browserPushBusy, setBrowserPushBusy] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/profile/upload-picture", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to upload picture.");
+
+      toast.success("Profile picture updated!");
+      setUser((prev) => (prev ? { ...prev, profileImage: data.profileImage } : null));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update avatar");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
 
   useEffect(() => {
     fetchUser();
@@ -409,11 +438,31 @@ export default function ProfilePage() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-start gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="bg-primary text-primary-foreground text-lg font-medium">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative group cursor-pointer">
+              <Avatar className="h-16 w-16 border border-border">
+                {user.profileImage && (
+                  <AvatarImage src={user.profileImage} alt={user.name} />
+                )}
+                <AvatarFallback className="bg-primary text-primary-foreground text-lg font-medium">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+
+              <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white">
+                {uploadingAvatar ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Camera className="h-5 w-5" />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                  disabled={uploadingAvatar}
+                />
+              </label>
+            </div>
             <div className="flex-1 space-y-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">{user.name}</h2>
