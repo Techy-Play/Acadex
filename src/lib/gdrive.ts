@@ -2,11 +2,19 @@ import { google } from "googleapis";
 import { Readable } from "stream";
 
 function getDriveClient() {
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (refreshToken && clientId && clientSecret) {
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    return google.drive({ version: "v3", auth: oauth2Client });
+  }
+
   const jsonCredentialsStr = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!jsonCredentialsStr) {
-    throw new Error(
-      "GOOGLE_SERVICE_ACCOUNT_JSON environment variable is missing."
-    );
+    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON environment variable is missing.");
   }
 
   let credentials;
