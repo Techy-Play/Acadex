@@ -2,10 +2,10 @@
   "name": "Acadex",
   "short_name": "Acadex",
   "description": "Open-source academic resource management platform — Built by students for students.",
-  "start_url": "/",
+  "start_url": "/login",
   "display": "standalone",
   "background_color": "#0f172a",
-  "theme_color": "#2563eb",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
   "icons": [
     {
