@@ -140,6 +140,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Determine view based on current path
   const isOnAdminRoute = pathname.startsWith("/admin");
@@ -162,6 +163,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             initFromServer(data.user.accentColor);
           }
         }
+        // Fetch unread notification count
+        fetch("/api/notifications", { cache: "no-store" })
+          .then((r) => r.ok ? r.json() : null)
+          .then((d) => { if (d?.unreadCount != null) setUnreadCount(d.unreadCount); })
+          .catch(() => {});
       } catch {
         router.push("/login");
       } finally {
@@ -239,6 +245,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
             mobileMode="icons"
+            isAdmin={showingAdminView}
           />
         ) : (
           <Sidebar
@@ -246,6 +253,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
             mobileMode={mobileNav === "bottom" ? "hidden" : "slide"}
+            isAdmin={showingAdminView}
           />
         )}
         <main
@@ -267,6 +275,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           userInitials={initials}
           variant={isOnAdminRoute ? "admin" : "student"}
           isSuperAdmin={user.isSuperAdmin}
+          unreadCount={unreadCount}
         />
       )}
     </div>
