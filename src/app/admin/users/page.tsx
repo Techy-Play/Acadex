@@ -42,7 +42,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { formatProfileImageUrl } from "@/lib/gdrive";
+import { formatProfileImageUrl } from "@/lib/utils";
 
 interface StreamItem {
   _id: string;
