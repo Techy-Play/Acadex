@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FileUploadInput } from "@/components/file-upload-input";
+import { SearchableSelect } from "@/components/searchable-select";
 import {
   Select,
   SelectContent,
@@ -91,6 +92,7 @@ export default function ManageNotesPage() {
   const [addSubject, setAddSubject] = useState("");
   const [addTitle, setAddTitle] = useState("");
   const [addFileUrl, setAddFileUrl] = useState("");
+  const [addStagedFile, setAddStagedFile] = useState<File | null>(null);
   const [addSection, setAddSection] = useState("");
 
   // Edit state
@@ -98,6 +100,7 @@ export default function ManageNotesPage() {
   const [editNote, setEditNote] = useState<Note | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editFileUrl, setEditFileUrl] = useState("");
+  const [editStagedFile, setEditStagedFile] = useState<File | null>(null);
   const [editSubject, setEditSubject] = useState("");
   const [editSection, setEditSection] = useState("");
   const [saving, setSaving] = useState(false);
@@ -227,21 +230,43 @@ export default function ManageNotesPage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!addFileUrl.trim()) {
-      toast.error("PDF / File URL is required");
+    let finalFileUrl = addFileUrl.trim();
+
+    if (!finalFileUrl && !addStagedFile) {
+      toast.error("PDF / File or custom URL is required");
       return;
     }
 
     setAddLoading(true);
 
     try {
+      if (addStagedFile) {
+        const formData = new FormData();
+        formData.append("file", addStagedFile);
+        const subj = subjects.find((s) => s._id === addSubject);
+        formData.append("subjectName", subj?.name || "General");
+        formData.append("semester", String(subj?.semester || "General"));
+        formData.append("resourceType", "Notes");
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) {
+          throw new Error(uploadData.error || "Failed to upload file.");
+        }
+        finalFileUrl = uploadData.fileUrl;
+      }
+
       const res = await fetch("/api/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subject: addSubject,
           title: addTitle,
-          file_url: addFileUrl.trim(),
+          file_url: finalFileUrl,
           ...(isSuperAdmin && addSection && { section: addSection }),
         }),
       });
@@ -256,6 +281,7 @@ export default function ManageNotesPage() {
       toast.success("Note added successfully!");
       setAddTitle("");
       setAddFileUrl("");
+      setAddStagedFile(null);
       setAddSubject("");
       setAddSection("");
       setShowAddForm(false);
@@ -272,6 +298,7 @@ export default function ManageNotesPage() {
     setEditNote(note);
     setEditTitle(note.title);
     setEditFileUrl(note.file_url);
+    setEditStagedFile(null);
     setEditSubject(note.subject._id);
     setEditSection(note.section?._id || "");
     setEditDialogOpen(true);
@@ -281,13 +308,35 @@ export default function ManageNotesPage() {
     if (!editNote) return;
     setSaving(true);
 
+    let finalFileUrl = editFileUrl;
+
     try {
+      if (editStagedFile) {
+        const formData = new FormData();
+        formData.append("file", editStagedFile);
+        const subj = subjects.find((s) => s._id === editSubject);
+        formData.append("subjectName", subj?.name || "General");
+        formData.append("semester", String(subj?.semester || "General"));
+        formData.append("resourceType", "Notes");
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) {
+          throw new Error(uploadData.error || "Failed to upload file.");
+        }
+        finalFileUrl = uploadData.fileUrl;
+      }
+
       const res = await fetch(`/api/notes/${editNote._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: editTitle,
-          file_url: editFileUrl,
+          file_url: finalFileUrl,
           subject: editSubject,
           ...(editSection && { section: editSection }),
         }),
@@ -300,6 +349,7 @@ export default function ManageNotesPage() {
       }
 
       toast.success("Note updated successfully!");
+      setEditStagedFile(null);
       setEditDialogOpen(false);
       fetchNotes();
     } catch {
@@ -432,18 +482,16 @@ export default function ManageNotesPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="addSubject">Subject</Label>
-                  <Select value={addSubject} onValueChange={setAddSubject} required>
-                    <SelectTrigger className="rounded-xl">
-                      <SelectValue placeholder="Select a subject" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {subjects.map((s) => (
-                        <SelectItem key={s._id} value={s._id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={addSubject}
+                    onValueChange={setAddSubject}
+                    options={subjects.map((s) => ({
+                      value: s._id,
+                      label: s.name,
+                      sublabel: s.semester ? `Semester ${s.semester}` : undefined,
+                    }))}
+                    placeholder="Select a subject..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="addTitle">Title</Label>
@@ -462,6 +510,8 @@ export default function ManageNotesPage() {
                 <FileUploadInput
                   value={addFileUrl}
                   onChange={setAddFileUrl}
+                  onFileStaged={setAddStagedFile}
+                  stagedFile={addStagedFile}
                   subjectName={subjects.find((s) => s._id === addSubject)?.name || "General"}
                   semester={subjects.find((s) => s._id === addSubject)?.semester || "General"}
                   resourceType="Notes"
@@ -652,18 +702,16 @@ export default function ManageNotesPage() {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Subject</Label>
-              <Select value={editSubject} onValueChange={setEditSubject}>
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {subjects.map((s) => (
-                    <SelectItem key={s._id} value={s._id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={editSubject}
+                onValueChange={setEditSubject}
+                options={subjects.map((s) => ({
+                  value: s._id,
+                  label: s.name,
+                  sublabel: s.semester ? `Semester ${s.semester}` : undefined,
+                }))}
+                placeholder="Select a subject..."
+              />
             </div>
             <div className="space-y-2">
               <Label>Title</Label>
@@ -676,6 +724,8 @@ export default function ManageNotesPage() {
             <FileUploadInput
               value={editFileUrl}
               onChange={setEditFileUrl}
+              onFileStaged={setEditStagedFile}
+              stagedFile={editStagedFile}
               subjectName={subjects.find((s) => s._id === editSubject)?.name || "General"}
               semester={subjects.find((s) => s._id === editSubject)?.semester || "General"}
               resourceType="Notes"

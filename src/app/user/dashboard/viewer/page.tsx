@@ -63,9 +63,9 @@ export default function PDFViewerPage() {
   // Clamps panning so PDF can never be dragged out of visible screen bounds
   const clampPosition = useCallback((x: number, y: number, currentScale: number) => {
     if (currentScale <= 1.0) return { x: 0, y: 0 };
-    // Maximum pan bounds based on scale multiplier
-    const maxPanX = Math.min(600, 250 * (currentScale - 1));
-    const maxPanY = Math.min(800, 350 * (currentScale - 1));
+    const container = pagesContainerRef.current;
+    const maxPanX = container ? Math.max(0, (container.clientWidth * (currentScale - 1)) / 2) : 200;
+    const maxPanY = container ? Math.max(0, (container.clientHeight * (currentScale - 1)) / 2) : 400;
     return {
       x: Math.max(-maxPanX, Math.min(maxPanX, x)),
       y: Math.max(-maxPanY, Math.min(maxPanY, y)),
@@ -153,8 +153,11 @@ export default function PDFViewerPage() {
         }
 
         const page = await pdfDoc.getPage(pageNum);
-        // Base viewport scale adjusted for high clarity
-        const viewport = page.getViewport({ scale: 1.5, rotation });
+        const containerWidth = pagesContainerRef.current?.clientWidth || (typeof window !== "undefined" ? window.innerWidth : 800);
+        const unscaledViewport = page.getViewport({ scale: 1.0, rotation });
+        // Calculate fit scale so PDF page comfortably fills mobile width without horizontal compression
+        const fitScale = Math.min(1.5, Math.max(0.8, (containerWidth - 32) / unscaledViewport.width));
+        const viewport = page.getViewport({ scale: fitScale, rotation });
 
         const ctx = canvas.getContext("2d");
         if (!ctx) continue;
@@ -163,9 +166,10 @@ export default function PDFViewerPage() {
         canvas.width = Math.floor(viewport.width * dpr);
         canvas.height = Math.floor(viewport.height * dpr);
 
-        // Display dimensions in CSS pixels
-        canvas.style.width = `${Math.floor(viewport.width)}px`;
-        canvas.style.height = `${Math.floor(viewport.height)}px`;
+        // Display dimensions in CSS pixels with responsive maximum bounds
+        canvas.style.width = "100%";
+        canvas.style.maxWidth = `${Math.floor(viewport.width)}px`;
+        canvas.style.height = "auto";
 
         ctx.save();
         ctx.scale(dpr, dpr);
@@ -542,7 +546,7 @@ export default function PDFViewerPage() {
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            className="w-full h-full overflow-y-auto overflow-x-hidden p-4 sm:p-6 flex flex-col items-center gap-6 touch-none"
+            className="w-full h-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 flex flex-col items-center gap-6 touch-pan-y"
           >
             <div
               className="flex flex-col items-center gap-6 transition-transform duration-75 origin-top"

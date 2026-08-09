@@ -1,8 +1,8 @@
 /**
  * @component FileUploadInput
- * @description Direct file drag-and-drop / selector component that streams PDFs
- * into your 5 TB Google Drive via /api/upload and sets the resulting URL in form inputs.
- * Includes a manual URL input toggle for 100% backward compatibility.
+ * @description Drag-and-drop / file selector component. Supports instant upload
+ * or staged deferred upload (stores file locally until user clicks submit).
+ * Includes manual URL input toggle.
  */
 "use client";
 
@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 interface FileUploadInputProps {
   value: string;
   onChange: (url: string) => void;
+  onFileStaged?: (file: File | null) => void;
+  stagedFile?: File | null;
   streamName?: string;
   semester?: number | string;
   subjectName?: string;
@@ -24,6 +26,8 @@ interface FileUploadInputProps {
 export function FileUploadInput({
   value,
   onChange,
+  onFileStaged,
+  stagedFile = null,
   streamName = "General",
   semester = "General",
   subjectName = "General",
@@ -36,10 +40,17 @@ export function FileUploadInput({
   const [showManualUrl, setShowManualUrl] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUploadFile = async (file: File) => {
-    setUploading(true);
+  const handleSelectFile = async (file: File) => {
     setUploadError(null);
 
+    // If onFileStaged callback is provided, stage the file locally (deferred upload)
+    if (onFileStaged) {
+      onFileStaged(file);
+      return;
+    }
+
+    // Direct immediate upload fallback
+    setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -56,7 +67,7 @@ export function FileUploadInput({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to upload file to Google Drive.");
+        throw new Error(data.error || "Failed to upload file.");
       }
 
       onChange(data.fileUrl);
@@ -73,7 +84,7 @@ export function FileUploadInput({
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      void handleUploadFile(file);
+      void handleSelectFile(file);
     }
   };
 
@@ -82,9 +93,21 @@ export function FileUploadInput({
     setIsDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file) {
-      void handleUploadFile(file);
+      void handleSelectFile(file);
     }
   };
+
+  const handleClear = () => {
+    onChange("");
+    if (onFileStaged) {
+      onFileStaged(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const activeFileName = stagedFile ? stagedFile.name : value;
 
   return (
     <div className="space-y-2">
@@ -105,23 +128,33 @@ export function FileUploadInput({
           type="url"
           placeholder="https://drive.google.com/file/d/..."
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            onChange(e.target.value);
+            if (onFileStaged) onFileStaged(null);
+          }}
           className="rounded-xl"
         />
-      ) : value ? (
+      ) : activeFileName ? (
         <div className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
           <div className="flex items-center gap-2.5 min-w-0">
             <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
             <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-xs font-mono text-muted-foreground truncate max-w-[280px]">
-              {value}
-            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-mono font-medium truncate max-w-[280px]">
+                {activeFileName}
+              </span>
+              {stagedFile && (
+                <span className="text-[10px] text-emerald-600 font-medium">
+                  Selected (ready to save on submission) — {(stagedFile.size / (1024 * 1024)).toFixed(2)} MB
+                </span>
+              )}
+            </div>
           </div>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => onChange("")}
+            onClick={handleClear}
             className="h-7 w-7 p-0 rounded-lg text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
@@ -154,7 +187,7 @@ export function FileUploadInput({
             <div className="flex flex-col items-center py-2 gap-2">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
               <p className="text-xs font-medium text-muted-foreground">
-                Uploading to 5 TB Google Drive...
+                Processing file...
               </p>
             </div>
           ) : (
@@ -162,9 +195,6 @@ export function FileUploadInput({
               <Upload className="h-6 w-6 text-muted-foreground mb-1" />
               <p className="text-xs font-medium">
                 Click to upload PDF or drag & drop here
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                Automatically saved to 5 TB Drive under {streamName} / {subjectName}
               </p>
             </div>
           )}

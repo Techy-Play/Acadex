@@ -252,6 +252,11 @@ export default function RootLayout({
         <meta name="theme-color" content="#2563eb" />
         <meta name="application-name" content="Acadex" />
         <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var a=localStorage.getItem("acadex-accent");if(a&&a!=="default"){document.documentElement.setAttribute("data-accent",a);}}catch(e){}})();`,
+          }}
+        />
+        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
@@ -263,7 +268,6 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="system"
           enableSystem
-          disableTransitionOnChange
           storageKey="acadex-theme"
         >
           <Suspense>

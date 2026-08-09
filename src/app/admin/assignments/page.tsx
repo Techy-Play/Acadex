@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FileUploadInput } from "@/components/file-upload-input";
+import { SearchableSelect } from "@/components/searchable-select";
 import {
   Select,
   SelectContent,
@@ -94,6 +95,7 @@ export default function ManageAssignmentsPage() {
   const [addTitle, setAddTitle] = useState("");
   const [addDescription, setAddDescription] = useState("");
   const [addFileUrl, setAddFileUrl] = useState("");
+  const [addStagedFile, setAddStagedFile] = useState<File | null>(null);
   const [addDeadline, setAddDeadline] = useState("");
   const [addSection, setAddSection] = useState("");
 
@@ -103,6 +105,7 @@ export default function ManageAssignmentsPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editFileUrl, setEditFileUrl] = useState("");
+  const [editStagedFile, setEditStagedFile] = useState<File | null>(null);
   const [editSubject, setEditSubject] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
   const [editSection, setEditSection] = useState("");
@@ -235,14 +238,36 @@ export default function ManageAssignmentsPage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!addFileUrl.trim()) {
-      toast.error("PDF / File URL is required");
+    let finalFileUrl = addFileUrl.trim();
+
+    if (!finalFileUrl && !addStagedFile) {
+      toast.error("PDF / File or custom URL is required");
       return;
     }
 
     setAddLoading(true);
 
     try {
+      if (addStagedFile) {
+        const formData = new FormData();
+        formData.append("file", addStagedFile);
+        const subj = subjects.find((s) => s._id === addSubject);
+        formData.append("subjectName", subj?.name || "General");
+        formData.append("semester", String(subj?.semester || "General"));
+        formData.append("resourceType", "Assignments");
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) {
+          throw new Error(uploadData.error || "Failed to upload file.");
+        }
+        finalFileUrl = uploadData.fileUrl;
+      }
+
       const res = await fetch("/api/assignments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -250,7 +275,7 @@ export default function ManageAssignmentsPage() {
           subject: addSubject,
           title: addTitle,
           description: addDescription || undefined,
-          file_url: addFileUrl.trim(),
+          file_url: finalFileUrl,
           deadline: addDeadline || undefined,
           ...(isSuperAdmin && addSection && { section: addSection }),
         }),
@@ -267,6 +292,7 @@ export default function ManageAssignmentsPage() {
       setAddTitle("");
       setAddDescription("");
       setAddFileUrl("");
+      setAddStagedFile(null);
       setAddDeadline("");
       setAddSubject("");
       setAddSection("");
@@ -285,6 +311,7 @@ export default function ManageAssignmentsPage() {
     setEditTitle(a.title);
     setEditDescription(a.description || "");
     setEditFileUrl(a.file_url || "");
+    setEditStagedFile(null);
     setEditSubject(a.subject._id);
     setEditSection(a.section?._id || "");
     setEditDeadline(
@@ -297,14 +324,36 @@ export default function ManageAssignmentsPage() {
     if (!editAssignment) return;
     setSaving(true);
 
+    let finalFileUrl = editFileUrl;
+
     try {
+      if (editStagedFile) {
+        const formData = new FormData();
+        formData.append("file", editStagedFile);
+        const subj = subjects.find((s) => s._id === editSubject);
+        formData.append("subjectName", subj?.name || "General");
+        formData.append("semester", String(subj?.semester || "General"));
+        formData.append("resourceType", "Assignments");
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) {
+          throw new Error(uploadData.error || "Failed to upload file.");
+        }
+        finalFileUrl = uploadData.fileUrl;
+      }
+
       const res = await fetch(`/api/assignments/${editAssignment._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: editTitle,
           description: editDescription,
-          file_url: editFileUrl,
+          file_url: finalFileUrl,
           subject: editSubject,
           deadline: editDeadline || null,
           ...(editSection && { section: editSection }),
@@ -318,6 +367,7 @@ export default function ManageAssignmentsPage() {
       }
 
       toast.success("Assignment updated successfully!");
+      setEditStagedFile(null);
       setEditDialogOpen(false);
       fetchAssignments();
     } catch {
@@ -450,18 +500,16 @@ export default function ManageAssignmentsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="addSubject">Subject</Label>
-                  <Select value={addSubject} onValueChange={setAddSubject} required>
-                    <SelectTrigger className="rounded-xl">
-                      <SelectValue placeholder="Select a subject" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {subjects.map((s) => (
-                        <SelectItem key={s._id} value={s._id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={addSubject}
+                    onValueChange={setAddSubject}
+                    options={subjects.map((s) => ({
+                      value: s._id,
+                      label: s.name,
+                      sublabel: s.semester ? `Semester ${s.semester}` : undefined,
+                    }))}
+                    placeholder="Select a subject..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="addTitle">Title</Label>
@@ -492,6 +540,8 @@ export default function ManageAssignmentsPage() {
                 <FileUploadInput
                   value={addFileUrl}
                   onChange={setAddFileUrl}
+                  onFileStaged={setAddStagedFile}
+                  stagedFile={addStagedFile}
                   subjectName={subjects.find((s) => s._id === addSubject)?.name || "General"}
                   semester={subjects.find((s) => s._id === addSubject)?.semester || "General"}
                   resourceType="Assignments"
@@ -727,18 +777,16 @@ export default function ManageAssignmentsPage() {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Subject</Label>
-              <Select value={editSubject} onValueChange={setEditSubject}>
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {subjects.map((s) => (
-                    <SelectItem key={s._id} value={s._id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={editSubject}
+                onValueChange={setEditSubject}
+                options={subjects.map((s) => ({
+                  value: s._id,
+                  label: s.name,
+                  sublabel: s.semester ? `Semester ${s.semester}` : undefined,
+                }))}
+                placeholder="Select a subject..."
+              />
             </div>
             <div className="space-y-2">
               <Label>Title</Label>
@@ -760,6 +808,8 @@ export default function ManageAssignmentsPage() {
             <FileUploadInput
               value={editFileUrl}
               onChange={setEditFileUrl}
+              onFileStaged={setEditStagedFile}
+              stagedFile={editStagedFile}
               subjectName={subjects.find((s) => s._id === editSubject)?.name || "General"}
               semester={subjects.find((s) => s._id === editSubject)?.semester || "General"}
               resourceType="Assignments"

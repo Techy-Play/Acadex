@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FileUploadInput } from "@/components/file-upload-input";
+import { SearchableSelect } from "@/components/searchable-select";
 import {
   Select,
   SelectContent,
@@ -109,6 +110,7 @@ export default function ManageLibraryPage() {
   const [addType, setAddType] = useState("");
   const [addTags, setAddTags] = useState("");
   const [addFileUrl, setAddFileUrl] = useState("");
+  const [addStagedFile, setAddStagedFile] = useState<File | null>(null);
   const [addSection, setAddSection] = useState("");
 
   // Edit state
@@ -122,6 +124,7 @@ export default function ManageLibraryPage() {
   const [editType, setEditType] = useState("");
   const [editTags, setEditTags] = useState("");
   const [editFileUrl, setEditFileUrl] = useState("");
+  const [editStagedFile, setEditStagedFile] = useState<File | null>(null);
   const [editSection, setEditSection] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -186,9 +189,37 @@ export default function ManageLibraryPage() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    let finalFileUrl = addFileUrl.trim();
+
+    if (!finalFileUrl && !addStagedFile) {
+      toast.error("PDF / File or custom URL is required");
+      return;
+    }
+
     setAddLoading(true);
 
     try {
+      if (addStagedFile) {
+        const formData = new FormData();
+        formData.append("file", addStagedFile);
+        const subj = subjects.find((s) => s._id === addSubject);
+        formData.append("subjectName", subj?.name || "General");
+        formData.append("semester", String(subj?.semester || addSemester || "General"));
+        formData.append("resourceType", "Library");
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) {
+          throw new Error(uploadData.error || "Failed to upload file.");
+        }
+        finalFileUrl = uploadData.fileUrl;
+      }
+
       const res = await fetch("/api/library", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -203,7 +234,7 @@ export default function ManageLibraryPage() {
             .split(",")
             .map((t) => t.trim())
             .filter(Boolean),
-          fileUrl: addFileUrl,
+          fileUrl: finalFileUrl,
           ...(addSection && { section: addSection }),
         }),
       });
@@ -224,6 +255,7 @@ export default function ManageLibraryPage() {
       setAddType("");
       setAddTags("");
       setAddFileUrl("");
+      setAddStagedFile(null);
       setAddSection("");
       setShowAddForm(false);
       fetchResources();
@@ -246,6 +278,7 @@ export default function ManageLibraryPage() {
     setEditType(r.resourceType);
     setEditTags(r.tags.join(", "));
     setEditFileUrl(r.fileUrl);
+    setEditStagedFile(null);
     setEditSection(r.section?._id || "");
     setEditDialogOpen(true);
   };
@@ -254,7 +287,29 @@ export default function ManageLibraryPage() {
     if (!editResource) return;
     setSaving(true);
 
+    let finalFileUrl = editFileUrl;
+
     try {
+      if (editStagedFile) {
+        const formData = new FormData();
+        formData.append("file", editStagedFile);
+        const subj = subjects.find((s) => s._id === editSubject);
+        formData.append("subjectName", subj?.name || "General");
+        formData.append("semester", String(subj?.semester || editSemester || "General"));
+        formData.append("resourceType", "Library");
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) {
+          throw new Error(uploadData.error || "Failed to upload file.");
+        }
+        finalFileUrl = uploadData.fileUrl;
+      }
+
       const res = await fetch(`/api/library/${editResource._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -269,7 +324,7 @@ export default function ManageLibraryPage() {
             .split(",")
             .map((t) => t.trim())
             .filter(Boolean),
-          fileUrl: editFileUrl,
+          fileUrl: finalFileUrl,
           ...(editSection && { section: editSection }),
         }),
       });
@@ -281,6 +336,7 @@ export default function ManageLibraryPage() {
       }
 
       toast.success("Resource updated!");
+      setEditStagedFile(null);
       setEditDialogOpen(false);
       fetchResources();
     } catch {
@@ -424,22 +480,16 @@ export default function ManageLibraryPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="addSubject">Subject</Label>
-                  <Select
+                  <SearchableSelect
                     value={addSubject}
                     onValueChange={setAddSubject}
-                    required
-                  >
-                    <SelectTrigger className="rounded-xl">
-                      <SelectValue placeholder="Select a subject" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {subjects.map((s) => (
-                        <SelectItem key={s._id} value={s._id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    options={subjects.map((s) => ({
+                      value: s._id,
+                      label: s.name,
+                      sublabel: s.semester ? `Semester ${s.semester}` : undefined,
+                    }))}
+                    placeholder="Select a subject..."
+                  />
                 </div>
               </div>
 
@@ -500,6 +550,8 @@ export default function ManageLibraryPage() {
                 <FileUploadInput
                   value={addFileUrl}
                   onChange={setAddFileUrl}
+                  onFileStaged={setAddStagedFile}
+                  stagedFile={addStagedFile}
                   subjectName={subjects.find((s) => s._id === addSubject)?.name || "General"}
                   semester={subjects.find((s) => s._id === addSubject)?.semester || "General"}
                   resourceType="Library"
@@ -744,18 +796,16 @@ export default function ManageLibraryPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Subject</Label>
-                <Select value={editSubject} onValueChange={setEditSubject}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {subjects.map((s) => (
-                      <SelectItem key={s._id} value={s._id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={editSubject}
+                  onValueChange={setEditSubject}
+                  options={subjects.map((s) => ({
+                    value: s._id,
+                    label: s.name,
+                    sublabel: s.semester ? `Semester ${s.semester}` : undefined,
+                  }))}
+                  placeholder="Select a subject..."
+                />
               </div>
               <div className="space-y-2">
                 <Label>Semester</Label>
@@ -801,6 +851,8 @@ export default function ManageLibraryPage() {
             <FileUploadInput
               value={editFileUrl}
               onChange={setEditFileUrl}
+              onFileStaged={setEditStagedFile}
+              stagedFile={editStagedFile}
               subjectName={subjects.find((s) => s._id === editSubject)?.name || "General"}
               semester={subjects.find((s) => s._id === editSubject)?.semester || "General"}
               resourceType="Library"
