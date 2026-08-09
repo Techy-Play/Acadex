@@ -124,14 +124,24 @@ export default function ProfilePage() {
     setUploadingAvatar(true);
     try {
       const formData = new FormData();
-      formData.append("file", croppedBlob, "profile-picture.png");
+      formData.append("file", croppedBlob, "profile-picture.webp");
 
       const res = await fetch("/api/profile/upload-picture", {
         method: "POST",
         body: formData,
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        if (res.status === 413) {
+          throw new Error("Image file size is too large for the server (limit 5 MB).");
+        }
+        throw new Error(`Upload server error (${res.status}). Please try again.`);
+      }
+
       if (!res.ok) throw new Error(data.error || "Failed to upload picture.");
 
       clearMeCache();
@@ -150,7 +160,15 @@ export default function ProfilePage() {
       const res = await fetch("/api/profile/upload-picture", {
         method: "DELETE",
       });
-      const data = await res.json();
+
+      const responseText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(`Server error (${res.status}). Please try again.`);
+      }
+
       if (!res.ok) throw new Error(data.error || "Failed to remove profile picture.");
 
       clearMeCache();

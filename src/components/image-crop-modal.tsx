@@ -227,8 +227,7 @@ export function ImageCropModal({
 
     try {
       const img = imgRef.current;
-      const baseDimension = Math.max(img.naturalWidth, img.naturalHeight);
-      const exportDimension = Math.min(2048, Math.max(1024, baseDimension));
+      const exportDimension = 800;
 
       const canvas = document.createElement("canvas");
       canvas.width = exportDimension;
@@ -270,18 +269,12 @@ export function ImageCropModal({
             return;
           }
 
-          if (blob.size > 10 * 1024 * 1024) {
-            toast.error("Cropped image exceeds 10 MB limit.");
-            setSaving(false);
-            return;
-          }
-
           await onCropSave(blob);
           onClose();
           setSaving(false);
         },
-        "image/png",
-        0.98
+        "image/webp",
+        0.90
       );
     } catch (err) {
       console.error("Image crop error:", err);
