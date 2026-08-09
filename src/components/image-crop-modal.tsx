@@ -1,8 +1,9 @@
 /**
  * @component ImageCropModal
- * @description Sleek, interactive profile image cropper & dropzone uploader.
- * Supports drag-and-drop file selection, 1:1 circular/square mask overlays,
- * rotation, zoom slider, touch/mouse panning, and crisp canvas export up to 2048px.
+ * @description Advanced, responsive profile image cropper with dropzone uploader.
+ * Features auto-contain image scaling, strict position boundary clamping,
+ * Rule of Thirds alignment grid toggle, circle/square mask overlays,
+ * rotation controls, and high-DPI 2048px canvas export.
  */
 "use client";
 
@@ -27,6 +28,7 @@ import {
   Circle,
   Square,
   Sparkles,
+  Grid,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,12 +48,14 @@ export function ImageCropModal({
   onFileSelect,
 }: ImageCropModalProps) {
   const [scale, setScale] = useState(1.0);
+  const [initialFitScale, setInitialFitScale] = useState(1.0);
   const [rotation, setRotation] = useState(0);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [saving, setSaving] = useState(false);
   const [maskType, setMaskType] = useState<"circle" | "square">("circle");
+  const [showGrid, setShowGrid] = useState(true);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -59,11 +63,45 @@ export function ImageCropModal({
 
   useEffect(() => {
     if (open) {
-      setScale(1.0);
       setRotation(0);
       setPosition({ x: 0, y: 0 });
     }
   }, [open, imageSrc]);
+
+  // ── Auto-Scale to Fit Full Image on Load ──
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const viewportSize = 256;
+    const isRotated = rotation === 90 || rotation === 270;
+    const naturalW = isRotated ? img.naturalHeight : img.naturalWidth;
+    const naturalH = isRotated ? img.naturalWidth : img.naturalHeight;
+
+    const fitScale = Math.min(viewportSize / naturalW, viewportSize / naturalH);
+    const safeFitScale = Math.max(0.2, fitScale);
+    setScale(safeFitScale);
+    setInitialFitScale(safeFitScale);
+    setPosition({ x: 0, y: 0 });
+  };
+
+  // ── Position Boundary Clamping (Prevent image leaving viewer) ──
+  const clampPosition = (newX: number, newY: number, currentScale: number) => {
+    if (!imgRef.current) return { x: newX, y: newY };
+    const viewportSize = 256;
+    const img = imgRef.current;
+    
+    const isRotated = rotation === 90 || rotation === 270;
+    const imgW = (isRotated ? img.naturalHeight : img.naturalWidth) * currentScale;
+    const imgH = (isRotated ? img.naturalWidth : img.naturalHeight) * currentScale;
+
+    // Allow dragging up to edge + 25% overflow maximum
+    const maxTranslateX = Math.max(0, (imgW - viewportSize) / 2) + viewportSize * 0.25;
+    const maxTranslateY = Math.max(0, (imgH - viewportSize) / 2) + viewportSize * 0.25;
+
+    return {
+      x: Math.min(maxTranslateX, Math.max(-maxTranslateX, newX)),
+      y: Math.min(maxTranslateY, Math.max(-maxTranslateY, newY)),
+    };
+  };
 
   // ── Drag & Drop File Handlers ──
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -103,7 +141,7 @@ export function ImageCropModal({
     }
   };
 
-  // ── Pan Handlers ──
+  // ── Mouse & Touch Pan Handlers with Boundary Clamping ──
   const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
@@ -111,7 +149,9 @@ export function ImageCropModal({
 
   const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     if (!isDragging) return;
-    setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    const rawX = e.clientX - dragStart.x;
+    const rawY = e.clientY - dragStart.y;
+    setPosition(clampPosition(rawX, rawY, scale));
   };
 
   const handleMouseUp = () => setIsDragging(false);
@@ -128,16 +168,15 @@ export function ImageCropModal({
 
   const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
     if (isDragging && e.touches.length === 1) {
-      setPosition({
-        x: e.touches[0].clientX - dragStart.x,
-        y: e.touches[0].clientY - dragStart.y,
-      });
+      const rawX = e.touches[0].clientX - dragStart.x;
+      const rawY = e.touches[0].clientY - dragStart.y;
+      setPosition(clampPosition(rawX, rawY, scale));
     }
   };
 
   const handleTouchEnd = () => setIsDragging(false);
 
-  // ── Export Canvas Crop ──
+  // ── Canvas Crop Export ──
   const handleSave = async () => {
     if (!imgRef.current) return;
     setSaving(true);
@@ -156,11 +195,18 @@ export function ImageCropModal({
 
       if (!ctx) throw new Error("Could not initialize canvas context.");
 
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, exportDimension, exportDimension);
-
       const exportRatio = exportDimension / cropViewportSize;
       const halfExport = exportDimension / 2;
+
+      // Apply Circular / Square Frame Clipping
+      if (maskType === "circle") {
+        ctx.beginPath();
+        ctx.arc(halfExport, halfExport, halfExport, 0, Math.PI * 2);
+        ctx.clip();
+      }
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, exportDimension, exportDimension);
 
       ctx.save();
       ctx.translate(halfExport, halfExport);
@@ -199,6 +245,9 @@ export function ImageCropModal({
     }
   };
 
+  const minScale = Math.max(0.1, initialFitScale * 0.5);
+  const maxScale = Math.max(3.0, initialFitScale * 4.0);
+
   return (
     <Dialog open={open} onOpenChange={(val) => !saving && !val && onClose()}>
       <DialogContent className="rounded-2xl max-w-md p-6">
@@ -208,13 +257,13 @@ export function ImageCropModal({
             Crop Profile Picture
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Drag to position, scale, or rotate your photo for the perfect fit (Max 10 MB).
+            Full image scaled to fit. Drag, zoom, or rotate for the perfect alignment.
           </DialogDescription>
         </DialogHeader>
 
         {imageSrc ? (
           <div className="flex flex-col items-center gap-4 py-2">
-            {/* Crop Viewport with Interactive Mask Overlay */}
+            {/* Viewport with Interactive Mask Overlay & Alignment Grid */}
             <div
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
@@ -236,17 +285,33 @@ export function ImageCropModal({
                 ref={imgRef}
                 src={imageSrc}
                 alt="Avatar preview"
+                onLoad={handleImageLoad}
                 className="max-w-none pointer-events-none select-none transition-transform duration-75"
                 style={{
                   transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
                 }}
               />
 
+              {/* 3x3 Rule of Thirds Alignment Grid */}
+              {showGrid && (
+                <div className="absolute inset-0 pointer-events-none grid grid-cols-3 grid-rows-3 z-10 opacity-70">
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-r border-b border-white/20" />
+                  <div className="border-b border-white/20" />
+                  <div className="border-r border-white/20" />
+                  <div className="border-r border-white/20" />
+                  <div />
+                </div>
+              )}
+
               {/* Crop Mask Overlay (Circular or Square Cutout) */}
-              <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-0 pointer-events-none z-20">
                 <div
-                  className={`absolute inset-0 border-[32px] border-black/60 backdrop-blur-[1px] transition-all ${
-                    maskType === "circle" ? "rounded-full ring-2 ring-white/40" : "rounded-xl ring-2 ring-white/40"
+                  className={`absolute inset-0 border-[28px] border-black/60 backdrop-blur-[1px] transition-all ${
+                    maskType === "circle" ? "rounded-full ring-2 ring-white/50" : "rounded-xl ring-2 ring-white/50"
                   }`}
                 />
               </div>
@@ -254,14 +319,14 @@ export function ImageCropModal({
 
             {/* Toolbar & Controls */}
             <div className="flex flex-col items-center gap-3 w-full bg-muted/40 p-3 rounded-xl border border-border/50">
-              {/* Zoom Controls */}
-              <div className="flex items-center gap-3 w-full justify-center">
+              {/* Zoom & Rotation Controls */}
+              <div className="flex items-center gap-2.5 w-full justify-center">
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
                   className="h-8 w-8 rounded-lg"
-                  onClick={() => setScale((s) => Math.max(0.5, s - 0.15))}
+                  onClick={() => setScale((s) => Math.max(minScale, s - 0.1))}
                   disabled={saving}
                   title="Zoom Out"
                 >
@@ -270,12 +335,12 @@ export function ImageCropModal({
 
                 <input
                   type="range"
-                  min="0.5"
-                  max="3.5"
-                  step="0.05"
+                  min={minScale}
+                  max={maxScale}
+                  step="0.02"
                   value={scale}
                   onChange={(e) => setScale(parseFloat(e.target.value))}
-                  className="w-36 accent-primary cursor-pointer"
+                  className="w-32 accent-primary cursor-pointer"
                   disabled={saving}
                 />
 
@@ -284,7 +349,7 @@ export function ImageCropModal({
                   variant="outline"
                   size="icon"
                   className="h-8 w-8 rounded-lg"
-                  onClick={() => setScale((s) => Math.min(3.5, s + 0.15))}
+                  onClick={() => setScale((s) => Math.min(maxScale, s + 0.1))}
                   disabled={saving}
                   title="Zoom In"
                 >
@@ -304,6 +369,19 @@ export function ImageCropModal({
                   <RotateCw className="h-4 w-4" />
                 </Button>
 
+                {/* Grid Toggle */}
+                <Button
+                  type="button"
+                  variant={showGrid ? "secondary" : "outline"}
+                  size="icon"
+                  className="h-8 w-8 rounded-lg"
+                  onClick={() => setShowGrid((g) => !g)}
+                  disabled={saving}
+                  title="Toggle 3x3 Alignment Grid"
+                >
+                  <Grid className="h-4 w-4" />
+                </Button>
+
                 {/* Reset */}
                 <Button
                   type="button"
@@ -311,12 +389,12 @@ export function ImageCropModal({
                   size="icon"
                   className="h-8 w-8 rounded-lg"
                   onClick={() => {
-                    setScale(1.0);
+                    setScale(initialFitScale);
                     setRotation(0);
                     setPosition({ x: 0, y: 0 });
                   }}
                   disabled={saving}
-                  title="Reset Controls"
+                  title="Reset Position & Fit Scale"
                 >
                   <RotateCcw className="h-4 w-4" />
                 </Button>
