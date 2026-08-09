@@ -258,7 +258,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         )}
         <main
           className={`flex-1 min-w-0 overflow-x-hidden p-4 md:p-6 lg:p-8 min-h-[calc(100vh-3.5rem)] ${
-            mobileNav === "bottom" ? "pb-24 md:pb-6 lg:pb-8" : ""
+            mobileNav === "bottom" ? "pb-20 md:pb-6 lg:pb-8" : ""
           } ${
             mobileNav === "left" ? "ml-14 md:ml-0" : ""
           }`}
