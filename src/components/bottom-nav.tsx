@@ -83,7 +83,7 @@ const uploadSubItems = [
   },
 ];
 
-// Student "More" sheet links (the ones cut off from the 4-tab limit)
+// Student "More" sheet links
 const studentMoreItems = [
   {
     href: "/user/dashboard/library", label: "Library",
@@ -103,7 +103,7 @@ const studentMoreItems = [
   },
 ];
 
-// ── Shared BottomSheet component ────────────────────────────────────────────
+// ── Shared BottomSheet ───────────────────────────────────────────────────────
 
 function BottomSheet({
   open,
@@ -118,28 +118,25 @@ function BottomSheet({
 }) {
   return (
     <>
-      {/* Backdrop */}
       {open && (
         <div
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
           onClick={onClose}
         />
       )}
-      {/* Sheet */}
       <div
         className={cn(
           "fixed left-0 right-0 bottom-14 z-50 rounded-t-2xl border-t bg-background shadow-2xl transition-transform duration-300 ease-out md:hidden",
-          open ? "translate-y-0" : "translate-y-full"
+          open ? "translate-y-0" : "translate-y-full pointer-events-none"
         )}
       >
-        {/* Drag indicator */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
         </div>
-        <p className="px-5 pb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        <p className="px-5 pb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
           {title}
         </p>
-        <div className="px-3 pb-4 grid grid-cols-2 gap-1">
+        <div className="px-3 pb-5 grid grid-cols-2 gap-1">
           {children}
         </div>
       </div>
@@ -147,86 +144,11 @@ function BottomSheet({
   );
 }
 
-// ── NavTab — shared tab button ───────────────────────────────────────────────
+// ── Shared tab item styles ───────────────────────────────────────────────────
 
-function NavTab({
-  active,
-  onClick,
-  label,
-  icon,
-  badge,
-}: {
-  active: boolean;
-  onClick?: () => void;
-  label: string;
-  icon: React.ReactNode;
-  badge?: number;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all duration-100 active:scale-90 relative"
-      )}
-    >
-      <div className={cn(
-        "flex flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-1 transition-colors",
-        active ? "bg-primary/15 text-primary" : "text-muted-foreground"
-      )}>
-        <div className="relative">
-          <span className="[&>svg]:h-[22px] [&>svg]:w-[22px]">{icon}</span>
-          {badge != null && badge > 0 && (
-            <span className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center px-0.5">
-              {badge > 9 ? "9+" : badge}
-            </span>
-          )}
-        </div>
-        <span className={cn("text-[10px] font-medium leading-none", active ? "text-primary" : "")}>{label}</span>
-      </div>
-    </button>
-  );
-}
-
-function NavLink({
-  href,
-  active,
-  label,
-  icon,
-  badge,
-  onClick,
-}: {
-  href: string;
-  active: boolean;
-  label: string;
-  icon: React.ReactNode;
-  badge?: number;
-  onClick?: () => void;
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all duration-100 active:scale-90"
-      )}
-    >
-      <div className={cn(
-        "flex flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-1 transition-colors",
-        active ? "bg-primary/15 text-primary" : "text-muted-foreground"
-      )}>
-        <div className="relative">
-          <span className="[&>svg]:h-[22px] [&>svg]:w-[22px]">{icon}</span>
-          {badge != null && badge > 0 && (
-            <span className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center px-0.5">
-              {badge > 9 ? "9+" : badge}
-            </span>
-          )}
-        </div>
-        <span className={cn("text-[10px] font-medium leading-none", active ? "text-primary" : "")}>{label}</span>
-      </div>
-    </Link>
-  );
-}
+const tabBase = "flex flex-col items-center justify-center flex-1 h-full gap-1 py-1.5 transition-all duration-100 active:scale-90 relative";
+const tabIconWrap = "relative flex items-center justify-center";
+const tabLabel = "text-[10px] leading-none font-medium";
 
 // ── Main export ──────────────────────────────────────────────────────────────
 
@@ -269,7 +191,6 @@ export function BottomNav({
 
     return (
       <>
-        {/* Manage bottom sheet */}
         <BottomSheet open={manageOpen} onClose={() => setManageOpen(false)} title="Manage">
           {filteredManageItems.map((item) => (
             <Link
@@ -278,18 +199,14 @@ export function BottomNav({
               onClick={() => setManageOpen(false)}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
-                pathname.startsWith(item.href)
-                  ? "bg-primary/10 text-primary"
-                  : "text-foreground hover:bg-muted"
+                pathname.startsWith(item.href) ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
               )}
             >
-              {item.icon}
-              {item.label}
+              {item.icon}{item.label}
             </Link>
           ))}
         </BottomSheet>
 
-        {/* Upload bottom sheet */}
         <BottomSheet open={uploadOpen} onClose={() => setUploadOpen(false)} title="Upload Content">
           {uploadSubItems.map((item) => (
             <Link
@@ -298,54 +215,51 @@ export function BottomNav({
               onClick={() => setUploadOpen(false)}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
-                pathname.startsWith(item.href)
-                  ? "bg-primary/10 text-primary"
-                  : "text-foreground hover:bg-muted"
+                pathname.startsWith(item.href) ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
               )}
             >
-              {item.icon}
-              {item.label}
+              {item.icon}{item.label}
             </Link>
           ))}
         </BottomSheet>
 
-        <nav aria-label="Admin navigation" className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-md md:hidden">
-          <div className="flex items-center h-14 px-1 relative">
+        <nav aria-label="Admin navigation" className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-md md:hidden safe-area-bottom">
+          <div className="flex items-stretch h-16 px-1">
 
             {/* Dashboard */}
-            <NavLink
+            <Link
               href="/admin"
-              active={pathname === "/admin"}
-              label="Dashboard"
-              icon={
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              className={cn(tabBase, pathname === "/admin" ? "text-primary" : "text-muted-foreground")}
+            >
+              <div className={tabIconWrap}>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
-              }
-            />
+              </div>
+              <span className={tabLabel}>Dashboard</span>
+            </Link>
 
             {/* Manage */}
-            <NavTab
-              active={isManageActive || manageOpen}
+            <button
               onClick={() => { setManageOpen(!manageOpen); setUploadOpen(false); }}
-              label="Manage"
-              icon={
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              className={cn(tabBase, isManageActive || manageOpen ? "text-primary" : "text-muted-foreground")}
+            >
+              <div className={tabIconWrap}>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-              }
-            />
+              </div>
+              <span className={tabLabel}>Manage</span>
+            </button>
 
-            {/* Center FAB for Upload */}
-            <div className="flex-1 flex justify-center">
+            {/* Center FAB */}
+            <div className="flex-1 flex items-center justify-center">
               <button
                 onClick={() => { setUploadOpen(!uploadOpen); setManageOpen(false); }}
                 className={cn(
-                  "absolute -top-5 h-14 w-14 rounded-full border-4 border-background shadow-lg flex items-center justify-center transition-all duration-150 active:scale-90",
-                  isUploadActive || uploadOpen
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-primary text-primary-foreground hover:brightness-110"
+                  "h-12 w-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-150 active:scale-90 -mt-4",
+                  "bg-primary text-primary-foreground hover:brightness-110"
                 )}
                 aria-label="Upload Content"
               >
@@ -353,39 +267,24 @@ export function BottomNav({
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
               </button>
-              {/* Spacer so other tabs space correctly */}
-              <div className="w-14" />
             </div>
 
-            {/* Notifications (admin) */}
-            <NavLink
-              href="/admin/users"
-              active={false}
-              label="Notifs"
-              badge={unreadCount}
-              icon={
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-              }
-            />
-
             {/* Profile */}
-            <NavLink
+            <Link
               href={profileHref}
-              active={isProfileActive}
-              label="Profile"
-              icon={
+              className={cn(tabBase, isProfileActive ? "text-primary" : "text-muted-foreground")}
+            >
+              <div className={tabIconWrap}>
                 <div className={cn(
-                  "h-[22px] w-[22px] rounded-full flex items-center justify-center text-[9px] font-bold border-[1.5px]",
-                  isProfileActive
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-muted-foreground/50"
+                  "h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold border-[1.5px]",
+                  isProfileActive ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/50"
                 )}>
                   {userInitials}
                 </div>
-              }
-            />
+              </div>
+              <span className={tabLabel}>Profile</span>
+            </Link>
+
           </div>
         </nav>
       </>
@@ -394,16 +293,13 @@ export function BottomNav({
 
   // ── STUDENT variant ────────────────────────────────────────────────────────
 
-  // Main 4 tabs
   const mainItems = links.slice(0, 4);
-
   const isMoreActive = studentMoreItems.some(
     (item) => pathname === item.href || pathname.startsWith(item.href)
   );
 
   return (
     <>
-      {/* "More" bottom sheet */}
       <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title="More">
         {studentMoreItems.map((item) => (
           <Link
@@ -417,46 +313,60 @@ export function BottomNav({
                 : "text-foreground hover:bg-muted"
             )}
           >
-            {item.icon}
-            {item.label}
+            {item.icon}{item.label}
           </Link>
         ))}
       </BottomSheet>
 
       <nav aria-label="Student navigation" className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur-md md:hidden">
-        <div className="flex items-center h-14 px-1">
+        <div className="flex items-stretch h-16 px-1">
 
           {mainItems.map((link) => {
             const isActive =
               pathname === link.href ||
               (link.href !== "/user/dashboard" && pathname.startsWith(link.href));
-
-            // Show notification dot on Dashboard tab
-            const badge = link.href === "/user/dashboard" ? unreadCount : undefined;
+            const hasUnread = link.href === "/user/dashboard" && unreadCount > 0;
 
             return (
-              <NavLink
+              <Link
                 key={link.href}
                 href={link.href}
-                active={isActive}
-                label={link.label}
-                icon={link.icon}
-                badge={badge}
-              />
+                className={cn(tabBase, isActive ? "text-primary" : "text-muted-foreground")}
+              >
+                {/* Active pill background behind icon */}
+                <div className={cn(
+                  "flex items-center justify-center rounded-xl px-4 py-0.5 transition-colors",
+                  isActive ? "bg-primary/10" : ""
+                )}>
+                  <div className={tabIconWrap}>
+                    <span className="[&>svg]:h-5 [&>svg]:w-5">{link.icon}</span>
+                    {hasUnread && (
+                      <span className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center px-0.5">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className={tabLabel}>{link.label}</span>
+              </Link>
             );
           })}
 
           {/* More tab */}
-          <NavTab
-            active={isMoreActive || moreOpen}
+          <button
             onClick={() => setMoreOpen(!moreOpen)}
-            label="More"
-            icon={
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            className={cn(tabBase, isMoreActive || moreOpen ? "text-primary" : "text-muted-foreground")}
+          >
+            <div className={cn(
+              "flex items-center justify-center rounded-xl px-4 py-0.5 transition-colors",
+              isMoreActive || moreOpen ? "bg-primary/10" : ""
+            )}>
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
               </svg>
-            }
-          />
+            </div>
+            <span className={tabLabel}>More</span>
+          </button>
 
         </div>
       </nav>

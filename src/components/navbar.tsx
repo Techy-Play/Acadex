@@ -236,8 +236,8 @@ export function Navbar({ userName, userRole, profileImage, onMenuToggle, isAdmin
             href={isOnAdminRoute ? "/admin" : "/user/dashboard"}
             className="flex items-center gap-2"
           >
-            <Image src="/images/logo.svg" alt="Acadex" width={28} height={28} className="h-7 w-7 object-contain" />
-            <span className="font-semibold text-sm tracking-tight hidden sm:inline">
+            <Image src="/images/logo.svg" alt="Acadex" width={32} height={32} className="h-8 w-8 object-contain" />
+            <span className="font-bold text-base tracking-tight">
               Acadex
             </span>
           </Link>
