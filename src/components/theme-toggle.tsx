@@ -73,7 +73,10 @@ function applyAccent(value: string) {
   }
 }
 
+import { clearMeCache } from "@/lib/client-auth";
+
 async function saveThemeToServer(theme?: string, accentColor?: string) {
+  clearMeCache();
   try {
     const body: Record<string, string> = {};
     if (theme) body.theme = theme;

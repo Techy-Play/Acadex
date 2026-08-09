@@ -268,6 +268,7 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="system"
           enableSystem
+          disableTransitionOnChange
           storageKey="acadex-theme"
         >
           <Suspense>

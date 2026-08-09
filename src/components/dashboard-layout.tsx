@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Navbar } from "@/components/navbar";
@@ -144,18 +144,23 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Determine view based on current path
   const isOnAdminRoute = pathname.startsWith("/admin");
 
+  const hasInitializedThemeRef = useRef(false);
+
   useEffect(() => {
     async function fetchUser() {
       try {
         const data = await fetchMeCached();
         setUser(data.user);
 
-        // Apply server-saved theme preferences
-        if (data.user.theme) {
-          setTheme(data.user.theme);
-        }
-        if (data.user.accentColor) {
-          initFromServer(data.user.accentColor);
+        // Apply server-saved theme preferences once on initial mount
+        if (!hasInitializedThemeRef.current) {
+          hasInitializedThemeRef.current = true;
+          if (data.user.theme) {
+            setTheme(data.user.theme);
+          }
+          if (data.user.accentColor) {
+            initFromServer(data.user.accentColor);
+          }
         }
       } catch {
         router.push("/login");

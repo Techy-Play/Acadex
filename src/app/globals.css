@@ -157,10 +157,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    transition: background-color 0.25s ease-out, color 0.25s ease-out;
-  }
-  .bg-card, .bg-background, .bg-muted, .bg-popover, .border-border, header, nav, aside {
-    transition: background-color 0.25s ease-out, border-color 0.25s ease-out, color 0.25s ease-out;
   }
   html {
     scroll-behavior: smooth;

@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { signToken, setAuthCookie } from "@/lib/auth";
+import { formatProfileImageUrl } from "@/lib/gdrive";
 import User from "@/models/User";
 import Stream from "@/models/Stream";
 import Subject from "@/models/Subject";
@@ -87,7 +88,7 @@ export async function GET(request: Request) {
           email: user.email || null,
           role: user.role,
           isSuperAdmin: user.isSuperAdmin || false,
-          profileImage: user.profileImage || null,
+          profileImage: formatProfileImageUrl(user.profileImage, user.profileImageDriveId),
           profileImageDriveId: user.profileImageDriveId || null,
           stream: streamData,
           section: sectionData,

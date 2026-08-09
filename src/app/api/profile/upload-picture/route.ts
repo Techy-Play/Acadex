@@ -13,6 +13,7 @@ import { connectDB } from "@/lib/db";
 import User from "@/models/User";
 import Stream from "@/models/Stream";
 import Section from "@/models/Section";
+import { formatProfileImageUrl } from "@/lib/gdrive";
 
 function getDriveClient() {
   const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
@@ -177,7 +178,7 @@ export async function POST(request: Request) {
           supportsAllDrives: true,
         });
 
-        publicUrl = `https://drive.google.com/uc?export=view&id=${newDriveId}`;
+        publicUrl = `https://lh3.googleusercontent.com/d/${newDriveId}`;
       }
     } catch (driveErr) {
       console.warn(
@@ -191,8 +192,10 @@ export async function POST(request: Request) {
       publicUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
     }
 
+    const formattedImage = formatProfileImageUrl(publicUrl, newDriveId);
+
     // 6. Update user model in MongoDB
-    user.profileImage = publicUrl;
+    user.profileImage = formattedImage;
     if (newDriveId) {
       user.profileImageDriveId = newDriveId;
     }
@@ -200,11 +203,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      profileImage: publicUrl,
+      profileImage: formattedImage,
       user: {
         id: user._id.toString(),
         name: user.name,
-        profileImage: publicUrl,
+        profileImage: formattedImage,
       },
     });
   } catch (error) {
