@@ -7,6 +7,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -134,7 +135,7 @@ export default function UserRequestsPanel() {
 
   /* --- new request dialog --- */
   const [showNewDialog, setShowNewDialog] = useState(false);
-  const [newRequestKind, setNewRequestKind] = useState<"upload" | "suggestion">("upload");
+  const [newRequestKind, setNewRequestKind] = useState<"upload" | "suggestion">("suggestion");
   const [formResourceType, setFormResourceType] = useState<string>("note");
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
@@ -204,6 +205,15 @@ export default function UserRequestsPanel() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Auto-open Contact Admin dialog when navigated from Profile page
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("type") === "contact") {
+      setNewRequestKind("suggestion");
+      setShowNewDialog(true);
+    }
+  }, [searchParams]);
 
   /* ---------------------------------------------------------------- */
   /*  Filtered lists                                                   */
@@ -755,7 +765,7 @@ export default function UserRequestsPanel() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="suggestion">Suggestion / Question to Admin</SelectItem>
+                  <SelectItem value="suggestion">Contact Admin (Suggestion / Question)</SelectItem>
                   <SelectItem value="upload">Upload PDF (Needs Admin Approval)</SelectItem>
                 </SelectContent>
               </Select>

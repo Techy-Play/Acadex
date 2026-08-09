@@ -76,6 +76,7 @@ export default function StudentDashboard() {
   const [progressPopup, setProgressPopup] = useState<"assignments" | "practicals" | null>(null);
   const [progressPopupClosing, setProgressPopupClosing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [firstName, setFirstName] = useState<string>("");
 
   const handleViewChange = (mode: ViewMode) => {
     setViewMode(mode);
@@ -148,10 +149,13 @@ export default function StudentDashboard() {
         }
         setSemester(meData.user?.semester || null);
 
-        // Set dashboard view preference from DB
         if (meData.user?.dashboardView) {
           setViewMode(meData.user.dashboardView as ViewMode);
         }
+
+        // Extract first name for greeting
+        const fullName = meData.user?.name || "";
+        setFirstName(fullName.split(" ")[0] || fullName);
 
         // Get stream subject IDs for filtering
         const streamSubjectIds: Set<string> | null = meData.user?.stream?.subjects?.length
@@ -280,10 +284,10 @@ export default function StudentDashboard() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Loading your academic hub...</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Welcome to Acadex</h1>
+        <p className="text-muted-foreground">Loading your academic hub...</p>
+      </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="rounded-2xl animate-pulse">
@@ -301,11 +305,18 @@ export default function StudentDashboard() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome to Acadex</p>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Welcome back, {firstName}! 👋
+        </h1>
+        <p className="text-muted-foreground">
+          {(() => {
+            const h = new Date().getHours();
+            return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+          })()} &bull; Acadex
+        </p>
         {(stream || semester || section) && (
           <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-            🎓 {stream?.name || "No Stream"} - Section: {section?.name || "No Section"}
+            🎓 {stream?.name || "No Stream"}{semester ? ` — Sem ${semester}` : ""}{section?.name ? ` — Section: ${section.name}` : ""}
           </div>
         )}
       </div>

@@ -494,25 +494,27 @@ export default function ProfilePage() {
       </div>
 
       {/* User Info Card */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            <div className="flex flex-col items-center gap-2">
+      <Card className="overflow-hidden">
+        <CardContent className="pt-6 pb-5">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+            {/* Avatar Column */}
+            <div className="flex flex-col items-center gap-2.5 shrink-0">
               <div
                 onClick={() => setViewProfileModalOpen(true)}
                 className="relative group cursor-pointer"
                 title="View Profile Picture"
               >
-                <Avatar className="h-20 w-20 border-2 border-primary/20 shadow-md transition-transform group-hover:scale-[1.03]">
-                  {user.profileImage && (
-                    <AvatarImage src={user.profileImage} alt={user.name} />
-                  )}
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-
-                {/* View Picture Hover Overlay */}
+                <div className="p-0.5 rounded-full bg-gradient-to-br from-primary/50 via-primary/20 to-transparent">
+                  <Avatar className="h-24 w-24 shadow-lg">
+                    {user.profileImage && (
+                      <AvatarImage src={user.profileImage} alt={user.name} />
+                    )}
+                    <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                {/* Hover Overlay */}
                 <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
                   <Eye className="h-6 w-6" />
                 </div>
@@ -522,20 +524,14 @@ export default function ProfilePage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="rounded-xl text-xs px-3 h-8 border-border hover:bg-muted"
+                className="rounded-xl text-xs px-3 h-7 border-border hover:bg-muted w-full"
                 onClick={() => avatarFileInputRef.current?.click()}
                 disabled={uploadingAvatar}
               >
                 {uploadingAvatar ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    Uploading...
-                  </>
+                  <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Uploading...</>
                 ) : (
-                  <>
-                    <Camera className="h-3.5 w-3.5 mr-1.5 text-primary" />
-                    Update Photo
-                  </>
+                  <><Camera className="h-3 w-3 mr-1.5 text-primary" />Update Photo</>
                 )}
               </Button>
 
@@ -549,27 +545,76 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold">{user.name}</h2>
-                <Badge variant="secondary" className="capitalize">{user.role}</Badge>
+            {/* Info Column */}
+            <div className="flex-1 min-w-0 w-full">
+              {/* Name + Role Badge */}
+              <div className="flex items-center flex-wrap gap-2 mb-3">
+                <h2 className="text-2xl font-bold tracking-tight">{user.name}</h2>
+                <Badge className="capitalize text-xs font-semibold">{user.role}</Badge>
               </div>
+
+              {/* Admin Alias */}
               {user.adminAlias && (
-                <p className="text-sm text-muted-foreground">
-                  Admin alias: <span className="font-medium text-primary">{user.adminAlias}</span>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Alias: <span className="font-medium text-primary">{user.adminAlias}</span>
                 </p>
               )}
-              <p className="text-sm text-muted-foreground">College ID: {user.college_id}</p>
-              <p className="text-sm text-muted-foreground">
-                Email: {user.email || <span className="italic text-yellow-600 dark:text-yellow-400">Not set</span>}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Stream: {user.stream?.name || "No Stream"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Semester: {user.semester ?? "-"} | Section: {user.section?.name || "No Section"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Member since {memberSince}</p>
+
+              <Separator className="mb-3" />
+
+              {/* Detail Rows */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                <div className="flex items-center gap-2.5 text-sm">
+                  <span className="text-base">🪪</span>
+                  <span className="text-muted-foreground shrink-0">College ID</span>
+                  <span className="font-medium truncate">{user.college_id}</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-sm">
+                  <span className="text-base">✉️</span>
+                  <span className="text-muted-foreground shrink-0">Email</span>
+                  <span className="font-medium truncate">
+                    {user.email || <span className="italic text-yellow-600 dark:text-yellow-400 text-xs">Not set</span>}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2.5 text-sm">
+                  <span className="text-base">🎓</span>
+                  <span className="text-muted-foreground shrink-0">Stream</span>
+                  <span className="font-medium truncate">{user.stream?.name || "—"}</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-sm">
+                  <span className="text-base">📅</span>
+                  <span className="text-muted-foreground shrink-0">Semester</span>
+                  <span className="font-medium">{user.semester ?? "—"}</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-sm">
+                  <span className="text-base">🏫</span>
+                  <span className="text-muted-foreground shrink-0">Section</span>
+                  <span className="font-medium">{user.section?.name || "—"}</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-sm">
+                  <span className="text-base">🗓️</span>
+                  <span className="text-muted-foreground shrink-0">Member since</span>
+                  <span className="font-medium text-xs">{memberSince}</span>
+                </div>
+              </div>
+
+              <Separator className="my-3" />
+
+              {/* Contact Admin Button — students only */}
+              {!pathname.startsWith("/admin") && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/60 gap-2"
+                  onClick={() => router.push("/user/dashboard/requests?type=contact")}
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                  Contact Admin
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
@@ -717,33 +762,66 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 rounded-xl border bg-muted/40 p-3">
+          {/* Device / Browser Notification Status */}
+          <div className={`mb-4 rounded-xl border p-4 transition-colors ${
+            browserPushPermission === "granted"
+              ? "border-green-500/30 bg-green-500/5"
+              : browserPushPermission === "denied"
+              ? "border-red-500/30 bg-red-500/5"
+              : browserPushPermission === "unsupported"
+              ? "border-border bg-muted/30"
+              : "border-yellow-500/30 bg-yellow-500/5"
+          }`}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold">Device Notifications</p>
-                <p className="text-xs text-muted-foreground">
-                  Permission: {browserPushPermission === "unsupported" ? "Not supported" : browserPushPermission}
-                </p>
+              <div className="flex items-center gap-3">
+                <div className={`h-9 w-9 rounded-full flex items-center justify-center text-lg shrink-0 ${
+                  browserPushPermission === "granted" ? "bg-green-500/15" :
+                  browserPushPermission === "denied" ? "bg-red-500/15" :
+                  browserPushPermission === "unsupported" ? "bg-muted" : "bg-yellow-500/15"
+                }`}>
+                  {browserPushPermission === "granted" ? "🔔" :
+                   browserPushPermission === "denied" ? "🔕" :
+                   browserPushPermission === "unsupported" ? "ℹ️" : "🔔"}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">
+                    {browserPushPermission === "granted" && "Push notifications are enabled"}
+                    {browserPushPermission === "denied" && "Notifications blocked by browser"}
+                    {browserPushPermission === "default" && "Notifications not yet enabled"}
+                    {browserPushPermission === "unsupported" && "Not supported on this device"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {browserPushPermission === "granted" && "You'll receive alerts for new content and updates."}
+                    {browserPushPermission === "denied" && "Go to browser settings → Site Settings → Allow notifications."}
+                    {browserPushPermission === "default" && "Click Enable to receive push alerts on this device."}
+                    {browserPushPermission === "unsupported" && "Your browser or device does not support push notifications."}
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  className="rounded-lg"
-                  onClick={handleEnableDeviceNotifications}
-                  disabled={browserPushBusy || browserPushPermission === "unsupported"}
-                >
-                  Enable
-                </Button>
+
+              {browserPushPermission === "granted" && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="rounded-lg"
+                  className="rounded-lg border-red-400/40 text-red-600 hover:bg-red-500/10 shrink-0"
                   onClick={handleDisableDeviceNotifications}
-                  disabled={browserPushBusy || browserPushPermission === "unsupported"}
+                  disabled={browserPushBusy}
                 >
+                  {browserPushBusy ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
                   Disable
                 </Button>
-              </div>
+              )}
+              {browserPushPermission === "default" && (
+                <Button
+                  size="sm"
+                  className="rounded-lg shrink-0"
+                  onClick={handleEnableDeviceNotifications}
+                  disabled={browserPushBusy}
+                >
+                  {browserPushBusy ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+                  Enable Notifications
+                </Button>
+              )}
             </div>
           </div>
           <div className="space-y-3">
