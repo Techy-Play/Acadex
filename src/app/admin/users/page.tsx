@@ -41,6 +41,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { formatProfileImageUrl } from "@/lib/gdrive";
 
 interface StreamItem {
   _id: string;
@@ -60,6 +62,8 @@ interface User {
   role: string;
   isSuperAdmin?: boolean;
   adminAlias?: string | null;
+  profileImage?: string | null;
+  profileImageDriveId?: string | null;
   stream: StreamItem | null;
   section: SectionItem | null;
   semester: number | null;
@@ -76,6 +80,8 @@ interface UserDetails {
   role: string;
   isSuperAdmin: boolean;
   adminAlias: string | null;
+  profileImage?: string | null;
+  profileImageDriveId?: string | null;
   stream: StreamItem | null;
   section: SectionItem | null;
   semester: number | null;
@@ -933,7 +939,27 @@ export default function UsersPage() {
                   {filteredUsers.map((user, index) => (
                     <TableRow key={user._id} className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => openDetailDialog(user)}>
                       <TableCell className="text-center text-muted-foreground text-xs font-mono">{index + 1}</TableCell>
-                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="h-7 w-7 border border-border flex-shrink-0">
+                            {user.profileImage && (
+                              <AvatarImage
+                                src={formatProfileImageUrl(user.profileImage, user.profileImageDriveId) || ""}
+                                alt={user.name}
+                              />
+                            )}
+                            <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-semibold">
+                              {user.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .toUpperCase()
+                                .slice(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{user.name}</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{user.college_id}</TableCell>
                       <TableCell>
                         <Badge
@@ -1205,16 +1231,22 @@ export default function UsersPage() {
             <div className="space-y-4">
               {/* Avatar & name */}
               <div className="flex items-center gap-4">
-                <div className="h-14 w-14 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-lg">
+                <Avatar className="h-14 w-14 border border-border flex-shrink-0">
+                  {detailUser.profileImage && (
+                    <AvatarImage
+                      src={formatProfileImageUrl(detailUser.profileImage, detailUser.profileImageDriveId) || ""}
+                      alt={detailUser.name}
+                    />
+                  )}
+                  <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
                     {detailUser.name
                       .split(" ")
                       .map((n) => n[0])
                       .join("")
                       .toUpperCase()
                       .slice(0, 2)}
-                  </span>
-                </div>
+                  </AvatarFallback>
+                </Avatar>
                 <div>
                   <h3 className="font-semibold text-lg">{detailUser.name}</h3>
                   {detailUser.adminAlias && (
