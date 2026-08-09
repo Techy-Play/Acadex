@@ -609,7 +609,7 @@ export default function ManageLibraryPage() {
                 type="submit"
                 className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={
-                  addLoading || !addSubject || !addSemester || !addType
+                  addLoading || !addSubject || !addSemester || !addType || (!addFileUrl.trim() && !addStagedFile)
                 }
               >
                 {addLoading ? "Adding..." : "Add Resource"}
@@ -895,7 +895,7 @@ export default function ManageLibraryPage() {
             <Button
               className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleEdit}
-              disabled={saving || !editTitle || !editFileUrl}
+              disabled={saving || !editTitle || (!editFileUrl && !editStagedFile)}
             >
               {saving ? "Saving..." : "Save Changes"}
             </Button>

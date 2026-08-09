@@ -548,7 +548,7 @@ export default function ManageNotesPage() {
               <Button
                 type="submit"
                 className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={addLoading || !addSubject || !addFileUrl.trim()}
+                disabled={addLoading || !addSubject || (!addFileUrl.trim() && !addStagedFile)}
               >
                 {addLoading ? "Adding..." : "Add Note"}
               </Button>
@@ -760,7 +760,7 @@ export default function ManageNotesPage() {
             <Button
               className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleEdit}
-              disabled={saving || !editTitle || !editFileUrl}
+              disabled={saving || !editTitle || (!editFileUrl && !editStagedFile)}
             >
               {saving ? "Saving..." : "Save Changes"}
             </Button>
