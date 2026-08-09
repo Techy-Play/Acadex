@@ -1,6 +1,6 @@
 /**
  * @module API/Profile/UploadPicture
- * @description Uploads user profile pictures directly to 5 TB Google Drive under:
+ * @description Uploads or deletes user profile pictures directly to/from 5 TB Google Drive under:
  * Acadex Storage / Students / [Stream Name] / Semester [N] / [Section Name] / [FirstName][RollNumber].[ext]
  * (Or Acadex Storage / Admins / [FirstName]SuperAdmin.[ext] for admins).
  * If Google Drive API returns storage quota error (Service Account 0-byte limit on standard folders),
@@ -219,6 +219,48 @@ export async function POST(request: Request) {
             ? error.message
             : "Failed to upload profile picture.",
       },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    await connectDB();
+    const userId = request.headers.get("x-user-id");
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (user.profileImageDriveId) {
+      try {
+        const drive = getDriveClient();
+        await drive.files.delete({
+          fileId: user.profileImageDriveId,
+          supportsAllDrives: true,
+        });
+      } catch (err) {
+        console.warn("Could not delete file from drive:", err);
+      }
+    }
+
+    user.profileImage = null;
+    user.profileImageDriveId = null;
+    await user.save();
+
+    return NextResponse.json({
+      success: true,
+      message: "Profile picture removed successfully.",
+    });
+  } catch (error) {
+    console.error("Remove profile picture error:", error);
+    return NextResponse.json(
+      { error: "Failed to remove profile picture." },
       { status: 500 }
     );
   }

@@ -5,7 +5,7 @@
  */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, Loader2 } from "lucide-react";
+import { Camera, Loader2, Trash2, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { ImageCropModal } from "@/components/image-crop-modal";
 import { subscribeBrowserPush, unsubscribeBrowserPush } from "@/lib/push/client";
 import { clearMeCache } from "@/lib/client-auth";
@@ -82,6 +90,8 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
+  const [viewProfileModalOpen, setViewProfileModalOpen] = useState(false);
+  const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
 
   function handleAvatarFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -123,6 +133,26 @@ export default function ProfilePage() {
       setUser((prev) => (prev ? { ...prev, profileImage: data.profileImage } : null));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update avatar");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
+  async function handleRemoveProfileImage() {
+    setUploadingAvatar(true);
+    try {
+      const res = await fetch("/api/profile/upload-picture", {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to remove profile picture.");
+
+      clearMeCache();
+      toast.success("Profile picture removed!");
+      setUser((prev) => (prev ? { ...prev, profileImage: null } : null));
+      setViewProfileModalOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to remove avatar.");
     } finally {
       setUploadingAvatar(false);
     }
@@ -460,53 +490,59 @@ export default function ProfilePage() {
       {/* User Info Card */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex items-start gap-4">
-            <div className="relative group cursor-pointer">
-              <Avatar className="h-16 w-16 border border-border">
-                {user.profileImage && (
-                  <AvatarImage src={user.profileImage} alt={user.name} />
-                )}
-                <AvatarFallback className="bg-primary text-primary-foreground text-lg font-medium">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+            <div className="flex flex-col items-center gap-2">
+              <div
+                onClick={() => setViewProfileModalOpen(true)}
+                className="relative group cursor-pointer"
+                title="View Profile Picture"
+              >
+                <Avatar className="h-20 w-20 border-2 border-primary/20 shadow-md transition-transform group-hover:scale-[1.03]">
+                  {user.profileImage && (
+                    <AvatarImage src={user.profileImage} alt={user.name} />
+                  )}
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
 
-              <label
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                    const file = e.dataTransfer.files[0];
-                    if (file.size > 10 * 1024 * 1024) {
-                      toast.error("Selected image is larger than 10 MB limit.");
-                      return;
-                    }
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      if (typeof reader.result === "string") {
-                        setSelectedImageSrc(reader.result);
-                        setCropModalOpen(true);
-                      }
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-                className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white"
+                {/* View Picture Hover Overlay */}
+                <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                  <Eye className="h-6 w-6" />
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-xl text-xs px-3 h-8 border-border hover:bg-muted"
+                onClick={() => avatarFileInputRef.current?.click()}
+                disabled={uploadingAvatar}
               >
                 {uploadingAvatar ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    Uploading...
+                  </>
                 ) : (
-                  <Camera className="h-5 w-5" />
+                  <>
+                    <Camera className="h-3.5 w-3.5 mr-1.5 text-primary" />
+                    Update Photo
+                  </>
                 )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarFileSelect}
-                  className="hidden"
-                  disabled={uploadingAvatar}
-                />
-              </label>
+              </Button>
+
+              <input
+                ref={avatarFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarFileSelect}
+                className="hidden"
+                disabled={uploadingAvatar}
+              />
             </div>
+
             <div className="flex-1 space-y-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">{user.name}</h2>
@@ -522,13 +558,10 @@ export default function ProfilePage() {
                 Email: {user.email || <span className="italic text-yellow-600 dark:text-yellow-400">Not set</span>}
               </p>
               <p className="text-sm text-muted-foreground">
-                Stream: {user.stream?.name || "No Stream"} 
+                Stream: {user.stream?.name || "No Stream"}
               </p>
               <p className="text-sm text-muted-foreground">
                 Semester: {user.semester ?? "-"} | Section: {user.section?.name || "No Section"}
-
-              </p>
-              <p className="text-sm text-muted-foreground">
               </p>
               <p className="text-xs text-muted-foreground mt-1">Member since {memberSince}</p>
             </div>
@@ -1014,6 +1047,77 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* View Current Profile Picture Modal */}
+      <Dialog open={viewProfileModalOpen} onOpenChange={setViewProfileModalOpen}>
+        <DialogContent className="rounded-2xl max-w-sm p-6 text-center shadow-2xl border border-border">
+          <DialogHeader className="items-center text-center">
+            <DialogTitle className="text-xl font-semibold">Profile Picture</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {user.name} &bull; <span className="capitalize">{user.role}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center gap-4 py-3">
+            <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-primary/20 shadow-xl bg-muted flex items-center justify-center">
+              {user.profileImage ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={user.profileImage}
+                  alt={user.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="text-5xl font-bold text-muted-foreground uppercase">
+                  {initials}
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-muted-foreground max-w-xs">
+              {user.profileImage
+                ? "Click below to update your profile image or upload a new photo."
+                : "No custom profile picture set. Upload a photo to personalize your account."}
+            </p>
+          </div>
+
+          <DialogFooter className="flex flex-col gap-2 sm:flex-col pt-1">
+            <Button
+              type="button"
+              className="w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center gap-2"
+              onClick={() => {
+                setViewProfileModalOpen(false);
+                avatarFileInputRef.current?.click();
+              }}
+            >
+              <Camera className="h-4 w-4" />
+              Update Profile Picture
+            </Button>
+
+            {user.profileImage && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"
+                onClick={handleRemoveProfileImage}
+                disabled={uploadingAvatar}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remove Picture
+              </Button>
+            )}
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full rounded-xl text-muted-foreground"
+              onClick={() => setViewProfileModalOpen(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ImageCropModal
         imageSrc={selectedImageSrc}
