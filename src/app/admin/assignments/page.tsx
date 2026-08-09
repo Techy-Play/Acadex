@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { FileUploadInput } from "@/components/file-upload-input";
 import { SearchableSelect } from "@/components/searchable-select";
+import { uploadFileDirectToTempDrive } from "@/lib/direct-upload";
 import {
   Select,
   SelectContent,
@@ -250,41 +251,53 @@ export default function ManageAssignmentsPage() {
 
     try {
       if (addStagedFile) {
-        const formData = new FormData();
-        formData.append("file", addStagedFile);
         const subj = subjects.find((s) => s._id === addSubject);
-        formData.append("streamName", subj?.stream?.name || "General");
-        formData.append("subjectName", subj?.name || "General");
-        formData.append("semester", String(subj?.semester || "General"));
-        formData.append("resourceType", "Assignments");
+        const streamName = subj?.stream?.name || "General";
+        const semesterName = String(subj?.semester || "General");
+        const subjectName = subj?.name || "General";
 
-        if (addStagedFile.size > 4.5 * 1024 * 1024) {
-          throw new Error(
-            `"${addStagedFile.name}" is ${(addStagedFile.size / (1024 * 1024)).toFixed(2)} MB. Direct file uploads on Vercel are limited to 4.5 MB. Please compress your PDF or paste a custom URL.`
-          );
-        }
+        // For large files (>4MB), stream directly to Google Drive Temp folder from browser (bypasses Vercel 4.5MB limit)
+        if (addStagedFile.size > 4 * 1024 * 1024) {
+          const { fileId } = await uploadFileDirectToTempDrive({ file: addStagedFile });
+          const finalizeRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileId,
+              streamName,
+              semester: semesterName,
+              subjectName,
+              resourceType: "Assignments",
+            }),
+          });
+          const finalizeData = await finalizeRes.json();
+          if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize Drive upload.");
+          finalFileUrl = finalizeData.fileUrl;
+        } else {
+          const formData = new FormData();
+          formData.append("file", addStagedFile);
+          formData.append("streamName", streamName);
+          formData.append("subjectName", subjectName);
+          formData.append("semester", semesterName);
+          formData.append("resourceType", "Assignments");
 
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
 
-        let uploadData: any = {};
-        try {
-          uploadData = await uploadRes.json();
-        } catch {
-          if (uploadRes.status === 413) {
-            throw new Error(
-              `File is too large (${(addStagedFile.size / (1024 * 1024)).toFixed(2)} MB). Direct server uploads are limited to 4.5 MB on Vercel. Please compress your PDF or paste a custom URL.`
-            );
+          let uploadData: any = {};
+          try {
+            uploadData = await uploadRes.json();
+          } catch {
+            throw new Error(`Upload failed with server status ${uploadRes.status}`);
           }
-          throw new Error(`Upload failed with server status ${uploadRes.status}`);
-        }
 
-        if (!uploadRes.ok) {
-          throw new Error(uploadData.error || "Failed to upload file.");
+          if (!uploadRes.ok) {
+            throw new Error(uploadData.error || "Failed to upload file.");
+          }
+          finalFileUrl = uploadData.fileUrl;
         }
-        finalFileUrl = uploadData.fileUrl;
       }
 
       const res = await fetch("/api/assignments", {
@@ -350,41 +363,52 @@ export default function ManageAssignmentsPage() {
 
     try {
       if (editStagedFile) {
-        const formData = new FormData();
-        formData.append("file", editStagedFile);
         const subj = subjects.find((s) => s._id === editSubject);
-        formData.append("streamName", subj?.stream?.name || "General");
-        formData.append("subjectName", subj?.name || "General");
-        formData.append("semester", String(subj?.semester || "General"));
-        formData.append("resourceType", "Assignments");
+        const streamName = subj?.stream?.name || "General";
+        const semesterName = String(subj?.semester || "General");
+        const subjectName = subj?.name || "General";
 
-        if (editStagedFile.size > 4.5 * 1024 * 1024) {
-          throw new Error(
-            `"${editStagedFile.name}" is ${(editStagedFile.size / (1024 * 1024)).toFixed(2)} MB. Direct file uploads on Vercel are limited to 4.5 MB. Please compress your PDF or paste a custom URL.`
-          );
-        }
+        if (editStagedFile.size > 4 * 1024 * 1024) {
+          const { fileId } = await uploadFileDirectToTempDrive({ file: editStagedFile });
+          const finalizeRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileId,
+              streamName,
+              semester: semesterName,
+              subjectName,
+              resourceType: "Assignments",
+            }),
+          });
+          const finalizeData = await finalizeRes.json();
+          if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize Drive upload.");
+          finalFileUrl = finalizeData.fileUrl;
+        } else {
+          const formData = new FormData();
+          formData.append("file", editStagedFile);
+          formData.append("streamName", streamName);
+          formData.append("subjectName", subjectName);
+          formData.append("semester", semesterName);
+          formData.append("resourceType", "Assignments");
 
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
 
-        let uploadData: any = {};
-        try {
-          uploadData = await uploadRes.json();
-        } catch {
-          if (uploadRes.status === 413) {
-            throw new Error(
-              `File is too large (${(editStagedFile.size / (1024 * 1024)).toFixed(2)} MB). Direct server uploads are limited to 4.5 MB on Vercel. Please compress your PDF or paste a custom URL.`
-            );
+          let uploadData: any = {};
+          try {
+            uploadData = await uploadRes.json();
+          } catch {
+            throw new Error(`Upload failed with server status ${uploadRes.status}`);
           }
-          throw new Error(`Upload failed with server status ${uploadRes.status}`);
-        }
 
-        if (!uploadRes.ok) {
-          throw new Error(uploadData.error || "Failed to upload file.");
+          if (!uploadRes.ok) {
+            throw new Error(uploadData.error || "Failed to upload file.");
+          }
+          finalFileUrl = uploadData.fileUrl;
         }
-        finalFileUrl = uploadData.fileUrl;
       }
 
       const res = await fetch(`/api/assignments/${editAssignment._id}`, {

@@ -11,6 +11,7 @@ import { Upload, CheckCircle2, Link2, X, Loader2, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { uploadFileDirectToTempDrive } from "@/lib/direct-upload";
 
 interface FileUploadInputProps {
   value: string;
@@ -44,16 +45,6 @@ export function FileUploadInput({
   const handleSelectFile = async (file: File) => {
     setUploadError(null);
 
-    // Vercel serverless request body size limit is 4.5 MB
-    const MAX_VERCEL_BODY_BYTES = 4.5 * 1024 * 1024;
-    if (file.size > MAX_VERCEL_BODY_BYTES) {
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      const errMsg = `"${file.name}" is ${sizeMB} MB. Vercel direct file uploads are limited to 4.5 MB. Please compress your file or paste a custom URL manually.`;
-      setUploadError(errMsg);
-      toast.error(errMsg);
-      return;
-    }
-
     // If onFileStaged callback is provided, stage the file locally (deferred upload)
     if (onFileStaged) {
       onFileStaged(file);
@@ -63,33 +54,48 @@ export function FileUploadInput({
     // Direct immediate upload fallback
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("streamName", streamName);
-      formData.append("semester", String(semester));
-      formData.append("subjectName", subjectName);
-      formData.append("resourceType", resourceType);
+      if (file.size > 4 * 1024 * 1024) {
+        const { fileId } = await uploadFileDirectToTempDrive({ file });
+        const finalizeRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileId,
+            streamName,
+            semester: String(semester),
+            subjectName,
+            resourceType,
+          }),
+        });
+        const finalizeData = await finalizeRes.json();
+        if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize upload.");
+        onChange(finalizeData.fileUrl);
+      } else {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("streamName", streamName);
+        formData.append("semester", String(semester));
+        formData.append("subjectName", subjectName);
+        formData.append("resourceType", resourceType);
 
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
 
-      let data: any = {};
-      try {
-        data = await res.json();
-      } catch {
-        if (res.status === 413) {
-          throw new Error("File is too large for server upload (Max 4.5 MB on Vercel). Please compress the file or paste a custom URL.");
+        let data: any = {};
+        try {
+          data = await res.json();
+        } catch {
+          throw new Error(`Upload failed with server status ${res.status}`);
         }
-        throw new Error(`Upload failed with server status ${res.status}`);
-      }
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to upload file.");
-      }
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to upload file.");
+        }
 
-      onChange(data.fileUrl);
+        onChange(data.fileUrl);
+      }
     } catch (err) {
       console.error("Upload error:", err);
       setUploadError(

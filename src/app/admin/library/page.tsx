@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { FileUploadInput } from "@/components/file-upload-input";
 import { SearchableSelect } from "@/components/searchable-select";
+import { uploadFileDirectToTempDrive } from "@/lib/direct-upload";
 import {
   Select,
   SelectContent,
@@ -50,6 +51,7 @@ interface Subject {
   _id: string;
   name: string;
   semester?: number;
+  stream?: { _id: string; name: string } | null;
 }
 
 interface SectionItem {
@@ -201,40 +203,52 @@ export default function ManageLibraryPage() {
 
     try {
       if (addStagedFile) {
-        const formData = new FormData();
-        formData.append("file", addStagedFile);
         const subj = subjects.find((s) => s._id === addSubject);
-        formData.append("subjectName", subj?.name || "General");
-        formData.append("semester", String(subj?.semester || addSemester || "General"));
-        formData.append("resourceType", "Library");
+        const streamName = subj?.stream?.name || "General";
+        const semesterName = String(subj?.semester || addSemester || "General");
+        const subjectName = subj?.name || "General";
 
-        if (addStagedFile.size > 4.5 * 1024 * 1024) {
-          throw new Error(
-            `"${addStagedFile.name}" is ${(addStagedFile.size / (1024 * 1024)).toFixed(2)} MB. Direct file uploads on Vercel are limited to 4.5 MB. Please compress your PDF or paste a custom URL.`
-          );
-        }
+        if (addStagedFile.size > 4 * 1024 * 1024) {
+          const { fileId } = await uploadFileDirectToTempDrive({ file: addStagedFile });
+          const finalizeRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileId,
+              streamName,
+              semester: semesterName,
+              subjectName,
+              resourceType: "Library",
+            }),
+          });
+          const finalizeData = await finalizeRes.json();
+          if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize Drive upload.");
+          finalFileUrl = finalizeData.fileUrl;
+        } else {
+          const formData = new FormData();
+          formData.append("file", addStagedFile);
+          formData.append("streamName", streamName);
+          formData.append("subjectName", subjectName);
+          formData.append("semester", semesterName);
+          formData.append("resourceType", "Library");
 
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
 
-        let uploadData: any = {};
-        try {
-          uploadData = await uploadRes.json();
-        } catch {
-          if (uploadRes.status === 413) {
-            throw new Error(
-              `File is too large (${(addStagedFile.size / (1024 * 1024)).toFixed(2)} MB). Direct server uploads are limited to 4.5 MB on Vercel. Please compress your PDF or paste a custom URL.`
-            );
+          let uploadData: any = {};
+          try {
+            uploadData = await uploadRes.json();
+          } catch {
+            throw new Error(`Upload failed with server status ${uploadRes.status}`);
           }
-          throw new Error(`Upload failed with server status ${uploadRes.status}`);
-        }
 
-        if (!uploadRes.ok) {
-          throw new Error(uploadData.error || "Failed to upload file.");
+          if (!uploadRes.ok) {
+            throw new Error(uploadData.error || "Failed to upload file.");
+          }
+          finalFileUrl = uploadData.fileUrl;
         }
-        finalFileUrl = uploadData.fileUrl;
       }
 
       const res = await fetch("/api/library", {
@@ -311,40 +325,52 @@ export default function ManageLibraryPage() {
 
     try {
       if (editStagedFile) {
-        const formData = new FormData();
-        formData.append("file", editStagedFile);
         const subj = subjects.find((s) => s._id === editSubject);
-        formData.append("subjectName", subj?.name || "General");
-        formData.append("semester", String(subj?.semester || editSemester || "General"));
-        formData.append("resourceType", "Library");
+        const streamName = subj?.stream?.name || "General";
+        const semesterName = String(subj?.semester || editSemester || "General");
+        const subjectName = subj?.name || "General";
 
-        if (editStagedFile.size > 4.5 * 1024 * 1024) {
-          throw new Error(
-            `"${editStagedFile.name}" is ${(editStagedFile.size / (1024 * 1024)).toFixed(2)} MB. Direct file uploads on Vercel are limited to 4.5 MB. Please compress your PDF or paste a custom URL.`
-          );
-        }
+        if (editStagedFile.size > 4 * 1024 * 1024) {
+          const { fileId } = await uploadFileDirectToTempDrive({ file: editStagedFile });
+          const finalizeRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileId,
+              streamName,
+              semester: semesterName,
+              subjectName,
+              resourceType: "Library",
+            }),
+          });
+          const finalizeData = await finalizeRes.json();
+          if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize Drive upload.");
+          finalFileUrl = finalizeData.fileUrl;
+        } else {
+          const formData = new FormData();
+          formData.append("file", editStagedFile);
+          formData.append("streamName", streamName);
+          formData.append("subjectName", subjectName);
+          formData.append("semester", semesterName);
+          formData.append("resourceType", "Library");
 
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
 
-        let uploadData: any = {};
-        try {
-          uploadData = await uploadRes.json();
-        } catch {
-          if (uploadRes.status === 413) {
-            throw new Error(
-              `File is too large (${(editStagedFile.size / (1024 * 1024)).toFixed(2)} MB). Direct server uploads are limited to 4.5 MB on Vercel. Please compress your PDF or paste a custom URL.`
-            );
+          let uploadData: any = {};
+          try {
+            uploadData = await uploadRes.json();
+          } catch {
+            throw new Error(`Upload failed with server status ${uploadRes.status}`);
           }
-          throw new Error(`Upload failed with server status ${uploadRes.status}`);
-        }
 
-        if (!uploadRes.ok) {
-          throw new Error(uploadData.error || "Failed to upload file.");
+          if (!uploadRes.ok) {
+            throw new Error(uploadData.error || "Failed to upload file.");
+          }
+          finalFileUrl = uploadData.fileUrl;
         }
-        finalFileUrl = uploadData.fileUrl;
       }
 
       const res = await fetch(`/api/library/${editResource._id}`, {
