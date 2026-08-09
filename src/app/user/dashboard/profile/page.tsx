@@ -471,7 +471,28 @@ export default function ProfilePage() {
                 </AvatarFallback>
               </Avatar>
 
-              <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white">
+              <label
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    if (file.size > 10 * 1024 * 1024) {
+                      toast.error("Selected image is larger than 10 MB limit.");
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === "string") {
+                        setSelectedImageSrc(reader.result);
+                        setCropModalOpen(true);
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white"
+              >
                 {uploadingAvatar ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
@@ -999,6 +1020,16 @@ export default function ProfilePage() {
         open={cropModalOpen}
         onClose={() => setCropModalOpen(false)}
         onCropSave={handleSaveCroppedAvatar}
+        onFileSelect={(file) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (typeof reader.result === "string") {
+              setSelectedImageSrc(reader.result);
+              setCropModalOpen(true);
+            }
+          };
+          reader.readAsDataURL(file);
+        }}
       />
     </div>
   );
