@@ -300,8 +300,11 @@ export default function ManagePracticalsPage() {
       setAddSection("");
       setShowAddForm(false);
       fetchPracticals();
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (err) {
+      console.error("Add practical error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
     } finally {
       setAddLoading(false);
     }
@@ -372,8 +375,11 @@ export default function ManagePracticalsPage() {
       setEditStagedFile(null);
       setEditDialogOpen(false);
       fetchPracticals();
-    } catch {
-      toast.error("Something went wrong");
+    } catch (err) {
+      console.error("Edit practical error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
     } finally {
       setSaving(false);
     }

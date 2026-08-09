@@ -47,6 +47,7 @@ interface Subject {
   _id: string;
   name: string;
   semester: number;
+  stream?: { _id: string; name: string } | null;
 }
 
 interface SectionItem {
@@ -252,6 +253,7 @@ export default function ManageAssignmentsPage() {
         const formData = new FormData();
         formData.append("file", addStagedFile);
         const subj = subjects.find((s) => s._id === addSubject);
+        formData.append("streamName", subj?.stream?.name || "General");
         formData.append("subjectName", subj?.name || "General");
         formData.append("semester", String(subj?.semester || "General"));
         formData.append("resourceType", "Assignments");
@@ -298,8 +300,11 @@ export default function ManageAssignmentsPage() {
       setAddSection("");
       setShowAddForm(false);
       fetchAssignments();
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (err) {
+      console.error("Add assignment error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
     } finally {
       setAddLoading(false);
     }
@@ -331,6 +336,7 @@ export default function ManageAssignmentsPage() {
         const formData = new FormData();
         formData.append("file", editStagedFile);
         const subj = subjects.find((s) => s._id === editSubject);
+        formData.append("streamName", subj?.stream?.name || "General");
         formData.append("subjectName", subj?.name || "General");
         formData.append("semester", String(subj?.semester || "General"));
         formData.append("resourceType", "Assignments");
@@ -370,8 +376,11 @@ export default function ManageAssignmentsPage() {
       setEditStagedFile(null);
       setEditDialogOpen(false);
       fetchAssignments();
-    } catch {
-      toast.error("Something went wrong");
+    } catch (err) {
+      console.error("Edit assignment error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
     } finally {
       setSaving(false);
     }

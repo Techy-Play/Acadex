@@ -286,8 +286,11 @@ export default function ManageNotesPage() {
       setAddSection("");
       setShowAddForm(false);
       fetchNotes();
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (err) {
+      console.error("Add note error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
     } finally {
       setAddLoading(false);
     }
@@ -352,8 +355,11 @@ export default function ManageNotesPage() {
       setEditStagedFile(null);
       setEditDialogOpen(false);
       fetchNotes();
-    } catch {
-      toast.error("Something went wrong");
+    } catch (err) {
+      console.error("Edit note error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
     } finally {
       setSaving(false);
     }

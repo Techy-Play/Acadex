@@ -194,5 +194,6 @@ export const config = {
     "/api/user-requests/:path*",
     "/api/push/:path*",
     "/api/upload",
+    "/api/upload/:path*",
   ],
 };

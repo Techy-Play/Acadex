@@ -259,8 +259,11 @@ export default function ManageLibraryPage() {
       setAddSection("");
       setShowAddForm(false);
       fetchResources();
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (err) {
+      console.error("Add library resource error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
     } finally {
       setAddLoading(false);
     }
@@ -339,8 +342,11 @@ export default function ManageLibraryPage() {
       setEditStagedFile(null);
       setEditDialogOpen(false);
       fetchResources();
-    } catch {
-      toast.error("Something went wrong");
+    } catch (err) {
+      console.error("Edit library resource error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
     } finally {
       setSaving(false);
     }
