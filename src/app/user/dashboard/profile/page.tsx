@@ -18,6 +18,7 @@ import { Camera, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ImageCropModal } from "@/components/image-crop-modal";
 import { subscribeBrowserPush, unsubscribeBrowserPush } from "@/lib/push/client";
+import { clearMeCache } from "@/lib/client-auth";
 
 interface UserData {
   id: string;
@@ -117,6 +118,7 @@ export default function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to upload picture.");
 
+      clearMeCache();
       toast.success("Profile picture updated!");
       setUser((prev) => (prev ? { ...prev, profileImage: data.profileImage } : null));
     } catch (err) {

@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
     const user = await User.findById(userId)
       .select(
-        "name adminAlias college_id email role isSuperAdmin stream section semester must_change_password theme accentColor mobileNavPosition dashboardView savedFilters notificationPreferences status isAdminSubject isAdminStream isAdminSection createdAt"
+        "name adminAlias college_id email role isSuperAdmin profileImage profileImageDriveId stream section semester must_change_password theme accentColor mobileNavPosition dashboardView savedFilters notificationPreferences status isAdminSubject isAdminStream isAdminSection createdAt"
       )
       .lean();
     if (!user) {
@@ -87,6 +87,8 @@ export async function GET(request: Request) {
           email: user.email || null,
           role: user.role,
           isSuperAdmin: user.isSuperAdmin || false,
+          profileImage: user.profileImage || null,
+          profileImageDriveId: user.profileImageDriveId || null,
           stream: streamData,
           section: sectionData,
           semester: user.semester || null,

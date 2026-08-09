@@ -26,6 +26,8 @@ interface MeUser {
   name: string;
   college_id: string;
   role: "admin" | "student";
+  profileImage?: string | null;
+  profileImageDriveId?: string | null;
   must_change_password: boolean;
   adminAlias?: string | null;
   isSuperAdmin?: boolean;
