@@ -11,7 +11,7 @@ import { Upload, CheckCircle2, Link2, X, Loader2, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { uploadFileDirectToTempDrive } from "@/lib/direct-upload";
+import { uploadFileDirectToDestination } from "@/lib/direct-upload";
 
 interface FileUploadInputProps {
   value: string;
@@ -55,21 +55,14 @@ export function FileUploadInput({
     setUploading(true);
     try {
       if (file.size > 4 * 1024 * 1024) {
-        const { fileId } = await uploadFileDirectToTempDrive({ file });
-        const finalizeRes = await fetch("/api/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileId,
-            streamName,
-            semester: String(semester),
-            subjectName,
-            resourceType,
-          }),
+        const { fileUrl } = await uploadFileDirectToDestination({
+          file,
+          streamName,
+          semester,
+          subjectName,
+          resourceType,
         });
-        const finalizeData = await finalizeRes.json();
-        if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize upload.");
-        onChange(finalizeData.fileUrl);
+        onChange(fileUrl);
       } else {
         const formData = new FormData();
         formData.append("file", file);

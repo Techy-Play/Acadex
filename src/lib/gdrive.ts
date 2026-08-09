@@ -80,6 +80,83 @@ async function getOrCreateSubfolder(
   return createdFolder.data.id!;
 }
 
+/**
+ * Resolves the destination subfolder ID: Stream -> Semester N -> Subject -> ResourceType
+ */
+async function getTargetFolderId({
+  drive,
+  rootFolderId,
+  streamName = "General",
+  semester = "General",
+  subjectName = "General",
+  resourceType = "Files",
+}: {
+  drive: ReturnType<typeof google.drive>;
+  rootFolderId: string;
+  streamName?: string;
+  semester?: number | string;
+  subjectName?: string;
+  resourceType?: string;
+}) {
+  const formattedSemester =
+    typeof semester === "number" ? `Semester ${semester}` : semester;
+
+  const streamFolderId = await getOrCreateSubfolder(drive, rootFolderId, streamName);
+  const semFolderId = await getOrCreateSubfolder(drive, streamFolderId, formattedSemester);
+  const subjectFolderId = await getOrCreateSubfolder(drive, semFolderId, subjectName);
+  return await getOrCreateSubfolder(drive, subjectFolderId, resourceType);
+}
+
+/**
+ * Checks if a file with the given name already exists in the target subject subfolder.
+ */
+export async function checkDuplicateFileInTarget({
+  fileName,
+  streamName = "General",
+  semester = "General",
+  subjectName = "General",
+  resourceType = "Files",
+}: {
+  fileName: string;
+  streamName?: string;
+  semester?: number | string;
+  subjectName?: string;
+  resourceType?: string;
+}) {
+  const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  if (!rootFolderId) return { exists: false };
+
+  const drive = getDriveClient();
+  const targetFolderId = await getTargetFolderId({
+    drive,
+    rootFolderId,
+    streamName,
+    semester,
+    subjectName,
+    resourceType,
+  });
+
+  const safeName = fileName.replace(/'/g, "\\'");
+  const q = `'${targetFolderId}' in parents and name = '${safeName}' and trashed = false`;
+
+  const res = await drive.files.list({
+    q,
+    fields: "files(id, name)",
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+
+  if (res.data.files && res.data.files.length > 0) {
+    return {
+      exists: true,
+      existingFileId: res.data.files[0].id!,
+      existingFileName: res.data.files[0].name!,
+    };
+  }
+
+  return { exists: false };
+}
+
 interface UploadToHierarchyOptions {
   buffer: Buffer;
   fileName: string;
@@ -87,7 +164,8 @@ interface UploadToHierarchyOptions {
   streamName?: string;
   semester?: number | string;
   subjectName?: string;
-  resourceType?: string; // "Notes", "Assignments", "Practicals", "Library", etc.
+  resourceType?: string;
+  overwrite?: boolean;
 }
 
 export async function uploadToGoogleDriveHierarchy({
@@ -98,25 +176,45 @@ export async function uploadToGoogleDriveHierarchy({
   semester = "General",
   subjectName = "General",
   resourceType = "Files",
+  overwrite = false,
 }: UploadToHierarchyOptions) {
   const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
   if (!rootFolderId) {
-    throw new Error(
-      "GOOGLE_DRIVE_FOLDER_ID environment variable is missing."
-    );
+    throw new Error("GOOGLE_DRIVE_FOLDER_ID environment variable is missing.");
   }
 
   const drive = getDriveClient();
+  const targetFolderId = await getTargetFolderId({
+    drive,
+    rootFolderId,
+    streamName,
+    semester,
+    subjectName,
+    resourceType,
+  });
 
-  // 1. Build dynamic subfolder path: Stream -> Semester N -> Subject -> Resource Type
-  const formattedSemester = typeof semester === "number" ? `Semester ${semester}` : semester;
+  if (overwrite) {
+    const safeName = fileName.replace(/'/g, "\\'");
+    const searchRes = await drive.files.list({
+      q: `'${targetFolderId}' in parents and name = '${safeName}' and trashed = false`,
+      fields: "files(id)",
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
 
-  const streamFolderId = await getOrCreateSubfolder(drive, rootFolderId, streamName);
-  const semFolderId = await getOrCreateSubfolder(drive, streamFolderId, formattedSemester);
-  const subjectFolderId = await getOrCreateSubfolder(drive, semFolderId, subjectName);
-  const targetFolderId = await getOrCreateSubfolder(drive, subjectFolderId, resourceType);
+    if (searchRes.data.files) {
+      for (const f of searchRes.data.files) {
+        if (f.id) {
+          try {
+            await drive.files.delete({ fileId: f.id, supportsAllDrives: true });
+          } catch (e) {
+            console.error("Failed to delete existing duplicate file:", e);
+          }
+        }
+      }
+    }
+  }
 
-  // 2. Upload file to target subfolder
   const readableStream = new Readable();
   readableStream.push(buffer);
   readableStream.push(null);
@@ -136,7 +234,6 @@ export async function uploadToGoogleDriveHierarchy({
 
   const fileId = fileUploadRes.data.id!;
 
-  // 3. Make file publicly readable for Acadex inline PDF viewer & download
   await drive.permissions.create({
     fileId,
     requestBody: {
@@ -146,7 +243,6 @@ export async function uploadToGoogleDriveHierarchy({
     supportsAllDrives: true,
   });
 
-  // Google Drive view URL compatible with Acadex inline viewer
   const fileUrl = `https://drive.google.com/file/d/${fileId}/view`;
 
   return {
@@ -157,18 +253,26 @@ export async function uploadToGoogleDriveHierarchy({
 }
 
 /**
- * Initializes a Google Drive resumable upload in the "Temp" staging folder.
- * Returns the resumable upload location URL which the client browser can PUT to directly,
- * bypassing Vercel's 4.5 MB server payload limit completely.
+ * Initializes a Google Drive resumable upload directly inside the destination folder.
  */
 export async function initResumableDriveUpload({
   fileName,
   mimeType,
   fileSize,
+  streamName = "General",
+  semester = "General",
+  subjectName = "General",
+  resourceType = "Files",
+  overwrite = false,
 }: {
   fileName: string;
   mimeType: string;
   fileSize: number;
+  streamName?: string;
+  semester?: number | string;
+  subjectName?: string;
+  resourceType?: string;
+  overwrite?: boolean;
 }) {
   const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
   if (!rootFolderId) {
@@ -176,7 +280,36 @@ export async function initResumableDriveUpload({
   }
 
   const drive = getDriveClient();
-  const tempFolderId = await getOrCreateSubfolder(drive, rootFolderId, "Temp");
+  const targetFolderId = await getTargetFolderId({
+    drive,
+    rootFolderId,
+    streamName,
+    semester,
+    subjectName,
+    resourceType,
+  });
+
+  if (overwrite) {
+    const safeName = fileName.replace(/'/g, "\\'");
+    const searchRes = await drive.files.list({
+      q: `'${targetFolderId}' in parents and name = '${safeName}' and trashed = false`,
+      fields: "files(id)",
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+
+    if (searchRes.data.files) {
+      for (const f of searchRes.data.files) {
+        if (f.id) {
+          try {
+            await drive.files.delete({ fileId: f.id, supportsAllDrives: true });
+          } catch (e) {
+            console.error("Failed to delete existing duplicate file:", e);
+          }
+        }
+      }
+    }
+  }
 
   const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -202,7 +335,7 @@ export async function initResumableDriveUpload({
       },
       body: JSON.stringify({
         name: fileName,
-        parents: [tempFolderId],
+        parents: [targetFolderId],
       }),
     }
   );
@@ -217,91 +350,29 @@ export async function initResumableDriveUpload({
     throw new Error("Google Drive did not return a resumable upload location.");
   }
 
-  return { uploadUrl, tempFolderId };
+  return { uploadUrl, targetFolderId };
 }
 
 /**
- * Finalizes a staged temp file by moving it from "Temp" to its destination folder hierarchy
- * (Stream -> Semester -> Subject -> ResourceType) and setting public reader permissions.
+ * Sets public reader permissions on a file uploaded via chunking.
  */
-export async function finalizeDriveFile({
-  fileId,
-  streamName = "General",
-  semester = "General",
-  subjectName = "General",
-  resourceType = "Files",
-}: {
-  fileId: string;
-  streamName?: string;
-  semester?: number | string;
-  subjectName?: string;
-  resourceType?: string;
-}) {
-  const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-  if (!rootFolderId) {
-    throw new Error("GOOGLE_DRIVE_FOLDER_ID environment variable is missing.");
-  }
-
+export async function makeDriveFilePublic(fileId: string) {
   const drive = getDriveClient();
-  const formattedSemester =
-    typeof semester === "number" ? `Semester ${semester}` : semester;
-
-  const tempFolderId = await getOrCreateSubfolder(drive, rootFolderId, "Temp");
-  const streamFolderId = await getOrCreateSubfolder(drive, rootFolderId, streamName);
-  const semFolderId = await getOrCreateSubfolder(drive, streamFolderId, formattedSemester);
-  const subjectFolderId = await getOrCreateSubfolder(drive, semFolderId, subjectName);
-  const targetFolderId = await getOrCreateSubfolder(drive, subjectFolderId, resourceType);
-
-  // Move file from Temp to targetFolderId
-  await drive.files.update({
-    fileId,
-    addParents: targetFolderId,
-    removeParents: tempFolderId,
-    supportsAllDrives: true,
-  });
-
-  // Set public reader permission
   await drive.permissions.create({
     fileId,
     requestBody: { role: "reader", type: "anyone" },
     supportsAllDrives: true,
   });
-
-  const fileUrl = `https://drive.google.com/file/d/${fileId}/view`;
-  return { fileId, fileUrl };
+  return `https://drive.google.com/file/d/${fileId}/view`;
 }
 
 /**
- * Cleans up unsubmitted temporary files in the "Temp" staging folder older than 10 minutes.
+ * Cleanup job compatibility function.
+ * Since files are now streamed directly into target destination folders,
+ * no temporary orphan files are created.
  */
-export async function cleanupExpiredTempFiles() {
-  const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-  if (!rootFolderId) return { deletedCount: 0 };
-
-  const drive = getDriveClient();
-  const tempFolderId = await getOrCreateSubfolder(drive, rootFolderId, "Temp");
-
-  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-
-  const searchRes = await drive.files.list({
-    q: `'${tempFolderId}' in parents and createdTime < '${tenMinutesAgo}' and trashed = false`,
-    fields: "files(id, name, createdTime)",
-    supportsAllDrives: true,
-    includeItemsFromAllDrives: true,
-  });
-
-  const files = searchRes.data.files || [];
-  let count = 0;
-  for (const f of files) {
-    try {
-      await drive.files.delete({ fileId: f.id!, supportsAllDrives: true });
-      count++;
-    } catch (err) {
-      console.error(`[Temp Cleanup] Error deleting file ${f.id}:`, err);
-    }
-  }
-
-  return { deletedCount: count };
+export async function cleanupExpiredTempFiles(): Promise<{ deletedCount: number }> {
+  return { deletedCount: 0 };
 }
 
 export { formatProfileImageUrl } from "@/lib/utils";

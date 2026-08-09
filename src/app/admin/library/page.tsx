@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { FileUploadInput } from "@/components/file-upload-input";
 import { SearchableSelect } from "@/components/searchable-select";
-import { uploadFileDirectToTempDrive } from "@/lib/direct-upload";
+import { uploadFileDirectToDestination } from "@/lib/direct-upload";
 import {
   Select,
   SelectContent,
@@ -135,6 +135,13 @@ export default function ManageLibraryPage() {
   const [deleteResource, setDeleteResource] = useState<LibraryResource | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Duplicate overwrite state
+  const [duplicateDialog, setDuplicateDialog] = useState<{
+    open: boolean;
+    fileName: string;
+    mode: "add" | "edit";
+  }>({ open: false, fileName: "", mode: "add" });
+
   /* ──── Fetchers ──── */
 
   const fetchResources = async () => {
@@ -189,9 +196,7 @@ export default function ManageLibraryPage() {
 
   /* ──── Add Resource ──── */
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const executeAddResource = async (isOverwrite: boolean = false) => {
     let finalFileUrl = addFileUrl.trim();
 
     if (!finalFileUrl && !addStagedFile) {
@@ -207,30 +212,50 @@ export default function ManageLibraryPage() {
         const streamName = subj?.stream?.name || "General";
         const semesterName = String(subj?.semester || addSemester || "General");
         const subjectName = subj?.name || "General";
+        const resourceType = "Library";
 
-        if (addStagedFile.size > 4 * 1024 * 1024) {
-          const { fileId } = await uploadFileDirectToTempDrive({ file: addStagedFile });
-          const finalizeRes = await fetch("/api/upload", {
+        if (!isOverwrite) {
+          const checkRes = await fetch("/api/upload/check-duplicate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              fileId,
+              fileName: addStagedFile.name,
               streamName,
               semester: semesterName,
               subjectName,
-              resourceType: "Library",
+              resourceType,
             }),
           });
-          const finalizeData = await finalizeRes.json();
-          if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize Drive upload.");
-          finalFileUrl = finalizeData.fileUrl;
+          const checkData = await checkRes.json();
+          if (checkData.exists) {
+            setDuplicateDialog({
+              open: true,
+              fileName: addStagedFile.name,
+              mode: "add",
+            });
+            setAddLoading(false);
+            return;
+          }
+        }
+
+        if (addStagedFile.size > 4 * 1024 * 1024) {
+          const { fileUrl } = await uploadFileDirectToDestination({
+            file: addStagedFile,
+            streamName,
+            semester: semesterName,
+            subjectName,
+            resourceType,
+            overwrite: isOverwrite,
+          });
+          finalFileUrl = fileUrl;
         } else {
           const formData = new FormData();
           formData.append("file", addStagedFile);
           formData.append("streamName", streamName);
           formData.append("subjectName", subjectName);
           formData.append("semester", semesterName);
-          formData.append("resourceType", "Library");
+          formData.append("resourceType", resourceType);
+          if (isOverwrite) formData.append("overwrite", "true");
 
           const uploadRes = await fetch("/api/upload", {
             method: "POST",
@@ -277,7 +302,8 @@ export default function ManageLibraryPage() {
         return;
       }
 
-      toast.success("Library resource added!");
+      const resourceName = addTitle.trim() || addStagedFile?.name || "Library Resource";
+      toast.success(`"${resourceName}" successfully uploaded!`);
       setAddTitle("");
       setAddDescription("");
       setAddSubject("");
@@ -300,6 +326,11 @@ export default function ManageLibraryPage() {
     }
   };
 
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    void executeAddResource(false);
+  };
+
   /* ──── Edit Resource ──── */
 
   const openEditDialog = (r: LibraryResource) => {
@@ -317,7 +348,7 @@ export default function ManageLibraryPage() {
     setEditDialogOpen(true);
   };
 
-  const handleEdit = async () => {
+  const executeEditResource = async (isOverwrite: boolean = false) => {
     if (!editResource) return;
     setSaving(true);
 
@@ -329,30 +360,50 @@ export default function ManageLibraryPage() {
         const streamName = subj?.stream?.name || "General";
         const semesterName = String(subj?.semester || editSemester || "General");
         const subjectName = subj?.name || "General";
+        const resourceType = "Library";
 
-        if (editStagedFile.size > 4 * 1024 * 1024) {
-          const { fileId } = await uploadFileDirectToTempDrive({ file: editStagedFile });
-          const finalizeRes = await fetch("/api/upload", {
+        if (!isOverwrite) {
+          const checkRes = await fetch("/api/upload/check-duplicate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              fileId,
+              fileName: editStagedFile.name,
               streamName,
               semester: semesterName,
               subjectName,
-              resourceType: "Library",
+              resourceType,
             }),
           });
-          const finalizeData = await finalizeRes.json();
-          if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize Drive upload.");
-          finalFileUrl = finalizeData.fileUrl;
+          const checkData = await checkRes.json();
+          if (checkData.exists) {
+            setDuplicateDialog({
+              open: true,
+              fileName: editStagedFile.name,
+              mode: "edit",
+            });
+            setSaving(false);
+            return;
+          }
+        }
+
+        if (editStagedFile.size > 4 * 1024 * 1024) {
+          const { fileUrl } = await uploadFileDirectToDestination({
+            file: editStagedFile,
+            streamName,
+            semester: semesterName,
+            subjectName,
+            resourceType,
+            overwrite: isOverwrite,
+          });
+          finalFileUrl = fileUrl;
         } else {
           const formData = new FormData();
           formData.append("file", editStagedFile);
           formData.append("streamName", streamName);
           formData.append("subjectName", subjectName);
           formData.append("semester", semesterName);
-          formData.append("resourceType", "Library");
+          formData.append("resourceType", resourceType);
+          if (isOverwrite) formData.append("overwrite", "true");
 
           const uploadRes = await fetch("/api/upload", {
             method: "POST",
@@ -398,9 +449,11 @@ export default function ManageLibraryPage() {
         return;
       }
 
-      toast.success("Resource updated!");
+      const resourceName = editTitle.trim() || editStagedFile?.name || "Library Resource";
+      toast.success(`"${resourceName}" successfully updated!`);
       setEditStagedFile(null);
       setEditDialogOpen(false);
+      setEditResource(null);
       fetchResources();
     } catch (err) {
       console.error("Edit library resource error:", err);
@@ -410,6 +463,10 @@ export default function ManageLibraryPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEdit = () => {
+    void executeEditResource(false);
   };
 
   /* ──── Delete Resource ──── */
@@ -994,6 +1051,46 @@ export default function ManageLibraryPage() {
               disabled={deleting}
             >
               {deleting ? "Deleting..." : "Delete Resource"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate File Overwrite Confirmation Dialog */}
+      <Dialog
+        open={duplicateDialog.open}
+        onOpenChange={(val) =>
+          setDuplicateDialog((prev) => ({ ...prev, open: val }))
+        }
+      >
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Duplicate File Detected</DialogTitle>
+            <DialogDescription>
+              A file named &ldquo;{duplicateDialog.fileName}&rdquo; already exists in this subject folder. Do you want to overwrite it?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setDuplicateDialog({ open: false, fileName: "", mode: "add" })}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const mode = duplicateDialog.mode;
+                setDuplicateDialog({ open: false, fileName: "", mode: "add" });
+                if (mode === "add") {
+                  void executeAddResource(true);
+                } else {
+                  void executeEditResource(true);
+                }
+              }}
+            >
+              Overwrite File
             </Button>
           </DialogFooter>
         </DialogContent>

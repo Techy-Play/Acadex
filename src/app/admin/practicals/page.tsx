@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { FileUploadInput } from "@/components/file-upload-input";
 import { SearchableSelect } from "@/components/searchable-select";
-import { uploadFileDirectToTempDrive } from "@/lib/direct-upload";
+import { uploadFileDirectToDestination } from "@/lib/direct-upload";
 import {
   Select,
   SelectContent,
@@ -119,6 +119,13 @@ export default function ManagePracticalsPage() {
     null
   );
   const [deleting, setDeleting] = useState(false);
+
+  // Duplicate overwrite state
+  const [duplicateDialog, setDuplicateDialog] = useState<{
+    open: boolean;
+    fileName: string;
+    mode: "add" | "edit";
+  }>({ open: false, fileName: "", mode: "add" });
 
   const fetchPracticals = async () => {
     try {
@@ -239,9 +246,7 @@ export default function ManagePracticalsPage() {
   }, [selectedSubjectFilter, selectedSectionFilter, semesterFilter, isSuperAdmin]);
 
   // ─── Add Practical ──────────────────────────────
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const executeAddPractical = async (isOverwrite: boolean = false) => {
     let finalFileUrl = addFileUrl.trim();
 
     if (!finalFileUrl && !addStagedFile) {
@@ -257,30 +262,50 @@ export default function ManagePracticalsPage() {
         const streamName = subj?.stream?.name || "General";
         const semesterName = String(subj?.semester || "General");
         const subjectName = subj?.name || "General";
+        const resourceType = "Practicals";
 
-        if (addStagedFile.size > 4 * 1024 * 1024) {
-          const { fileId } = await uploadFileDirectToTempDrive({ file: addStagedFile });
-          const finalizeRes = await fetch("/api/upload", {
+        if (!isOverwrite) {
+          const checkRes = await fetch("/api/upload/check-duplicate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              fileId,
+              fileName: addStagedFile.name,
               streamName,
               semester: semesterName,
               subjectName,
-              resourceType: "Practicals",
+              resourceType,
             }),
           });
-          const finalizeData = await finalizeRes.json();
-          if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize Drive upload.");
-          finalFileUrl = finalizeData.fileUrl;
+          const checkData = await checkRes.json();
+          if (checkData.exists) {
+            setDuplicateDialog({
+              open: true,
+              fileName: addStagedFile.name,
+              mode: "add",
+            });
+            setAddLoading(false);
+            return;
+          }
+        }
+
+        if (addStagedFile.size > 4 * 1024 * 1024) {
+          const { fileUrl } = await uploadFileDirectToDestination({
+            file: addStagedFile,
+            streamName,
+            semester: semesterName,
+            subjectName,
+            resourceType,
+            overwrite: isOverwrite,
+          });
+          finalFileUrl = fileUrl;
         } else {
           const formData = new FormData();
           formData.append("file", addStagedFile);
           formData.append("streamName", streamName);
           formData.append("subjectName", subjectName);
           formData.append("semester", semesterName);
-          formData.append("resourceType", "Practicals");
+          formData.append("resourceType", resourceType);
+          if (isOverwrite) formData.append("overwrite", "true");
 
           const uploadRes = await fetch("/api/upload", {
             method: "POST",
@@ -321,7 +346,8 @@ export default function ManagePracticalsPage() {
         return;
       }
 
-      toast.success("Practical added successfully!");
+      const resourceName = addTitle.trim() || addStagedFile?.name || "Practical";
+      toast.success(`"${resourceName}" successfully uploaded!`);
       setAddTitle("");
       setAddDescription("");
       setAddFileUrl("");
@@ -341,6 +367,11 @@ export default function ManagePracticalsPage() {
     }
   };
 
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    void executeAddPractical(false);
+  };
+
   // ─── Edit Practical ─────────────────────────────
   const openEditDialog = (p: Practical) => {
     setEditPractical(p);
@@ -356,7 +387,7 @@ export default function ManagePracticalsPage() {
     setEditDialogOpen(true);
   };
 
-  const handleEdit = async () => {
+  const executeEditPractical = async (isOverwrite: boolean = false) => {
     if (!editPractical) return;
     setSaving(true);
 
@@ -368,30 +399,50 @@ export default function ManagePracticalsPage() {
         const streamName = subj?.stream?.name || "General";
         const semesterName = String(subj?.semester || "General");
         const subjectName = subj?.name || "General";
+        const resourceType = "Practicals";
 
-        if (editStagedFile.size > 4 * 1024 * 1024) {
-          const { fileId } = await uploadFileDirectToTempDrive({ file: editStagedFile });
-          const finalizeRes = await fetch("/api/upload", {
+        if (!isOverwrite) {
+          const checkRes = await fetch("/api/upload/check-duplicate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              fileId,
+              fileName: editStagedFile.name,
               streamName,
               semester: semesterName,
               subjectName,
-              resourceType: "Practicals",
+              resourceType,
             }),
           });
-          const finalizeData = await finalizeRes.json();
-          if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize Drive upload.");
-          finalFileUrl = finalizeData.fileUrl;
+          const checkData = await checkRes.json();
+          if (checkData.exists) {
+            setDuplicateDialog({
+              open: true,
+              fileName: editStagedFile.name,
+              mode: "edit",
+            });
+            setSaving(false);
+            return;
+          }
+        }
+
+        if (editStagedFile.size > 4 * 1024 * 1024) {
+          const { fileUrl } = await uploadFileDirectToDestination({
+            file: editStagedFile,
+            streamName,
+            semester: semesterName,
+            subjectName,
+            resourceType,
+            overwrite: isOverwrite,
+          });
+          finalFileUrl = fileUrl;
         } else {
           const formData = new FormData();
           formData.append("file", editStagedFile);
           formData.append("streamName", streamName);
           formData.append("subjectName", subjectName);
           formData.append("semester", semesterName);
-          formData.append("resourceType", "Practicals");
+          formData.append("resourceType", resourceType);
+          if (isOverwrite) formData.append("overwrite", "true");
 
           const uploadRes = await fetch("/api/upload", {
             method: "POST",
@@ -431,9 +482,11 @@ export default function ManagePracticalsPage() {
         return;
       }
 
-      toast.success("Practical updated successfully!");
+      const resourceName = editTitle.trim() || editStagedFile?.name || "Practical";
+      toast.success(`"${resourceName}" successfully updated!`);
       setEditStagedFile(null);
       setEditDialogOpen(false);
+      setEditPractical(null);
       fetchPracticals();
     } catch (err) {
       console.error("Edit practical error:", err);
@@ -443,6 +496,10 @@ export default function ManagePracticalsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEdit = () => {
+    void executeEditPractical(false);
   };
 
   // ─── Delete Practical ───────────────────────────
@@ -950,6 +1007,46 @@ export default function ManagePracticalsPage() {
               disabled={deleting}
             >
               {deleting ? "Deleting..." : "Delete Practical"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate File Overwrite Confirmation Dialog */}
+      <Dialog
+        open={duplicateDialog.open}
+        onOpenChange={(val) =>
+          setDuplicateDialog((prev) => ({ ...prev, open: val }))
+        }
+      >
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Duplicate File Detected</DialogTitle>
+            <DialogDescription>
+              A file named &ldquo;{duplicateDialog.fileName}&rdquo; already exists in this subject folder. Do you want to overwrite it?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setDuplicateDialog({ open: false, fileName: "", mode: "add" })}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const mode = duplicateDialog.mode;
+                setDuplicateDialog({ open: false, fileName: "", mode: "add" });
+                if (mode === "add") {
+                  void executeAddPractical(true);
+                } else {
+                  void executeEditPractical(true);
+                }
+              }}
+            >
+              Overwrite File
             </Button>
           </DialogFooter>
         </DialogContent>

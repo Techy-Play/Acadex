@@ -1,8 +1,7 @@
 /**
  * @module API/Upload/InitResumable
- * @description Initializes a Google Drive resumable upload session in the "Temp" staging folder.
- * Returns an upload location URL allowing the browser client to stream files directly to Google Drive,
- * completely bypassing Vercel's 4.5 MB request body limit!
+ * @description Initializes a Google Drive resumable upload session directly in the destination folder.
+ * Returns an upload location URL allowing the browser client to stream chunks to Google Drive.
  */
 import { NextResponse } from "next/server";
 import { initResumableDriveUpload } from "@/lib/gdrive";
@@ -18,7 +17,16 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { fileName, mimeType, fileSize } = body;
+    const {
+      fileName,
+      mimeType,
+      fileSize,
+      streamName,
+      semester,
+      subjectName,
+      resourceType,
+      overwrite,
+    } = body;
 
     if (!fileName || !fileSize) {
       return NextResponse.json(
@@ -31,6 +39,11 @@ export async function POST(request: Request) {
       fileName,
       mimeType: mimeType || "application/pdf",
       fileSize: Number(fileSize),
+      streamName,
+      semester,
+      subjectName,
+      resourceType,
+      overwrite: Boolean(overwrite),
     });
 
     return NextResponse.json({

@@ -1,20 +1,29 @@
 /**
  * @module lib/direct-upload
  * @description Robust chunked file uploader for Google Drive.
- * Splits files into 2 MB chunks (multiples of 256 KB) and proxies them to /api/upload/chunk.
- * Prevents Vercel 4.5 MB body limit issues and eliminates browser CORS restrictions completely.
+ * Streams files in 2 MB chunks directly into the destination Google Drive subject directory.
  */
 
 interface DirectUploadOptions {
   file: File;
+  streamName?: string;
+  semester?: number | string;
+  subjectName?: string;
+  resourceType?: string;
+  overwrite?: boolean;
   onProgress?: (percent: number) => void;
 }
 
-export async function uploadFileDirectToTempDrive({
+export async function uploadFileDirectToDestination({
   file,
+  streamName = "General",
+  semester = "General",
+  subjectName = "General",
+  resourceType = "Files",
+  overwrite = false,
   onProgress,
-}: DirectUploadOptions): Promise<{ fileId: string }> {
-  // 1. Initialize Google Drive resumable upload session in Temp folder
+}: DirectUploadOptions): Promise<{ fileId: string; fileUrl: string }> {
+  // 1. Initialize Google Drive resumable upload session directly in the destination folder
   const initRes = await fetch("/api/upload/init-resumable", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -22,6 +31,11 @@ export async function uploadFileDirectToTempDrive({
       fileName: file.name,
       mimeType: file.type || "application/pdf",
       fileSize: file.size,
+      streamName,
+      semester: String(semester),
+      subjectName,
+      resourceType,
+      overwrite,
     }),
   });
 
@@ -39,6 +53,7 @@ export async function uploadFileDirectToTempDrive({
   const CHUNK_SIZE = 2 * 1024 * 1024;
   let start = 0;
   let fileId = "";
+  let finalFileUrl = "";
 
   while (start < file.size) {
     const end = Math.min(start + CHUNK_SIZE, file.size);
@@ -73,6 +88,7 @@ export async function uploadFileDirectToTempDrive({
 
     if (chunkData.done && chunkData.fileId) {
       fileId = chunkData.fileId;
+      finalFileUrl = chunkData.fileUrl || `https://drive.google.com/file/d/${fileId}/view`;
       break;
     }
 
@@ -83,5 +99,5 @@ export async function uploadFileDirectToTempDrive({
     throw new Error("Upload finished but Google Drive file ID was not received.");
   }
 
-  return { fileId };
+  return { fileId, fileUrl: finalFileUrl };
 }

@@ -4,6 +4,7 @@
  * Bypasses browser CORS restrictions and keeps payload sizes strictly below Vercel's 4.5 MB limit.
  */
 import { NextResponse } from "next/server";
+import { makeDriveFilePublic } from "@/lib/gdrive";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -38,10 +39,19 @@ export async function POST(request: Request) {
     // 200 OK or 201 Created means upload complete
     if (driveRes.status === 200 || driveRes.status === 201) {
       const data = await driveRes.json();
+      let fileUrl = "";
+      try {
+        fileUrl = await makeDriveFilePublic(data.id);
+      } catch (permErr) {
+        console.warn("Permission set warning:", permErr);
+        fileUrl = `https://drive.google.com/file/d/${data.id}/view`;
+      }
+
       return NextResponse.json({
         success: true,
         done: true,
         fileId: data.id,
+        fileUrl,
       });
     }
 

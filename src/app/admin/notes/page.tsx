@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { FileUploadInput } from "@/components/file-upload-input";
 import { SearchableSelect } from "@/components/searchable-select";
-import { uploadFileDirectToTempDrive } from "@/lib/direct-upload";
+import { uploadFileDirectToDestination } from "@/lib/direct-upload";
 import {
   Select,
   SelectContent,
@@ -111,6 +111,13 @@ export default function ManageNotesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteNote, setDeleteNote] = useState<Note | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Duplicate overwrite state
+  const [duplicateDialog, setDuplicateDialog] = useState<{
+    open: boolean;
+    fileName: string;
+    mode: "add" | "edit";
+  }>({ open: false, fileName: "", mode: "add" });
 
   const fetchNotes = async () => {
     try {
@@ -229,9 +236,7 @@ export default function ManageNotesPage() {
   }, [selectedSubjectFilter, selectedSectionFilter, semesterFilter, isSuperAdmin]);
 
   // ─── Add Note ───────────────────────────────────
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const executeAddNote = async (isOverwrite: boolean = false) => {
     let finalFileUrl = addFileUrl.trim();
 
     if (!finalFileUrl && !addStagedFile) {
@@ -247,30 +252,50 @@ export default function ManageNotesPage() {
         const streamName = subj?.stream?.name || "General";
         const semesterName = String(subj?.semester || "General");
         const subjectName = subj?.name || "General";
+        const resourceType = "Notes";
 
-        if (addStagedFile.size > 4 * 1024 * 1024) {
-          const { fileId } = await uploadFileDirectToTempDrive({ file: addStagedFile });
-          const finalizeRes = await fetch("/api/upload", {
+        if (!isOverwrite) {
+          const checkRes = await fetch("/api/upload/check-duplicate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              fileId,
+              fileName: addStagedFile.name,
               streamName,
               semester: semesterName,
               subjectName,
-              resourceType: "Notes",
+              resourceType,
             }),
           });
-          const finalizeData = await finalizeRes.json();
-          if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize Drive upload.");
-          finalFileUrl = finalizeData.fileUrl;
+          const checkData = await checkRes.json();
+          if (checkData.exists) {
+            setDuplicateDialog({
+              open: true,
+              fileName: addStagedFile.name,
+              mode: "add",
+            });
+            setAddLoading(false);
+            return;
+          }
+        }
+
+        if (addStagedFile.size > 4 * 1024 * 1024) {
+          const { fileUrl } = await uploadFileDirectToDestination({
+            file: addStagedFile,
+            streamName,
+            semester: semesterName,
+            subjectName,
+            resourceType,
+            overwrite: isOverwrite,
+          });
+          finalFileUrl = fileUrl;
         } else {
           const formData = new FormData();
           formData.append("file", addStagedFile);
           formData.append("streamName", streamName);
           formData.append("subjectName", subjectName);
           formData.append("semester", semesterName);
-          formData.append("resourceType", "Notes");
+          formData.append("resourceType", resourceType);
+          if (isOverwrite) formData.append("overwrite", "true");
 
           const uploadRes = await fetch("/api/upload", {
             method: "POST",
@@ -309,7 +334,8 @@ export default function ManageNotesPage() {
         return;
       }
 
-      toast.success("Note added successfully!");
+      const resourceName = addTitle.trim() || addStagedFile?.name || "Note";
+      toast.success(`"${resourceName}" successfully uploaded!`);
       setAddTitle("");
       setAddFileUrl("");
       setAddStagedFile(null);
@@ -327,6 +353,11 @@ export default function ManageNotesPage() {
     }
   };
 
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    void executeAddNote(false);
+  };
+
   // ─── Edit Note ──────────────────────────────────
   const openEditDialog = (note: Note) => {
     setEditNote(note);
@@ -338,7 +369,7 @@ export default function ManageNotesPage() {
     setEditDialogOpen(true);
   };
 
-  const handleEdit = async () => {
+  const executeEditNote = async (isOverwrite: boolean = false) => {
     if (!editNote) return;
     setSaving(true);
 
@@ -350,30 +381,50 @@ export default function ManageNotesPage() {
         const streamName = subj?.stream?.name || "General";
         const semesterName = String(subj?.semester || "General");
         const subjectName = subj?.name || "General";
+        const resourceType = "Notes";
 
-        if (editStagedFile.size > 4 * 1024 * 1024) {
-          const { fileId } = await uploadFileDirectToTempDrive({ file: editStagedFile });
-          const finalizeRes = await fetch("/api/upload", {
+        if (!isOverwrite) {
+          const checkRes = await fetch("/api/upload/check-duplicate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              fileId,
+              fileName: editStagedFile.name,
               streamName,
               semester: semesterName,
               subjectName,
-              resourceType: "Notes",
+              resourceType,
             }),
           });
-          const finalizeData = await finalizeRes.json();
-          if (!finalizeRes.ok) throw new Error(finalizeData.error || "Failed to finalize Drive upload.");
-          finalFileUrl = finalizeData.fileUrl;
+          const checkData = await checkRes.json();
+          if (checkData.exists) {
+            setDuplicateDialog({
+              open: true,
+              fileName: editStagedFile.name,
+              mode: "edit",
+            });
+            setSaving(false);
+            return;
+          }
+        }
+
+        if (editStagedFile.size > 4 * 1024 * 1024) {
+          const { fileUrl } = await uploadFileDirectToDestination({
+            file: editStagedFile,
+            streamName,
+            semester: semesterName,
+            subjectName,
+            resourceType,
+            overwrite: isOverwrite,
+          });
+          finalFileUrl = fileUrl;
         } else {
           const formData = new FormData();
           formData.append("file", editStagedFile);
           formData.append("streamName", streamName);
           formData.append("subjectName", subjectName);
           formData.append("semester", semesterName);
-          formData.append("resourceType", "Notes");
+          formData.append("resourceType", resourceType);
+          if (isOverwrite) formData.append("overwrite", "true");
 
           const uploadRes = await fetch("/api/upload", {
             method: "POST",
@@ -411,9 +462,11 @@ export default function ManageNotesPage() {
         return;
       }
 
-      toast.success("Note updated successfully!");
+      const resourceName = editTitle.trim() || editStagedFile?.name || "Note";
+      toast.success(`"${resourceName}" successfully updated!`);
       setEditStagedFile(null);
       setEditDialogOpen(false);
+      setEditNote(null);
       fetchNotes();
     } catch (err) {
       console.error("Edit note error:", err);
@@ -423,6 +476,10 @@ export default function ManageNotesPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEdit = () => {
+    void executeEditNote(false);
   };
 
   // ─── Delete Note ────────────────────────────────
@@ -859,6 +916,46 @@ export default function ManageNotesPage() {
               disabled={deleting}
             >
               {deleting ? "Deleting..." : "Delete Note"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate File Overwrite Confirmation Dialog */}
+      <Dialog
+        open={duplicateDialog.open}
+        onOpenChange={(val) =>
+          setDuplicateDialog((prev) => ({ ...prev, open: val }))
+        }
+      >
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Duplicate File Detected</DialogTitle>
+            <DialogDescription>
+              A file named &ldquo;{duplicateDialog.fileName}&rdquo; already exists in this subject folder. Do you want to overwrite it?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setDuplicateDialog({ open: false, fileName: "", mode: "add" })}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const mode = duplicateDialog.mode;
+                setDuplicateDialog({ open: false, fileName: "", mode: "add" });
+                if (mode === "add") {
+                  void executeAddNote(true);
+                } else {
+                  void executeEditNote(true);
+                }
+              }}
+            >
+              Overwrite File
             </Button>
           </DialogFooter>
         </DialogContent>
