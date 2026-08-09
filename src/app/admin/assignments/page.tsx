@@ -258,12 +258,29 @@ export default function ManageAssignmentsPage() {
         formData.append("semester", String(subj?.semester || "General"));
         formData.append("resourceType", "Assignments");
 
+        if (addStagedFile.size > 4.5 * 1024 * 1024) {
+          throw new Error(
+            `"${addStagedFile.name}" is ${(addStagedFile.size / (1024 * 1024)).toFixed(2)} MB. Direct file uploads on Vercel are limited to 4.5 MB. Please compress your PDF or paste a custom URL.`
+          );
+        }
+
         const uploadRes = await fetch("/api/upload", {
           method: "POST",
           body: formData,
         });
 
-        const uploadData = await uploadRes.json();
+        let uploadData: any = {};
+        try {
+          uploadData = await uploadRes.json();
+        } catch {
+          if (uploadRes.status === 413) {
+            throw new Error(
+              `File is too large (${(addStagedFile.size / (1024 * 1024)).toFixed(2)} MB). Direct server uploads are limited to 4.5 MB on Vercel. Please compress your PDF or paste a custom URL.`
+            );
+          }
+          throw new Error(`Upload failed with server status ${uploadRes.status}`);
+        }
+
         if (!uploadRes.ok) {
           throw new Error(uploadData.error || "Failed to upload file.");
         }
@@ -341,12 +358,29 @@ export default function ManageAssignmentsPage() {
         formData.append("semester", String(subj?.semester || "General"));
         formData.append("resourceType", "Assignments");
 
+        if (editStagedFile.size > 4.5 * 1024 * 1024) {
+          throw new Error(
+            `"${editStagedFile.name}" is ${(editStagedFile.size / (1024 * 1024)).toFixed(2)} MB. Direct file uploads on Vercel are limited to 4.5 MB. Please compress your PDF or paste a custom URL.`
+          );
+        }
+
         const uploadRes = await fetch("/api/upload", {
           method: "POST",
           body: formData,
         });
 
-        const uploadData = await uploadRes.json();
+        let uploadData: any = {};
+        try {
+          uploadData = await uploadRes.json();
+        } catch {
+          if (uploadRes.status === 413) {
+            throw new Error(
+              `File is too large (${(editStagedFile.size / (1024 * 1024)).toFixed(2)} MB). Direct server uploads are limited to 4.5 MB on Vercel. Please compress your PDF or paste a custom URL.`
+            );
+          }
+          throw new Error(`Upload failed with server status ${uploadRes.status}`);
+        }
+
         if (!uploadRes.ok) {
           throw new Error(uploadData.error || "Failed to upload file.");
         }

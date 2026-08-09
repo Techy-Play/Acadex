@@ -10,6 +10,7 @@ import { useState, useRef, ChangeEvent, DragEvent } from "react";
 import { Upload, CheckCircle2, Link2, X, Loader2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 interface FileUploadInputProps {
   value: string;
@@ -43,6 +44,16 @@ export function FileUploadInput({
   const handleSelectFile = async (file: File) => {
     setUploadError(null);
 
+    // Vercel serverless request body size limit is 4.5 MB
+    const MAX_VERCEL_BODY_BYTES = 4.5 * 1024 * 1024;
+    if (file.size > MAX_VERCEL_BODY_BYTES) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      const errMsg = `"${file.name}" is ${sizeMB} MB. Vercel direct file uploads are limited to 4.5 MB. Please compress your file or paste a custom URL manually.`;
+      setUploadError(errMsg);
+      toast.error(errMsg);
+      return;
+    }
+
     // If onFileStaged callback is provided, stage the file locally (deferred upload)
     if (onFileStaged) {
       onFileStaged(file);
@@ -64,7 +75,15 @@ export function FileUploadInput({
         body: formData,
       });
 
-      const data = await res.json();
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        if (res.status === 413) {
+          throw new Error("File is too large for server upload (Max 4.5 MB on Vercel). Please compress the file or paste a custom URL.");
+        }
+        throw new Error(`Upload failed with server status ${res.status}`);
+      }
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to upload file.");
