@@ -1,8 +1,8 @@
 /**
  * @module lib/direct-upload
- * @description Direct browser-to-Google-Drive uploader using Google's Resumable Upload API.
- * Uploads large files (up to 500+ MB) directly from the user's browser to the Google Drive "Temp" folder,
- * completely bypassing Vercel's 4.5 MB request body limit!
+ * @description Robust chunked file uploader for Google Drive.
+ * Splits files into 2 MB chunks (multiples of 256 KB) and proxies them to /api/upload/chunk.
+ * Prevents Vercel 4.5 MB body limit issues and eliminates browser CORS restrictions completely.
  */
 
 interface DirectUploadOptions {
@@ -14,7 +14,7 @@ export async function uploadFileDirectToTempDrive({
   file,
   onProgress,
 }: DirectUploadOptions): Promise<{ fileId: string }> {
-  // 1. Request resumable upload URL from server
+  // 1. Initialize Google Drive resumable upload session in Temp folder
   const initRes = await fetch("/api/upload/init-resumable", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -31,51 +31,57 @@ export async function uploadFileDirectToTempDrive({
   }
 
   const { uploadUrl } = initData;
+  if (!uploadUrl) {
+    throw new Error("No upload URL returned from server.");
+  }
 
-  // 2. Stream binary file directly from browser to Google Drive using XMLHttpRequest for progress tracking
-  return new Promise<{ fileId: string }>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", uploadUrl, true);
-    xhr.setRequestHeader("Content-Type", file.type || "application/pdf");
+  // 2. Upload file in 2 MB chunks (2,097,152 bytes = 8 * 256 KB)
+  const CHUNK_SIZE = 2 * 1024 * 1024;
+  let start = 0;
+  let fileId = "";
 
-    if (xhr.upload && onProgress) {
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const percent = Math.round((e.loaded / e.total) * 100);
-          onProgress(percent);
-        }
-      };
+  while (start < file.size) {
+    const end = Math.min(start + CHUNK_SIZE, file.size);
+    const chunk = file.slice(start, end);
+    const contentRange = `bytes ${start}-${end - 1}/${file.size}`;
+
+    const chunkRes = await fetch("/api/upload/chunk", {
+      method: "POST",
+      headers: {
+        "x-upload-url": uploadUrl,
+        "content-range": contentRange,
+        "content-type": file.type || "application/pdf",
+      },
+      body: chunk,
+    });
+
+    let chunkData: any = {};
+    try {
+      chunkData = await chunkRes.json();
+    } catch {
+      throw new Error(`Chunk upload failed with server status ${chunkRes.status}`);
     }
 
-    xhr.onload = () => {
-      if (xhr.status === 200 || xhr.status === 201) {
-        try {
-          const responseJson = JSON.parse(xhr.responseText);
-          if (responseJson.id) {
-            resolve({ fileId: responseJson.id });
-          } else {
-            reject(new Error("Google Drive response missing file ID."));
-          }
-        } catch {
-          reject(new Error("Could not parse Google Drive upload response."));
-        }
-      } else {
-        reject(
-          new Error(
-            `Direct Google Drive upload failed with HTTP status ${xhr.status}.`
-          )
-        );
-      }
-    };
+    if (!chunkRes.ok) {
+      throw new Error(chunkData.error || "Failed to upload file chunk.");
+    }
 
-    xhr.onerror = () => {
-      reject(
-        new Error(
-          "Network error while streaming file directly to Google Drive. Please check your internet connection."
-        )
-      );
-    };
+    if (onProgress) {
+      const percent = Math.round((end / file.size) * 100);
+      onProgress(percent);
+    }
 
-    xhr.send(file);
-  });
+    if (chunkData.done && chunkData.fileId) {
+      fileId = chunkData.fileId;
+      break;
+    }
+
+    start = end;
+  }
+
+  if (!fileId) {
+    throw new Error("Upload finished but Google Drive file ID was not received.");
+  }
+
+  return { fileId };
 }
