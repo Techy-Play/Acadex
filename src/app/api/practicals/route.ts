@@ -130,7 +130,8 @@ export async function GET(request: Request) {
       .populate("subject", "name type semester")
       .populate("section", "name")
       .populate("uploadedBy", "name")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json({ practicals });
   } catch (error) {

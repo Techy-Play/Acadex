@@ -1,8 +1,9 @@
-/** User dashboard shell — wraps children in the DashboardLayout (sidebar + nav). */
+/** User dashboard shell — wraps children in the DashboardLayout (sidebar + nav) and UserProvider for shared session. */
 import type { Metadata } from "next";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { PushInit } from "@/components/push-init";
+import { UserProvider } from "@/context/user-context";
 
 export const metadata: Metadata = {
   title: {
@@ -27,9 +28,11 @@ export default function DashboardRootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <DashboardLayout>
-      <PushInit />
-      {children}
-    </DashboardLayout>
+    <UserProvider>
+      <DashboardLayout>
+        <PushInit />
+        {children}
+      </DashboardLayout>
+    </UserProvider>
   );
 }

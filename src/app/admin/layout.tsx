@@ -1,7 +1,8 @@
-/** Admin dashboard shell — wraps children in the DashboardLayout (sidebar + nav). */
+/** Admin dashboard shell — wraps children in the DashboardLayout (sidebar + nav) and UserProvider for shared session. */
 import type { Metadata } from "next";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
+import { UserProvider } from "@/context/user-context";
 
 export const metadata: Metadata = {
   title: {
@@ -25,5 +26,9 @@ export default function AdminRootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return (
+    <UserProvider>
+      <DashboardLayout>{children}</DashboardLayout>
+    </UserProvider>
+  );
 }

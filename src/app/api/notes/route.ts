@@ -133,7 +133,8 @@ export async function GET(request: Request) {
       .populate("subject", "name type semester")
       .populate("section", "name")
       .populate("uploadedBy", "name")
-      .sort({ uploadedAt: -1 });
+      .sort({ uploadedAt: -1 })
+      .lean();
 
     return NextResponse.json({ notes });
   } catch (error) {

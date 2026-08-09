@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +25,14 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { ImageCropModal } from "@/components/image-crop-modal";
 import { subscribeBrowserPush, unsubscribeBrowserPush } from "@/lib/push/client";
 import { clearMeCache } from "@/lib/client-auth";
+
+// Dynamically loaded — heavy canvas/cropper logic not needed on initial render
+const ImageCropModalDynamic = dynamic(
+  () => import("@/components/image-crop-modal").then((m) => ({ default: m.ImageCropModal })),
+  { ssr: false }
+);
 
 interface UserData {
   id: string;
@@ -1119,7 +1125,7 @@ export default function ProfilePage() {
         </DialogContent>
       </Dialog>
 
-      <ImageCropModal
+      <ImageCropModalDynamic
         imageSrc={selectedImageSrc}
         open={cropModalOpen}
         onClose={() => setCropModalOpen(false)}

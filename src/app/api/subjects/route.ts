@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 
     // 👑 Super Admin → return all subjects
     if (user.isSuperAdmin) {
-      const subjects = await Subject.find().sort({ semester: 1, name: 1 });
+      const subjects = await Subject.find().sort({ semester: 1, name: 1 }).lean();
       return NextResponse.json({ subjects });
     }
 
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
       filter.semester = user.semester;
     }
 
-    const subjects = await Subject.find(filter).sort({ semester: 1, name: 1 });
+    const subjects = await Subject.find(filter).sort({ semester: 1, name: 1 }).lean();
 
     return NextResponse.json({ subjects });
 

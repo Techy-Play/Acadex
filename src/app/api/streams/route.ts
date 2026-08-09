@@ -14,7 +14,7 @@ export async function GET() {
   try {
     await connectDB();
     void Subject; // Ensure Subject model is registered for populate
-    const streams = await Stream.find().populate("subjects").sort({ name: 1 });
+    const streams = await Stream.find().populate("subjects").sort({ name: 1 }).lean();
     return NextResponse.json({ streams });
   } catch (error) {
     console.error("List streams error:", error);
