@@ -16,6 +16,8 @@ import {
   ALLOWED_EMAIL_DOMAINS,
   isAllowedEmailDomain,
 } from "@/lib/validations";
+import { sendPushToUsers } from "@/lib/push/send";
+import { buildPushPayload } from "@/lib/push/payloads";
 
 // Ensure models are registered for populate
 void Stream;
@@ -173,6 +175,16 @@ export async function POST(request: Request) {
         link: "/admin/access-requests",
         targetUsers: targetAdminIds,
       });
+
+      // Send push notification to target admins
+      await sendPushToUsers({
+        userIds: targetAdminIds.map(id => id.toString()),
+        payload: buildPushPayload(
+          "New Access Request",
+          `${name.trim()} (${college_id.trim()}) requested access`,
+          "/admin/access-requests"
+        ),
+      }).catch((err) => console.error("Push error:", err));
     }
 
     return NextResponse.json(

@@ -9,6 +9,8 @@ import { connectDB } from "@/lib/db";
 import ContactMessage from "@/models/ContactMessage";
 import Notification from "@/models/Notification";
 import User from "@/models/User";
+import { sendPushToUsers } from "@/lib/push/send";
+import { buildPushPayload } from "@/lib/push/payloads";
 
 // POST - public endpoint (no auth required) for submitting contact messages
 export async function POST(request: Request) {
@@ -54,6 +56,16 @@ export async function POST(request: Request) {
           link: "/admin/messages",
           targetUsers: [superAdmin._id],
         });
+
+        // Send push notification to the super admin
+        await sendPushToUsers({
+          userIds: [superAdmin._id.toString()],
+          payload: buildPushPayload(
+            "New Contact Message",
+            `${name}: "${subject.slice(0, 80)}"`,
+            "/admin/messages"
+          ),
+        }).catch((err) => console.error("Push error:", err));
       }
     } catch {
       // Don't fail the request if notification fails

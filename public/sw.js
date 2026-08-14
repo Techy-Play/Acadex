@@ -14,14 +14,20 @@ self.addEventListener("push", (event) => {
     // Ignore malformed payload and use fallback.
   }
 
-  event.waitUntil(
-    self.registration.showNotification(payload.title, {
-      body: payload.body,
-      icon: payload.icon,
-      badge: payload.icon,
-      data: payload.data,
-    })
-  );
+  const showNotificationPromise = self.registration.showNotification(payload.title, {
+    body: payload.body,
+    icon: payload.icon,
+    badge: payload.icon,
+    data: payload.data,
+  });
+
+  const notifyClientsPromise = self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+    for (const client of clientList) {
+      client.postMessage({ type: "NEW_NOTIFICATION", payload });
+    }
+  });
+
+  event.waitUntil(Promise.all([showNotificationPromise, notifyClientsPromise]));
 });
 
 self.addEventListener("notificationclick", (event) => {

@@ -13,7 +13,10 @@ import User from "@/models/User";
 import Stream from "@/models/Stream";
 import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
+import Notification from "@/models/Notification";
 import { sendMail, approvalEmailHTML, denialEmailHTML } from "@/lib/mail";
+import { sendPushToUsers } from "@/lib/push/send";
+import { buildPushPayload } from "@/lib/push/payloads";
 
 // Ensure models are registered
 void Stream;
@@ -147,7 +150,7 @@ export async function PATCH(request: Request) {
       const tempPassword = generateTempPassword();
       const passwordHash = await bcrypt.hash(tempPassword, 10);
 
-      await User.create({
+      const newUser = await User.create({
         name: accessReq.name,
         college_id: accessReq.college_id,
         email: normalizedEmail || null,
@@ -171,6 +174,28 @@ export async function PATCH(request: Request) {
         details: `Approved access for ${accessReq.name} (${accessReq.college_id}) as ${approvedRole}`,
         section: accessReq.section || null,
       });
+
+      // Send push notification & DB notification to the new user
+      try {
+        await Notification.create({
+          type: "request_approved",
+          title: "Account Approved",
+          message: `Your account request for ${accessReq.college_id} has been approved.`,
+          targetUsers: [newUser._id],
+          link: "/login",
+        });
+        
+        await sendPushToUsers({
+          userIds: [newUser._id.toString()],
+          payload: buildPushPayload(
+            "Account Approved",
+            "Your account request has been approved.",
+            "/login"
+          ),
+        }).catch((err) => console.error("Push error (approval):", err));
+      } catch (notifyErr) {
+        console.error("Failed to notify user of approval:", notifyErr);
+      }
 
       // Send approval email
       try {
@@ -203,6 +228,30 @@ export async function PATCH(request: Request) {
         details: `Denied access for ${accessReq.name} (${accessReq.college_id})`,
         section: accessReq.section || null,
       });
+
+      // Try to notify the user if they somehow have an account
+      try {
+        const possibleUser = await User.findOne({ email: accessReq.email?.trim().toLowerCase() }).select("_id").lean();
+        if (possibleUser) {
+          await Notification.create({
+            type: "request_denied",
+            title: "Account Request Denied",
+            message: "Your account request has been denied.",
+            targetUsers: [possibleUser._id],
+          });
+
+          await sendPushToUsers({
+            userIds: [possibleUser._id.toString()],
+            payload: buildPushPayload(
+              "Account Request Denied",
+              "Your account request has been denied.",
+              "/login"
+            ),
+          }).catch((err) => console.error("Push error (denial):", err));
+        }
+      } catch (notifyErr) {
+        console.error("Failed to notify user of denial:", notifyErr);
+      }
 
       // Send denial email
       try {

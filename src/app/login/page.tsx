@@ -143,12 +143,12 @@ function LoginPageInner() {
             </div>
 
             <p className="text-xs text-muted-foreground/60">
-              Acadex &bull; Engineered by Mr Techie
+              Acadex &bull; Engineered by Mr Techie &bull; <Link href="/about/privacy" className="hover:underline">Privacy Policy</Link>
             </p>
           </div>
 
           {/* Form Panel — RIGHT side on desktop */}
-          <div className="w-full max-w-md mx-auto md:max-w-none md:order-2 rounded-2xl">
+          <div className="w-full max-w-md mx-auto md:max-w-none md:order-2 rounded-2xl flex flex-col">
             <MagicCard
               className="rounded-2xl"
               gradientSize={300}
@@ -274,6 +274,12 @@ function LoginPageInner() {
                 </CardContent>
               </div>
             </MagicCard>
+            
+            <div className="md:hidden mt-4 text-center">
+              <p className="text-xs text-muted-foreground/60">
+                <Link href="/about/privacy" className="hover:underline">Privacy Policy</Link>
+              </p>
+            </div>
           </div>
         </div>
       </main>

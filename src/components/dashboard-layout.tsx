@@ -164,10 +164,23 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           }
         }
         // Fetch unread notification count
-        fetch("/api/notifications", { cache: "no-store" })
-          .then((r) => r.ok ? r.json() : null)
-          .then((d) => { if (d?.unreadCount != null) setUnreadCount(d.unreadCount); })
-          .catch(() => {});
+        const fetchUnreadCount = () => {
+          fetch("/api/notifications", { cache: "no-store" })
+            .then((r) => r.ok ? r.json() : null)
+            .then((d) => { if (d?.unreadCount != null) setUnreadCount(d.unreadCount); })
+            .catch(() => {});
+        };
+        
+        fetchUnreadCount();
+
+        // Listen for real-time notification push events from Service Worker
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.addEventListener("message", (event) => {
+            if (event.data && event.data.type === "NEW_NOTIFICATION") {
+              fetchUnreadCount();
+            }
+          });
+        }
       } catch {
         router.push("/login");
       } finally {

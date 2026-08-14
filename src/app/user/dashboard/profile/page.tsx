@@ -25,7 +25,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { subscribeBrowserPush, unsubscribeBrowserPush } from "@/lib/push/client";
+import { subscribeBrowserPush } from "@/lib/push/client";
 import { clearMeCache } from "@/lib/client-auth";
 
 // Dynamically loaded — heavy canvas/cropper logic not needed on initial render
@@ -471,25 +471,6 @@ export default function ProfilePage() {
     }
   }
 
-  async function handleDisableDeviceNotifications() {
-    setBrowserPushBusy(true);
-    try {
-      await unsubscribeBrowserPush();
-      await fetch("/api/push/unsubscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clearAll: true }),
-      });
-      toast.success("Device notifications disabled for this account");
-    } catch {
-      toast.error("Failed to disable device notifications");
-    } finally {
-      setBrowserPushBusy(false);
-      if ("Notification" in window) {
-        setBrowserPushPermission(Notification.permission);
-      }
-    }
-  }
 
   const initials = user.name
     .split(" ")
@@ -818,16 +799,10 @@ export default function ProfilePage() {
               </div>
 
               {browserPushPermission === "granted" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-lg border-red-400/40 text-red-600 hover:bg-red-500/10 shrink-0"
-                  onClick={handleDisableDeviceNotifications}
-                  disabled={browserPushBusy}
-                >
-                  {browserPushBusy ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-                  Disable
-                </Button>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-500/15 text-green-700 dark:text-green-300 border border-green-500/20 shrink-0">
+                  <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                  Enabled
+                </div>
               )}
               {browserPushPermission === "default" && (
                 <Button

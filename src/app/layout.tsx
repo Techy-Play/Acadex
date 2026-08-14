@@ -9,6 +9,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { RouteProgress } from "@/components/route-progress";
+import { InstallBanner } from "@/components/install-banner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -274,6 +275,7 @@ export default function RootLayout({
           <Suspense>
             <RouteProgress />
           </Suspense>
+          <InstallBanner />
           {children}
           <Toaster richColors position="top-right" />
         </ThemeProvider>
