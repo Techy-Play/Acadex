@@ -3,7 +3,6 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import {
   ZoomIn,
   ZoomOut,
@@ -17,7 +16,16 @@ import {
   FileText,
   RotateCcw as ResetIcon,
   Sparkles,
+  Maximize,
+  Check,
+  Eye,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function PDFViewerPage() {
   const searchParams = useSearchParams();
@@ -35,42 +43,37 @@ export default function PDFViewerPage() {
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [numPages, setNumPages] = useState(0);
   const [activePage, setActivePage] = useState(1);
+  const [renderingPages, setRenderingPages] = useState<Record<number, boolean>>({});
 
-  // Transform State
+  // Transform State (Scale 0.5 to 3.0)
   const [scale, setScale] = useState(1.0);
   const [rotation, setRotation] = useState(0); // 0, 90, 180, 270
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fitMode, setFitMode] = useState<"custom" | "width" | "page">("width");
 
-  // Panning State
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  // Panning State for Image Viewer
+  const [imgPosition, setImgPosition] = useState({ x: 0, y: 0 });
+  const [isImgDragging, setIsImgDragging] = useState(false);
+  const [imgDragStart, setImgDragStart] = useState({ x: 0, y: 0 });
 
+  // DOM Refs
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const pagesContainerRef = useRef<HTMLDivElement | null>(null);
-  const pageRefs = useRef<(HTMLCanvasElement | null)[]>([]);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+  const pageContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const pageCanvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const renderTasksRef = useRef<Map<number, any>>(new Map());
+  const debounceRenderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Touch gesture tracking
   const touchStartDistRef = useRef<number | null>(null);
   const touchStartScaleRef = useRef<number>(1.0);
+  const touchFocalPointRef = useRef<{ x: number; y: number } | null>(null);
   const lastTapRef = useRef<number>(0);
 
   const proxyUrl = useMemo(
     () => `/api/pdf-proxy?url=${encodeURIComponent(fileUrl)}`,
     [fileUrl]
   );
-
-  // Clamps panning so PDF can never be dragged out of visible screen bounds
-  const clampPosition = useCallback((x: number, y: number, currentScale: number) => {
-    if (currentScale <= 1.0) return { x: 0, y: 0 };
-    const container = pagesContainerRef.current;
-    const maxPanX = container ? Math.max(0, (container.clientWidth * (currentScale - 1)) / 2) : 200;
-    const maxPanY = container ? Math.max(0, (container.clientHeight * (currentScale - 1)) / 2) : 400;
-    return {
-      x: Math.max(-maxPanX, Math.min(maxPanX, x)),
-      y: Math.max(-maxPanY, Math.min(maxPanY, y)),
-    };
-  }, []);
 
   // 1. Fetch PDF binary stream into Blob URL
   useEffect(() => {
@@ -99,7 +102,12 @@ export default function PDFViewerPage() {
               const pdfjs = await import("pdfjs-dist/legacy/build/pdf.js");
               pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
-              const doc = await pdfjs.getDocument(objectUrl).promise;
+              const doc = await pdfjs.getDocument({
+                url: objectUrl,
+                cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+                cMapPacked: true,
+              }).promise;
+
               if (isMounted) {
                 setPdfDoc(doc);
                 setNumPages(doc.numPages);
@@ -135,41 +143,63 @@ export default function PDFViewerPage() {
     };
   }, [fileUrl, proxyUrl]);
 
-  // 2. High-DPI Crisp Multi-Page Canvas Rendering
+  // 2. High-DPI Crisp Multi-Page Canvas Rendering at Exact Zoom Level
   const renderAllPages = useCallback(async () => {
-    if (!pdfDoc || isImage) return;
+    if (!pdfDoc || isImage || !scrollViewportRef.current) return;
 
-    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const dpr = typeof window !== "undefined" ? Math.max(1.5, window.devicePixelRatio || 1) : 1.5;
+    const viewportWidth = scrollViewportRef.current.clientWidth || (typeof window !== "undefined" ? window.innerWidth : 800);
+    const availableWidth = Math.max(300, viewportWidth - 48);
 
     for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-      const canvas = pageRefs.current[pageNum - 1];
-      if (!canvas) continue;
+      const canvas = pageCanvasRefs.current[pageNum - 1];
+      const pageContainer = pageContainerRefs.current[pageNum - 1];
+      if (!canvas || !pageContainer) continue;
 
       try {
-        // Cancel existing render task for this page if running
+        // Cancel existing render task for this page if currently executing
         if (renderTasksRef.current.has(pageNum)) {
-          renderTasksRef.current.get(pageNum).cancel();
+          try {
+            renderTasksRef.current.get(pageNum).cancel();
+          } catch {
+            // Ignore cancel errors
+          }
           renderTasksRef.current.delete(pageNum);
         }
 
         const page = await pdfDoc.getPage(pageNum);
-        const containerWidth = pagesContainerRef.current?.clientWidth || (typeof window !== "undefined" ? window.innerWidth : 800);
         const unscaledViewport = page.getViewport({ scale: 1.0, rotation });
-        // Calculate fit scale so PDF page comfortably fills mobile width without horizontal compression
-        const fitScale = Math.min(1.5, Math.max(0.8, (containerWidth - 32) / unscaledViewport.width));
-        const viewport = page.getViewport({ scale: fitScale, rotation });
 
-        const ctx = canvas.getContext("2d");
+        // Calculate base fit-width scale
+        const baseFitWidthScale = availableWidth / unscaledViewport.width;
+        // Calculate base fit-page scale
+        const viewportHeight = scrollViewportRef.current.clientHeight || 700;
+        const availableHeight = Math.max(400, viewportHeight - 80);
+        const baseFitPageScale = Math.min(baseFitWidthScale, availableHeight / unscaledViewport.height);
+
+        let targetBaseScale = baseFitWidthScale;
+        if (fitMode === "page") {
+          targetBaseScale = baseFitPageScale;
+        }
+
+        // The effective scale combines base layout fit with user scale multiplier
+        const effectiveScale = targetBaseScale * scale;
+        const viewport = page.getViewport({ scale: effectiveScale, rotation });
+
+        const ctx = canvas.getContext("2d", { alpha: false });
         if (!ctx) continue;
 
-        // Set backing store dimensions to High-DPI ratio
+        // Set high-DPI internal buffer dimensions (prevents blurriness)
         canvas.width = Math.floor(viewport.width * dpr);
         canvas.height = Math.floor(viewport.height * dpr);
 
-        // Display dimensions in CSS pixels with responsive maximum bounds
-        canvas.style.width = "100%";
-        canvas.style.maxWidth = `${Math.floor(viewport.width)}px`;
-        canvas.style.height = "auto";
+        // Display dimensions in CSS pixels (natural layout without clipping)
+        canvas.style.width = `${Math.floor(viewport.width)}px`;
+        canvas.style.height = `${Math.floor(viewport.height)}px`;
+
+        // Update container dimensions to prevent layout collapse
+        pageContainer.style.width = `${Math.floor(viewport.width)}px`;
+        pageContainer.style.height = `${Math.floor(viewport.height)}px`;
 
         ctx.save();
         ctx.scale(dpr, dpr);
@@ -177,66 +207,136 @@ export default function PDFViewerPage() {
         const renderContext = {
           canvasContext: ctx,
           viewport: viewport,
+          intent: "display",
         };
 
         const renderTask = page.render(renderContext);
         renderTasksRef.current.set(pageNum, renderTask);
 
+        setRenderingPages((prev) => ({ ...prev, [pageNum]: true }));
         await renderTask.promise;
         renderTasksRef.current.delete(pageNum);
+        setRenderingPages((prev) => ({ ...prev, [pageNum]: false }));
       } catch (err: any) {
         if (err?.name !== "RenderingCancelledException") {
           console.error(`Page ${pageNum} render error:`, err);
         }
       }
     }
-  }, [pdfDoc, isImage, rotation]);
+  }, [pdfDoc, isImage, scale, rotation, fitMode]);
 
+  // Debounce canvas re-renders when zoom changes to maintain smooth UI responsiveness
   useEffect(() => {
     if (pdfDoc && !loading) {
-      void renderAllPages();
-    }
-  }, [pdfDoc, loading, rotation, renderAllPages]);
-
-  // 3. Track active page on vertical scroll
-  const handleScroll = useCallback(() => {
-    if (!pagesContainerRef.current || numPages === 0) return;
-    const container = pagesContainerRef.current;
-    const scrollTop = container.scrollTop;
-
-    for (let i = 0; i < numPages; i++) {
-      const canvas = pageRefs.current[i];
-      if (canvas) {
-        const top = canvas.offsetTop;
-        const height = canvas.offsetHeight;
-        if (scrollTop >= top - 200 && scrollTop < top + height) {
-          setActivePage(i + 1);
-          break;
-        }
+      if (debounceRenderTimeoutRef.current) {
+        clearTimeout(debounceRenderTimeoutRef.current);
       }
+      debounceRenderTimeoutRef.current = setTimeout(() => {
+        void renderAllPages();
+      }, 100);
     }
-  }, [numPages]);
+    return () => {
+      if (debounceRenderTimeoutRef.current) {
+        clearTimeout(debounceRenderTimeoutRef.current);
+      }
+    };
+  }, [pdfDoc, loading, scale, rotation, fitMode, renderAllPages]);
+
+  // 3. Accurate Page Tracking using IntersectionObserver (immune to scale / pan bugs)
+  useEffect(() => {
+    if (!scrollViewportRef.current || numPages === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let maxRatio = 0;
+        let mostVisiblePage = activePage;
+
+        for (const entry of entries) {
+          if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+            maxRatio = entry.intersectionRatio;
+            const pageNum = Number(entry.target.getAttribute("data-page-number"));
+            if (pageNum) {
+              mostVisiblePage = pageNum;
+            }
+          }
+        }
+
+        if (maxRatio > 0.15) {
+          setActivePage(mostVisiblePage);
+        }
+      },
+      {
+        root: scrollViewportRef.current,
+        threshold: [0.15, 0.5, 0.8],
+      }
+    );
+
+    pageContainerRefs.current.forEach((el) => {
+      if (el) observer.observe(el);
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [numPages, loading, activePage]);
 
   // 4. Scroll to specific page number
   const scrollToPage = (targetPage: number) => {
     const safePage = Math.max(1, Math.min(numPages, targetPage));
-    const targetCanvas = pageRefs.current[safePage - 1];
-    if (targetCanvas && pagesContainerRef.current) {
-      targetCanvas.scrollIntoView({ behavior: "smooth", block: "start" });
+    const targetElement = pageContainerRefs.current[safePage - 1];
+    if (targetElement && scrollViewportRef.current) {
+      targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
       setActivePage(safePage);
     }
   };
 
-  // 5. Isolated Zooming & Keyboard controls (Ctrl++, Ctrl--, Ctrl+Wheel)
+  // 5. Focal-Point Zoom Change Helper
+  const applyZoom = useCallback(
+    (newScale: number, focalPoint?: { x: number; y: number }) => {
+      const clampedScale = Math.max(0.5, Math.min(3.0, Number(newScale.toFixed(2))));
+      if (clampedScale === scale) return;
+
+      const viewport = scrollViewportRef.current;
+      if (!viewport || !focalPoint) {
+        setScale(clampedScale);
+        setFitMode("custom");
+        return;
+      }
+
+      // Preserve point under cursor/finger during zoom
+      const prevScrollX = viewport.scrollLeft;
+      const prevScrollY = viewport.scrollTop;
+      const scaleRatio = clampedScale / scale;
+
+      const focalX = focalPoint.x + prevScrollX;
+      const focalY = focalPoint.y + prevScrollY;
+
+      const newScrollX = focalX * scaleRatio - focalPoint.x;
+      const newScrollY = focalY * scaleRatio - focalPoint.y;
+
+      setScale(clampedScale);
+      setFitMode("custom");
+
+      requestAnimationFrame(() => {
+        if (scrollViewportRef.current) {
+          scrollViewportRef.current.scrollLeft = Math.max(0, newScrollX);
+          scrollViewportRef.current.scrollTop = Math.max(0, newScrollY);
+        }
+      });
+    },
+    [scale]
+  );
+
+  // 6. Keyboard & Mouse Wheel Zoom Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
         if (e.key === "=" || e.key === "+") {
           e.preventDefault();
-          setScale((s) => Math.min(3.0, s + 0.25));
+          applyZoom(scale + 0.25);
         } else if (e.key === "-") {
           e.preventDefault();
-          setScale((s) => Math.max(0.5, s - 0.25));
+          applyZoom(scale - 0.25);
         } else if (e.key === "0") {
           e.preventDefault();
           resetView();
@@ -248,72 +348,80 @@ export default function PDFViewerPage() {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const delta = e.deltaY < 0 ? 0.15 : -0.15;
-        setScale((s) => {
-          const next = Math.max(0.5, Math.min(3.0, s + delta));
-          setPosition((p) => clampPosition(p.x, p.y, next));
-          return next;
-        });
+        const rect = scrollViewportRef.current?.getBoundingClientRect();
+        const focal = rect
+          ? { x: e.clientX - rect.left, y: e.clientY - rect.top }
+          : undefined;
+        applyZoom(scale + delta, focal);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("wheel", handleWheel, { passive: false });
+    const viewport = scrollViewportRef.current;
+    if (viewport) {
+      viewport.addEventListener("wheel", handleWheel, { passive: false });
+    }
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("wheel", handleWheel);
+      if (viewport) {
+        viewport.removeEventListener("wheel", handleWheel);
+      }
     };
-  }, [clampPosition]);
+  }, [scale, applyZoom]);
 
-  // 6. Reset View Handler
+  // 7. Reset View Handler
   const resetView = () => {
     setScale(1.0);
     setRotation(0);
-    setPosition({ x: 0, y: 0 });
-    if (pagesContainerRef.current) {
-      pagesContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    setFitMode("width");
+    setImgPosition({ x: 0, y: 0 });
+    if (scrollViewportRef.current) {
+      scrollViewportRef.current.scrollTo({ top: 0, left: 0, behavior: "smooth" });
     }
   };
 
-  // 7. Mouse Drag Panning (Bounded)
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (scale <= 1.0) return;
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const nextX = e.clientX - dragStart.x;
-    const nextY = e.clientY - dragStart.y;
-    setPosition(clampPosition(nextX, nextY, scale));
-  };
-
-  const handleMouseUp = () => setIsDragging(false);
-
-  // 8. Touch Pinch-Zoom & Bounded Pan
+  // 8. Mobile Touch Gestures (Pinch-to-Zoom with True Midpoint Tracking)
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
       touchStartDistRef.current = dist;
       touchStartScaleRef.current = scale;
+
+      const rect = scrollViewportRef.current?.getBoundingClientRect();
+      if (rect) {
+        touchFocalPointRef.current = {
+          x: (t1.clientX + t2.clientX) / 2 - rect.left,
+          y: (t1.clientY + t2.clientY) / 2 - rect.top,
+        };
+      }
     } else if (e.touches.length === 1) {
       const now = Date.now();
+      const touch = e.touches[0];
+
+      // Double-Tap to Zoom to Point
       if (now - lastTapRef.current < 300) {
-        // Double-tap zoom toggle
-        setScale((s) => (s > 1.2 ? 1.0 : 2.0));
-        setPosition({ x: 0, y: 0 });
+        const rect = scrollViewportRef.current?.getBoundingClientRect();
+        const focal = rect
+          ? { x: touch.clientX - rect.left, y: touch.clientY - rect.top }
+          : undefined;
+
+        if (scale > 1.2) {
+          applyZoom(1.0, focal);
+        } else {
+          applyZoom(2.0, focal);
+        }
       }
       lastTapRef.current = now;
 
-      if (scale > 1.0) {
-        setIsDragging(true);
-        setDragStart({
-          x: e.touches[0].clientX - position.x,
-          y: e.touches[0].clientY - position.y,
+      // Image dragging initialization
+      if (isImage && scale > 1.0) {
+        setIsImgDragging(true);
+        setImgDragStart({
+          x: touch.clientX - imgPosition.x,
+          y: touch.clientY - imgPosition.y,
         });
       }
     }
@@ -321,27 +429,49 @@ export default function PDFViewerPage() {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length === 2 && touchStartDistRef.current !== null) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
       const ratio = dist / touchStartDistRef.current;
-      const nextScale = Math.max(0.5, Math.min(3.0, touchStartScaleRef.current * ratio));
-      setScale(nextScale);
-      setPosition((p) => clampPosition(p.x, p.y, nextScale));
-    } else if (e.touches.length === 1 && isDragging) {
-      const nextX = e.touches[0].clientX - dragStart.x;
-      const nextY = e.touches[0].clientY - dragStart.y;
-      setPosition(clampPosition(nextX, nextY, scale));
+      const targetScale = touchStartScaleRef.current * ratio;
+
+      applyZoom(targetScale, touchFocalPointRef.current || undefined);
+    } else if (e.touches.length === 1 && isImgDragging && isImage) {
+      const touch = e.touches[0];
+      setImgPosition({
+        x: touch.clientX - imgDragStart.x,
+        y: touch.clientY - imgDragStart.y,
+      });
     }
   };
 
   const handleTouchEnd = () => {
     touchStartDistRef.current = null;
-    setIsDragging(false);
+    touchFocalPointRef.current = null;
+    setIsImgDragging(false);
   };
 
-  // Toggle Fullscreen
+  // 9. Image Viewer Mouse Dragging
+  const handleImageMouseDown = (e: React.MouseEvent) => {
+    if (scale <= 1.0 || !isImage) return;
+    setIsImgDragging(true);
+    setImgDragStart({
+      x: e.clientX - imgPosition.x,
+      y: e.clientY - imgPosition.y,
+    });
+  };
+
+  const handleImageMouseMove = (e: React.MouseEvent) => {
+    if (!isImgDragging || !isImage) return;
+    setImgPosition({
+      x: e.clientX - imgDragStart.x,
+      y: e.clientY - imgDragStart.y,
+    });
+  };
+
+  const handleImageMouseUp = () => setIsImgDragging(false);
+
+  // 10. Toggle Fullscreen
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
@@ -353,15 +483,28 @@ export default function PDFViewerPage() {
     }
   };
 
+  // Zoom presets
+  const zoomPresets = [
+    { label: "Fit to Width", value: "width" },
+    { label: "Fit to Page", value: "page" },
+    { label: "50%", scale: 0.5 },
+    { label: "75%", scale: 0.75 },
+    { label: "100%", scale: 1.0 },
+    { label: "125%", scale: 1.25 },
+    { label: "150%", scale: 1.5 },
+    { label: "200%", scale: 2.0 },
+    { label: "300%", scale: 3.0 },
+  ];
+
   return (
     <div
       ref={containerRef}
       className="flex flex-col h-[calc(100vh-4rem)] w-full bg-background text-foreground overflow-hidden select-none"
     >
       {/* Top Header Controls Bar */}
-      <div className="h-14 border-b border-border bg-card/95 backdrop-blur-md px-4 flex items-center justify-between shrink-0 z-20 shadow-sm gap-2">
+      <div className="h-14 border-b border-border bg-card/95 backdrop-blur-md px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 shadow-sm gap-2">
         {/* Left Title & Back */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Button
             variant="ghost"
             size="sm"
@@ -372,59 +515,84 @@ export default function PDFViewerPage() {
             <span className="hidden sm:inline">Back</span>
           </Button>
           <div className="h-4 w-px bg-border hidden sm:block" />
-          <h1 className="text-sm font-semibold truncate max-w-[180px] sm:max-w-[300px] md:max-w-md">
+          <h1 className="text-sm font-semibold truncate max-w-[140px] sm:max-w-[260px] md:max-w-md">
             {title}
           </h1>
         </div>
 
-        {/* Center Toolbar: Zoom, Dual Rotation, Reset View */}
+        {/* Center Toolbar: Zoom, Scale Preset Dropdown, Dual Rotation, Reset */}
         <div className="flex items-center gap-1 sm:gap-2">
           {/* Zoom Out */}
           <Button
             variant="outline"
             size="icon"
             className="h-8 w-8 rounded-lg"
-            onClick={() => {
-              const next = Math.max(0.5, scale - 0.25);
-              setScale(next);
-              setPosition((p) => clampPosition(p.x, p.y, next));
-            }}
+            onClick={() => applyZoom(scale - 0.25)}
             disabled={scale <= 0.5}
-            title="Zoom Out (Ctrl + -)"
+            title="Zoom Out (Ctrl -)"
           >
             <ZoomOut className="h-3.5 w-3.5" />
           </Button>
 
-          {/* Scale Badge */}
-          <span className="text-xs font-mono font-medium px-2 py-1 bg-muted rounded-md min-w-[3rem] text-center">
-            {Math.round(scale * 100)}%
-          </span>
+          {/* Scale Preset Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2 font-mono text-xs font-medium rounded-lg min-w-[4rem] flex items-center justify-between gap-1"
+              >
+                <span>{Math.round(scale * 100)}%</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-36">
+              {zoomPresets.map((preset) => (
+                <DropdownMenuItem
+                  key={preset.label}
+                  onClick={() => {
+                    if (preset.value === "width") {
+                      setFitMode("width");
+                      setScale(1.0);
+                    } else if (preset.value === "page") {
+                      setFitMode("page");
+                      setScale(1.0);
+                    } else if (preset.scale) {
+                      setFitMode("custom");
+                      setScale(preset.scale);
+                    }
+                  }}
+                  className="flex items-center justify-between text-xs cursor-pointer"
+                >
+                  <span>{preset.label}</span>
+                  {((fitMode === preset.value) || (fitMode === "custom" && preset.scale === scale)) && (
+                    <Check className="h-3.5 w-3.5 text-primary" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Zoom In */}
           <Button
             variant="outline"
             size="icon"
             className="h-8 w-8 rounded-lg"
-            onClick={() => {
-              const next = Math.min(3.0, scale + 0.25);
-              setScale(next);
-              setPosition((p) => clampPosition(p.x, p.y, next));
-            }}
+            onClick={() => applyZoom(scale + 0.25)}
             disabled={scale >= 3.0}
-            title="Zoom In (Ctrl + +)"
+            title="Zoom In (Ctrl +)"
           >
             <ZoomIn className="h-3.5 w-3.5" />
           </Button>
 
-          <div className="h-4 w-px bg-border mx-1" />
+          <div className="h-4 w-px bg-border mx-0.5 sm:mx-1" />
 
           {/* Rotate Anti-Clockwise (-90°) */}
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8 rounded-lg"
+            className="h-8 w-8 rounded-lg hidden xs:inline-flex"
             onClick={() => setRotation((r) => (r - 90 + 360) % 360)}
-            title="Rotate Anti-Clockwise (-90°)"
+            title="Rotate Left (-90°)"
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </Button>
@@ -435,7 +603,7 @@ export default function PDFViewerPage() {
             size="icon"
             className="h-8 w-8 rounded-lg"
             onClick={() => setRotation((r) => (r + 90) % 360)}
-            title="Rotate Clockwise (+90°)"
+            title="Rotate Right (+90°)"
           >
             <RotateCw className="h-3.5 w-3.5" />
           </Button>
@@ -444,12 +612,12 @@ export default function PDFViewerPage() {
           <Button
             variant="secondary"
             size="sm"
-            className="h-8 px-2.5 rounded-lg text-xs font-medium gap-1.5"
+            className="h-8 px-2.5 rounded-lg text-xs font-medium gap-1.5 hidden md:inline-flex"
             onClick={resetView}
-            title="Reset Zoom & Centering"
+            title="Reset Zoom & Alignment"
           >
             <ResetIcon className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Reset View</span>
+            <span>Reset</span>
           </Button>
         </div>
 
@@ -458,7 +626,7 @@ export default function PDFViewerPage() {
           {blobUrl && (
             <a
               href={blobUrl}
-              download={`${title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`}
+              download={`${title.replace(/[^a-zA-Z0-9]/g, "_")}.${isImage ? "png" : "pdf"}`}
               className="inline-flex"
             >
               <Button
@@ -496,7 +664,7 @@ export default function PDFViewerPage() {
               <FileText className="h-5 w-5 text-primary absolute" />
             </div>
             <p className="text-sm font-medium text-muted-foreground animate-pulse">
-              Preparing document...
+              Rendering document in high resolution...
             </p>
           </div>
         ) : error ? (
@@ -517,9 +685,9 @@ export default function PDFViewerPage() {
         ) : isImage && blobUrl ? (
           /* Direct Image Viewer with HD Scaling & Bounded Pan */
           <div
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
+            onMouseDown={handleImageMouseDown}
+            onMouseMove={handleImageMouseMove}
+            onMouseUp={handleImageMouseUp}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -529,42 +697,42 @@ export default function PDFViewerPage() {
             <img
               src={blobUrl}
               alt={title}
-              className="max-h-full max-w-full object-contain rounded-lg shadow-xl transition-transform duration-75"
+              className="max-h-full max-w-full object-contain rounded-lg shadow-xl transition-transform duration-100 ease-out"
               style={{
-                transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
+                transform: `translate(${imgPosition.x}px, ${imgPosition.y}px) scale(${scale}) rotate(${rotation}deg)`,
               }}
             />
           </div>
         ) : (
-          /* Continuous Vertical Scroll PDF Canvas Area */
+          /* Continuous Native Scroll Multi-Page PDF Canvas Area (Natural 2D Scrolling Without Edge Clipping) */
           <div
-            ref={pagesContainerRef}
-            onScroll={handleScroll}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
+            ref={scrollViewportRef}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            className="w-full h-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 flex flex-col items-center gap-6 touch-pan-y"
+            className="w-full h-full overflow-auto p-4 sm:p-8 flex flex-col items-center gap-8 scroll-smooth"
           >
-            <div
-              className="flex flex-col items-center gap-6 transition-transform duration-75 origin-top"
-              style={{
-                transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-              }}
-            >
+            <div className="flex flex-col items-center gap-8 min-w-full pb-20">
               {Array.from({ length: numPages }, (_, index) => (
                 <div
                   key={`page-${index + 1}`}
-                  className="relative rounded-xl overflow-hidden shadow-xl border border-border/60 bg-card"
+                  data-page-number={index + 1}
+                  ref={(el) => {
+                    pageContainerRefs.current[index] = el;
+                  }}
+                  className="relative rounded-xl overflow-hidden shadow-2xl border border-border/80 bg-card transition-all duration-150 flex items-center justify-center"
                 >
                   <canvas
                     ref={(el) => {
-                      pageRefs.current[index] = el;
+                      pageCanvasRefs.current[index] = el;
                     }}
-                    className="block max-w-full h-auto"
+                    className="block"
                   />
+                  {renderingPages[index + 1] && (
+                    <div className="absolute inset-0 bg-background/30 backdrop-blur-[1px] flex items-center justify-center pointer-events-none transition-opacity">
+                      <div className="h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -573,27 +741,29 @@ export default function PDFViewerPage() {
 
         {/* Floating Bottom Page Indicator Bar for PDF */}
         {!loading && !error && !isImage && numPages > 0 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-card/90 backdrop-blur-md border border-border rounded-full px-4 py-1.5 shadow-lg flex items-center gap-3 z-30">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-card/95 backdrop-blur-md border border-border/80 rounded-full px-4 py-1.5 shadow-xl flex items-center gap-3 z-30">
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 rounded-full"
+              className="h-6 w-6 rounded-full hover:bg-muted"
               onClick={() => scrollToPage(activePage - 1)}
               disabled={activePage <= 1}
+              title="Previous Page"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
 
-            <span className="text-xs font-medium font-mono">
+            <span className="text-xs font-semibold font-mono px-1">
               Page {activePage} of {numPages}
             </span>
 
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 rounded-full"
+              className="h-6 w-6 rounded-full hover:bg-muted"
               onClick={() => scrollToPage(activePage + 1)}
               disabled={activePage >= numPages}
+              title="Next Page"
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
