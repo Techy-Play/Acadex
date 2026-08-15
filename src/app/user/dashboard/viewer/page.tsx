@@ -59,13 +59,32 @@ export default function PDFViewerPage() {
   const pageCanvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const renderTasksRef = useRef<Map<number, any>>(new Map());
   const debounceRenderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pageBaseDimensionsRef = useRef<{ width: number; height: number }[]>([]);
+
+  // Base dimensions tracker for instant CSS scaling
+  const baseDimensionsRef = useRef<Record<number, { width: number; height: number }>>({});
 
   // Touch gesture tracking
   const touchStartDistRef = useRef<number | null>(null);
   const touchStartScaleRef = useRef<number>(1.0);
   const touchFocalPointRef = useRef<{ x: number; y: number } | null>(null);
   const lastTapRef = useRef<number>(0);
+
+  // State refs for native event listeners
+  const scaleRef = useRef(scale);
+  const isImageRef = useRef(isImage);
+  const imgPositionRef = useRef(imgPosition);
+
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+
+  useEffect(() => {
+    isImageRef.current = isImage;
+  }, [isImage]);
+
+  useEffect(() => {
+    imgPositionRef.current = imgPosition;
+  }, [imgPosition]);
 
   const proxyUrl = useMemo(
     () => `/api/pdf-proxy?url=${encodeURIComponent(fileUrl)}`,
@@ -140,7 +159,7 @@ export default function PDFViewerPage() {
     };
   }, [fileUrl, proxyUrl]);
 
-  // 2. High-DPI Crisp Multi-Page Canvas Rendering at Exact Zoom Level
+  // 2. High-DPI Crisp Multi-Page Canvas Rendering (Silent Background)
   const renderAllPages = useCallback(async () => {
     if (!pdfDoc || isImage || !scrollViewportRef.current) return;
 
@@ -154,7 +173,6 @@ export default function PDFViewerPage() {
       if (!canvas || !pageContainer) continue;
 
       try {
-        // Cancel existing render task for this page if currently executing
         if (renderTasksRef.current.has(pageNum)) {
           try {
             renderTasksRef.current.get(pageNum).cancel();
@@ -167,9 +185,7 @@ export default function PDFViewerPage() {
         const page = await pdfDoc.getPage(pageNum);
         const unscaledViewport = page.getViewport({ scale: 1.0, rotation });
 
-        // Calculate base fit-width scale
         const baseFitWidthScale = availableWidth / unscaledViewport.width;
-        // Calculate base fit-page scale
         const viewportHeight = scrollViewportRef.current.clientHeight || 700;
         const availableHeight = Math.max(400, viewportHeight - 80);
         const baseFitPageScale = Math.min(baseFitWidthScale, availableHeight / unscaledViewport.height);
@@ -179,25 +195,18 @@ export default function PDFViewerPage() {
           targetBaseScale = baseFitPageScale;
         }
 
-        // The effective scale combines base layout fit with user scale multiplier
-        const effectiveScale = targetBaseScale * scale;
+        const baseWidth = unscaledViewport.width * targetBaseScale;
+        const baseHeight = unscaledViewport.height * targetBaseScale;
+        baseDimensionsRef.current[pageNum] = { width: baseWidth, height: baseHeight };
+
+        const effectiveScale = targetBaseScale * scaleRef.current;
         const viewport = page.getViewport({ scale: effectiveScale, rotation });
 
         const ctx = canvas.getContext("2d", { alpha: false });
         if (!ctx) continue;
 
-        // Set high-DPI internal buffer dimensions (prevents blurriness)
         canvas.width = Math.floor(viewport.width * dpr);
         canvas.height = Math.floor(viewport.height * dpr);
-
-        // Store base dimensions for instant CSS scaling during zoom
-        const baseW = viewport.width / scale;
-        const baseH = viewport.height / scale;
-        pageBaseDimensionsRef.current[pageNum - 1] = { width: baseW, height: baseH };
-
-        // Ensure container is sized correctly if this is the first render
-        pageContainer.style.width = `${Math.floor(viewport.width)}px`;
-        pageContainer.style.height = `${Math.floor(viewport.height)}px`;
 
         ctx.save();
         ctx.scale(dpr, dpr);
@@ -211,8 +220,6 @@ export default function PDFViewerPage() {
         const renderTask = page.render(renderContext);
         renderTasksRef.current.set(pageNum, renderTask);
 
-        // Notice: We intentionally do NOT show a spinner overlay here anymore.
-        // This eliminates the flickering effect while the background re-renders.
         await renderTask.promise;
         renderTasksRef.current.delete(pageNum);
       } catch (err: any) {
@@ -221,9 +228,21 @@ export default function PDFViewerPage() {
         }
       }
     }
-  }, [pdfDoc, isImage, scale, rotation, fitMode]);
+  }, [pdfDoc, isImage, rotation, fitMode]);
 
-  // Debounce canvas re-renders when zoom changes to maintain smooth UI responsiveness
+  // Instant 60fps Hardware-Accelerated Scaling (CSS Updates)
+  useEffect(() => {
+    for (let i = 1; i <= numPages; i++) {
+      const container = pageContainerRefs.current[i - 1];
+      const baseDim = baseDimensionsRef.current[i];
+      if (container && baseDim) {
+        container.style.width = `${Math.floor(baseDim.width * scale)}px`;
+        container.style.height = `${Math.floor(baseDim.height * scale)}px`;
+      }
+    }
+  }, [scale, numPages]);
+
+  // Debounce silent re-render when zoom settles
   useEffect(() => {
     if (pdfDoc && !loading) {
       if (debounceRenderTimeoutRef.current) {
@@ -240,7 +259,7 @@ export default function PDFViewerPage() {
     };
   }, [pdfDoc, loading, scale, rotation, fitMode, renderAllPages]);
 
-  // 3. Accurate Page Tracking using IntersectionObserver (immune to scale / pan bugs)
+  // Accurate Page Tracking using IntersectionObserver
   useEffect(() => {
     if (!scrollViewportRef.current || numPages === 0) return;
 
@@ -278,7 +297,7 @@ export default function PDFViewerPage() {
     };
   }, [numPages, loading, activePage]);
 
-  // 4. Scroll to specific page number
+  // Scroll to specific page number
   const scrollToPage = (targetPage: number) => {
     const safePage = Math.max(1, Math.min(numPages, targetPage));
     const targetElement = pageContainerRefs.current[safePage - 1];
@@ -288,29 +307,19 @@ export default function PDFViewerPage() {
     }
   };
 
-  // 5. Focal-Point Zoom Change Helper
+  // Focal-Point Zoom Change Helper
   const applyZoom = useCallback(
     (newScale: number, focalPoint?: { x: number; y: number }) => {
-      const clampedScale = Math.max(0.5, Math.min(3.0, Number(newScale.toFixed(2))));
+      const clampedScale = Math.max(0.5, Math.min(4.0, Number(newScale.toFixed(2))));
       if (clampedScale === scale) return;
 
       const viewport = scrollViewportRef.current;
       if (!viewport || !focalPoint) {
         setScale(clampedScale);
         setFitMode("custom");
-        
-        // Instant hardware-accelerated stretch for buttons
-        pageContainerRefs.current.forEach((container, i) => {
-          const base = pageBaseDimensionsRef.current[i];
-          if (container && base) {
-            container.style.width = `${Math.floor(base.width * clampedScale)}px`;
-            container.style.height = `${Math.floor(base.height * clampedScale)}px`;
-          }
-        });
         return;
       }
 
-      // Preserve point under cursor/finger during zoom
       const prevScrollX = viewport.scrollLeft;
       const prevScrollY = viewport.scrollTop;
       const scaleRatio = clampedScale / scale;
@@ -324,15 +333,6 @@ export default function PDFViewerPage() {
       setScale(clampedScale);
       setFitMode("custom");
 
-      // Instant hardware-accelerated stretch for pinch/wheel (zero lag)
-      pageContainerRefs.current.forEach((container, i) => {
-        const base = pageBaseDimensionsRef.current[i];
-        if (container && base) {
-          container.style.width = `${Math.floor(base.width * clampedScale)}px`;
-          container.style.height = `${Math.floor(base.height * clampedScale)}px`;
-        }
-      });
-
       requestAnimationFrame(() => {
         if (scrollViewportRef.current) {
           scrollViewportRef.current.scrollLeft = Math.max(0, newScrollX);
@@ -343,27 +343,16 @@ export default function PDFViewerPage() {
     [scale]
   );
 
-  // Store applyZoom in a ref for the native touch listeners to access latest version
-  const applyZoomRef = useRef(applyZoom);
-  useEffect(() => {
-    applyZoomRef.current = applyZoom;
-  }, [applyZoom]);
-
-  const stateRef = useRef({ scale, isImage, isImgDragging, imgPosition, imgDragStart });
-  useEffect(() => {
-    stateRef.current = { scale, isImage, isImgDragging, imgPosition, imgDragStart };
-  }, [scale, isImage, isImgDragging, imgPosition, imgDragStart]);
-
-  // 6. Keyboard & Mouse Wheel Zoom Controls
+  // Keyboard & Mouse Wheel Zoom Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
         if (e.key === "=" || e.key === "+") {
           e.preventDefault();
-          applyZoomRef.current(stateRef.current.scale + 0.25);
+          applyZoom(scale + 0.25);
         } else if (e.key === "-") {
           e.preventDefault();
-          applyZoomRef.current(stateRef.current.scale - 0.25);
+          applyZoom(scale - 0.25);
         } else if (e.key === "0") {
           e.preventDefault();
           resetView();
@@ -379,7 +368,7 @@ export default function PDFViewerPage() {
         const focal = rect
           ? { x: e.clientX - rect.left, y: e.clientY - rect.top }
           : undefined;
-        applyZoomRef.current(stateRef.current.scale + delta, focal);
+        applyZoom(scale + delta, focal);
       }
     };
 
@@ -395,121 +384,108 @@ export default function PDFViewerPage() {
         viewport.removeEventListener("wheel", handleWheel);
       }
     };
-  }, []); // Run once, relies on refs
+  }, [scale, applyZoom]);
 
-  // 7. Reset View Handler
-  const resetView = () => {
-    setScale(1.0);
-    setRotation(0);
-    setFitMode("width");
-    setImgPosition({ x: 0, y: 0 });
-    
-    // Reset widths
-    pageContainerRefs.current.forEach((container, i) => {
-      const base = pageBaseDimensionsRef.current[i];
-      if (container && base) {
-        container.style.width = `${Math.floor(base.width)}px`;
-        container.style.height = `${Math.floor(base.height)}px`;
-      }
-    });
-
-    if (scrollViewportRef.current) {
-      scrollViewportRef.current.scrollTo({ top: 0, left: 0, behavior: "smooth" });
-    }
-  };
-
-  // 8. STRICT Native Touch Handlers (Fixes Mobile Whole-Page Zoom!)
+  // Strict Native Touch Interception (Fixes Whole-page Zoom)
   useEffect(() => {
     const viewport = scrollViewportRef.current;
     if (!viewport) return;
 
-    const onTouchStart = (e: TouchEvent) => {
+    let isImgDraggingNative = false;
+    let imgDragStartNative = { x: 0, y: 0 };
+
+    const handleTouchStartNative = (e: TouchEvent) => {
       if (e.touches.length === 2) {
+        e.preventDefault(); // Block native page zoom
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
         touchStartDistRef.current = dist;
-        touchStartScaleRef.current = stateRef.current.scale;
+        touchStartScaleRef.current = scaleRef.current;
 
-        const rect = scrollViewportRef.current?.getBoundingClientRect();
-        if (rect) {
-          touchFocalPointRef.current = {
-            x: (t1.clientX + t2.clientX) / 2 - rect.left,
-            y: (t1.clientY + t2.clientY) / 2 - rect.top,
-          };
-        }
+        const rect = viewport.getBoundingClientRect();
+        touchFocalPointRef.current = {
+          x: (t1.clientX + t2.clientX) / 2 - rect.left,
+          y: (t1.clientY + t2.clientY) / 2 - rect.top,
+        };
       } else if (e.touches.length === 1) {
         const now = Date.now();
         const touch = e.touches[0];
 
-        // Double-Tap to Zoom to Point
         if (now - lastTapRef.current < 300) {
-          e.preventDefault(); // Stop native double-tap zoom
-          const rect = scrollViewportRef.current?.getBoundingClientRect();
-          const focal = rect
-            ? { x: touch.clientX - rect.left, y: touch.clientY - rect.top }
-            : undefined;
+          e.preventDefault(); // Block native double-tap zoom
+          const rect = viewport.getBoundingClientRect();
+          const focal = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
 
-          if (stateRef.current.scale > 1.2) {
-            applyZoomRef.current(1.0, focal);
+          if (scaleRef.current > 1.2) {
+            applyZoom(1.0, focal);
           } else {
-            applyZoomRef.current(2.0, focal);
+            applyZoom(2.0, focal);
           }
         }
         lastTapRef.current = now;
 
-        // Image dragging initialization
-        const state = stateRef.current;
-        if (state.isImage && state.scale > 1.0) {
-          setIsImgDragging(true);
-          setImgDragStart({
-            x: touch.clientX - state.imgPosition.x,
-            y: touch.clientY - state.imgPosition.y,
-          });
+        if (isImageRef.current && scaleRef.current > 1.0) {
+          isImgDraggingNative = true;
+          imgDragStartNative = {
+            x: touch.clientX - imgPositionRef.current.x,
+            y: touch.clientY - imgPositionRef.current.y,
+          };
         }
       }
     };
 
-    const onTouchMove = (e: TouchEvent) => {
+    const handleTouchMoveNative = (e: TouchEvent) => {
       if (e.touches.length === 2 && touchStartDistRef.current !== null) {
-        // CRITICAL: Prevent default to stop browser from zooming the entire page natively!
-        e.preventDefault(); 
-        
+        e.preventDefault(); // Block native page zoom
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
         const ratio = dist / touchStartDistRef.current;
         const targetScale = touchStartScaleRef.current * ratio;
 
-        applyZoomRef.current(targetScale, touchFocalPointRef.current || undefined);
-      } else if (e.touches.length === 1 && stateRef.current.isImgDragging && stateRef.current.isImage) {
-        e.preventDefault(); // Stop page scrolling when dragging image
+        applyZoom(targetScale, touchFocalPointRef.current || undefined);
+      } else if (e.touches.length === 1 && isImgDraggingNative && isImageRef.current) {
+        e.preventDefault(); // Prevent scrolling while panning image
         const touch = e.touches[0];
         setImgPosition({
-          x: touch.clientX - stateRef.current.imgDragStart.x,
-          y: touch.clientY - stateRef.current.imgDragStart.y,
+          x: touch.clientX - imgDragStartNative.x,
+          y: touch.clientY - imgDragStartNative.y,
         });
       }
     };
 
-    const onTouchEnd = () => {
+    const handleTouchEndNative = () => {
       touchStartDistRef.current = null;
       touchFocalPointRef.current = null;
-      setIsImgDragging(false);
+      isImgDraggingNative = false;
     };
 
-    viewport.addEventListener('touchstart', onTouchStart, { passive: false });
-    viewport.addEventListener('touchmove', onTouchMove, { passive: false });
-    viewport.addEventListener('touchend', onTouchEnd);
+    viewport.addEventListener("touchstart", handleTouchStartNative, { passive: false });
+    viewport.addEventListener("touchmove", handleTouchMoveNative, { passive: false });
+    viewport.addEventListener("touchend", handleTouchEndNative);
+    viewport.addEventListener("touchcancel", handleTouchEndNative);
 
     return () => {
-      viewport.removeEventListener('touchstart', onTouchStart);
-      viewport.removeEventListener('touchmove', onTouchMove);
-      viewport.removeEventListener('touchend', onTouchEnd);
+      viewport.removeEventListener("touchstart", handleTouchStartNative);
+      viewport.removeEventListener("touchmove", handleTouchMoveNative);
+      viewport.removeEventListener("touchend", handleTouchEndNative);
+      viewport.removeEventListener("touchcancel", handleTouchEndNative);
     };
-  }, []); // Run once, relies on refs
+  }, [applyZoom]);
 
-  // 9. Image Viewer Mouse Dragging
+  // Reset View Handler
+  const resetView = () => {
+    setScale(1.0);
+    setRotation(0);
+    setFitMode("width");
+    setImgPosition({ x: 0, y: 0 });
+    if (scrollViewportRef.current) {
+      scrollViewportRef.current.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    }
+  };
+
+  // Image Viewer Mouse Dragging
   const handleImageMouseDown = (e: React.MouseEvent) => {
     if (scale <= 1.0 || !isImage) return;
     setIsImgDragging(true);
@@ -529,7 +505,7 @@ export default function PDFViewerPage() {
 
   const handleImageMouseUp = () => setIsImgDragging(false);
 
-  // 10. Toggle Fullscreen
+  // Toggle Fullscreen
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
@@ -557,7 +533,7 @@ export default function PDFViewerPage() {
   return (
     <div
       ref={containerRef}
-      className="flex flex-col h-[calc(100vh-4rem)] w-full bg-background text-foreground overflow-hidden select-none touch-none"
+      className="flex flex-col h-[calc(100vh-4rem)] w-full bg-background text-foreground overflow-hidden select-none"
     >
       {/* Top Header Controls Bar */}
       <div className="h-14 border-b border-border bg-card/95 backdrop-blur-md px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 shadow-sm gap-2">
@@ -616,7 +592,7 @@ export default function PDFViewerPage() {
                       setScale(1.0);
                     } else if (preset.scale) {
                       setFitMode("custom");
-                      applyZoom(preset.scale);
+                      setScale(preset.scale);
                     }
                   }}
                   className="flex items-center justify-between text-xs cursor-pointer"
@@ -636,7 +612,7 @@ export default function PDFViewerPage() {
             size="icon"
             className="h-8 w-8 rounded-lg"
             onClick={() => applyZoom(scale + 0.25)}
-            disabled={scale >= 3.0}
+            disabled={scale >= 4.0}
             title="Zoom In (Ctrl +)"
           >
             <ZoomIn className="h-3.5 w-3.5" />
@@ -743,11 +719,10 @@ export default function PDFViewerPage() {
         ) : isImage && blobUrl ? (
           /* Direct Image Viewer with HD Scaling & Bounded Pan */
           <div
-            ref={scrollViewportRef}
             onMouseDown={handleImageMouseDown}
             onMouseMove={handleImageMouseMove}
             onMouseUp={handleImageMouseUp}
-            className="w-full h-full flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing p-4"
+            className="w-full h-full flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing touch-none p-4"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -760,10 +735,11 @@ export default function PDFViewerPage() {
             />
           </div>
         ) : (
-          /* Continuous Native Scroll Multi-Page PDF Canvas Area (Natural 2D Scrolling Without Edge Clipping) */
+          /* Continuous Native Scroll Multi-Page PDF Canvas Area */
           <div
             ref={scrollViewportRef}
             className="w-full h-full overflow-auto p-4 sm:p-8 flex flex-col items-center gap-8 scroll-smooth"
+            style={{ touchAction: "pan-x pan-y" }}
           >
             <div className="flex flex-col items-center gap-8 min-w-full pb-20">
               {Array.from({ length: numPages }, (_, index) => (
@@ -774,6 +750,7 @@ export default function PDFViewerPage() {
                     pageContainerRefs.current[index] = el;
                   }}
                   className="relative rounded-xl overflow-hidden shadow-2xl border border-border/80 bg-card flex items-center justify-center"
+                  style={{ transform: `rotate(${rotation}deg)` }}
                 >
                   <canvas
                     ref={(el) => {
