@@ -51,10 +51,14 @@ export async function GET(request: Request) {
           );
 
           const buffer = Buffer.from(driveRes.data as ArrayBuffer);
+          const driveContentType = driveRes.headers && driveRes.headers['content-type'] 
+            ? driveRes.headers['content-type'] 
+            : "application/pdf";
+            
           return new Response(buffer, {
             status: 200,
             headers: {
-              "Content-Type": "application/pdf",
+              "Content-Type": driveContentType as string,
               "Cache-Control": "public, max-age=3600, s-maxage=86400",
               "Access-Control-Allow-Origin": "*",
             },

@@ -130,13 +130,26 @@ export default function PDFViewerPage() {
       })
       .then(async (res) => {
         const contentType = res.headers.get("content-type") || "";
-        const isActuallyImg = isImg || contentType.startsWith("image/");
+        let isActuallyImg = isImg || contentType.startsWith("image/");
+        
+        const blob = await res.blob();
+        
+        // Fallback robust Magic Byte detection for images missing Content-Type (like Google Drive Octet-Stream)
+        if (!isActuallyImg && blob.size >= 4) {
+          const slice = blob.slice(0, 4);
+          const buf = await slice.arrayBuffer();
+          const view = new DataView(buf);
+          const magic = view.getUint32(0, false);
+          // PNG (0x89504E47), JPEG (0xFFD8FF...), GIF8 (0x47494638)
+          if (magic === 0x89504E47 || (magic & 0xFFFFFF00) === 0xFFD8FF00 || magic === 0x47494638) {
+            isActuallyImg = true;
+          }
+        }
         
         if (isMounted && isActuallyImg !== isImg) {
           setIsImage(isActuallyImg);
         }
 
-        const blob = await res.blob();
         if (!isMounted) return;
         const objectUrl = URL.createObjectURL(blob);
         setBlobUrl(objectUrl);
