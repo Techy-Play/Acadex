@@ -112,8 +112,16 @@ export default function PDFViewerPage() {
     setLoading(true);
     setError(null);
 
-    const isImg = /\.(png|jpe?g|webp|svg)(\?.*)?$/i.test(fileUrl);
+    const isImg = /\.(png|jpe?g|webp|svg|gif|bmp)(\?.*)?$/i.test(fileUrl) || /\.(png|jpe?g|webp|svg|gif|bmp)$/i.test(title);
     setIsImage(isImg);
+
+    const isUnsupported = /\.(docx?|xlsx?|pptx?|csv|txt|zip|rar|7z|tar|gz)(\?.*)?$/i.test(fileUrl) || /\.(docx?|xlsx?|pptx?|csv|txt|zip|rar|7z|tar|gz)$/i.test(title);
+
+    if (isUnsupported) {
+      setError("Preview not available for this file type. Please download the file to view it.");
+      setLoading(false);
+      return;
+    }
 
     fetch(proxyUrl)
       .then((res) => {
@@ -696,10 +704,10 @@ export default function PDFViewerPage() {
 
         {/* Right Actions: Download & Fullscreen */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {blobUrl && (
+          {(blobUrl || fileUrl) && (
             <a
-              href={blobUrl}
-              download={`${title.replace(/[^a-zA-Z0-9]/g, "_")}.${isImage ? "png" : "pdf"}`}
+              href={blobUrl || fileUrl}
+              download={title}
               className="inline-flex"
             >
               <Button
@@ -745,15 +753,13 @@ export default function PDFViewerPage() {
             <div className="p-3 rounded-full bg-destructive/10 text-destructive">
               <FileText className="h-6 w-6" />
             </div>
-            <h3 className="font-semibold text-lg">Unable to Display Document</h3>
+            <h3 className="font-semibold text-lg">{error.includes("Preview not available") ? "Preview Not Supported" : "Unable to Display Document"}</h3>
             <p className="text-xs text-muted-foreground">{error}</p>
-            {blobUrl && (
-              <a href={blobUrl} download target="_blank" rel="noopener noreferrer">
-                <Button size="sm" className="rounded-xl mt-2">
-                  <Download className="mr-2 h-4 w-4" /> Download Document
-                </Button>
-              </a>
-            )}
+            <a href={blobUrl || fileUrl} download={title} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" className="rounded-xl mt-2">
+                <Download className="mr-2 h-4 w-4" /> Download File
+              </Button>
+            </a>
           </div>
         ) : isImage && blobUrl ? (
           /* Direct Image Viewer with HD Scaling & Bounded Pan */
