@@ -126,14 +126,22 @@ export default function PDFViewerPage() {
     fetch(proxyUrl)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to load document.`);
-        return res.blob();
+        return res;
       })
-      .then((blob) => {
+      .then(async (res) => {
+        const contentType = res.headers.get("content-type") || "";
+        const isActuallyImg = isImg || contentType.startsWith("image/");
+        
+        if (isMounted && isActuallyImg !== isImg) {
+          setIsImage(isActuallyImg);
+        }
+
+        const blob = await res.blob();
         if (!isMounted) return;
         const objectUrl = URL.createObjectURL(blob);
         setBlobUrl(objectUrl);
 
-        if (!isImg) {
+        if (!isActuallyImg) {
           void (async () => {
             try {
               const pdfjs = await import("pdfjs-dist/legacy/build/pdf.js");
@@ -340,42 +348,6 @@ export default function PDFViewerPage() {
     }
   };
 
-  // Focal-Point Zoom Change Helper
-  const applyZoom = useCallback(
-    (newScale: number, focalPoint?: { x: number; y: number }) => {
-      const clampedScale = Math.max(0.5, Math.min(4.0, Number(newScale.toFixed(2))));
-      if (clampedScale === scale) return;
-
-      const viewport = scrollViewportRef.current;
-      if (!viewport || !focalPoint) {
-        setScale(clampedScale);
-        setFitMode("custom");
-        return;
-      }
-
-      const prevScrollX = viewport.scrollLeft;
-      const prevScrollY = viewport.scrollTop;
-      const scaleRatio = clampedScale / scale;
-
-      const focalX = focalPoint.x + prevScrollX;
-      const focalY = focalPoint.y + prevScrollY;
-
-      const newScrollX = focalX * scaleRatio - focalPoint.x;
-      const newScrollY = focalY * scaleRatio - focalPoint.y;
-
-      setScale(clampedScale);
-      setFitMode("custom");
-
-      requestAnimationFrame(() => {
-        if (scrollViewportRef.current) {
-          scrollViewportRef.current.scrollLeft = Math.max(0, newScrollX);
-          scrollViewportRef.current.scrollTop = Math.max(0, newScrollY);
-        }
-      });
-    },
-    [scale]
-  );
-  
   // Clamps panning for image viewer to avoid infinite drag
   const clampImagePosition = useCallback((x: number, y: number, currentScale: number) => {
     if (currentScale <= 1.0) return { x: 0, y: 0 };
@@ -392,16 +364,86 @@ export default function PDFViewerPage() {
     };
   }, []);
 
-  // Keyboard & Mouse Wheel Zoom Controls
+  // Focal-Point Zoom Change Helper
+  const applyZoom = useCallback(
+    (newScale: number, focalPoint?: { x: number; y: number }) => {
+      const currentScale = scaleRef.current;
+      const clampedScale = Math.max(0.5, Math.min(4.0, Number(newScale.toFixed(2))));
+      if (clampedScale === currentScale) return;
+
+      if (!focalPoint) {
+        setScale(clampedScale);
+        setFitMode("custom");
+        return;
+      }
+
+      const scaleRatio = clampedScale / currentScale;
+
+      if (isImageRef.current) {
+        const tx = imgPositionRef.current.x;
+        const ty = imgPositionRef.current.y;
+        const container = containerRef.current;
+        
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          const cx = rect.width / 2;
+          const cy = rect.height / 2;
+          
+          const newTx = (focalPoint.x - cx) * (1 - scaleRatio) + tx * scaleRatio;
+          const newTy = (focalPoint.y - cy) * (1 - scaleRatio) + ty * scaleRatio;
+          
+          setImgPosition(clampImagePosition(newTx, newTy, clampedScale));
+        }
+        
+        setScale(clampedScale);
+        setFitMode("custom");
+      } else {
+        const viewport = scrollViewportRef.current;
+        if (!viewport) {
+          setScale(clampedScale);
+          setFitMode("custom");
+          return;
+        }
+
+        const prevScrollX = viewport.scrollLeft;
+        const prevScrollY = viewport.scrollTop;
+
+        const focalX = focalPoint.x + prevScrollX;
+        const focalY = focalPoint.y + prevScrollY;
+
+        const newScrollX = focalX * scaleRatio - focalPoint.x;
+        const newScrollY = focalY * scaleRatio - focalPoint.y;
+
+        setScale(clampedScale);
+        setFitMode("custom");
+
+        requestAnimationFrame(() => {
+          if (scrollViewportRef.current) {
+            scrollViewportRef.current.scrollLeft = Math.max(0, newScrollX);
+            scrollViewportRef.current.scrollTop = Math.max(0, newScrollY);
+          }
+        });
+      }
+    },
+    [clampImagePosition]
+  );
+
+  // Keyboard, Mouse Wheel, & Touch Event Controls (Global to container)
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let isImgDraggingNative = false;
+    let imgDragStartNative = { x: 0, y: 0 };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
         if (e.key === "=" || e.key === "+") {
           e.preventDefault();
-          applyZoom(scale + 0.25);
+          applyZoom(scaleRef.current + 0.25);
         } else if (e.key === "-") {
           e.preventDefault();
-          applyZoom(scale - 0.25);
+          applyZoom(scaleRef.current - 0.25);
         } else if (e.key === "0") {
           e.preventDefault();
           resetView();
@@ -413,35 +455,11 @@ export default function PDFViewerPage() {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const delta = e.deltaY < 0 ? 0.15 : -0.15;
-        const rect = scrollViewportRef.current?.getBoundingClientRect();
-        const focal = rect
-          ? { x: e.clientX - rect.left, y: e.clientY - rect.top }
-          : undefined;
-        applyZoom(scale + delta, focal);
+        const rect = container.getBoundingClientRect();
+        const focal = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        applyZoom(scaleRef.current + delta, focal);
       }
     };
-
-    window.addEventListener("keydown", handleKeyDown);
-    const viewport = scrollViewportRef.current;
-    if (viewport) {
-      viewport.addEventListener("wheel", handleWheel, { passive: false });
-    }
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      if (viewport) {
-        viewport.removeEventListener("wheel", handleWheel);
-      }
-    };
-  }, [scale, applyZoom]);
-
-  // Strict Native Touch Interception (Fixes Whole-page Zoom)
-  useEffect(() => {
-    const viewport = scrollViewportRef.current;
-    if (!viewport) return;
-
-    let isImgDraggingNative = false;
-    let imgDragStartNative = { x: 0, y: 0 };
 
     const handleTouchStartNative = (e: TouchEvent) => {
       if (e.touches.length === 2) {
@@ -452,7 +470,7 @@ export default function PDFViewerPage() {
         touchStartDistRef.current = dist;
         touchStartScaleRef.current = scaleRef.current;
 
-        const rect = viewport.getBoundingClientRect();
+        const rect = container.getBoundingClientRect();
         touchFocalPointRef.current = {
           x: (t1.clientX + t2.clientX) / 2 - rect.left,
           y: (t1.clientY + t2.clientY) / 2 - rect.top,
@@ -463,7 +481,7 @@ export default function PDFViewerPage() {
 
         if (now - lastTapRef.current < 300) {
           e.preventDefault(); // Block native double-tap zoom
-          const rect = viewport.getBoundingClientRect();
+          const rect = container.getBoundingClientRect();
           const focal = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
 
           if (scaleRef.current > 1.2) {
@@ -509,16 +527,20 @@ export default function PDFViewerPage() {
       isImgDraggingNative = false;
     };
 
-    viewport.addEventListener("touchstart", handleTouchStartNative, { passive: false });
-    viewport.addEventListener("touchmove", handleTouchMoveNative, { passive: false });
-    viewport.addEventListener("touchend", handleTouchEndNative);
-    viewport.addEventListener("touchcancel", handleTouchEndNative);
+    window.addEventListener("keydown", handleKeyDown);
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    container.addEventListener("touchstart", handleTouchStartNative, { passive: false });
+    container.addEventListener("touchmove", handleTouchMoveNative, { passive: false });
+    container.addEventListener("touchend", handleTouchEndNative);
+    container.addEventListener("touchcancel", handleTouchEndNative);
 
     return () => {
-      viewport.removeEventListener("touchstart", handleTouchStartNative);
-      viewport.removeEventListener("touchmove", handleTouchMoveNative);
-      viewport.removeEventListener("touchend", handleTouchEndNative);
-      viewport.removeEventListener("touchcancel", handleTouchEndNative);
+      window.removeEventListener("keydown", handleKeyDown);
+      container.removeEventListener("wheel", handleWheel);
+      container.removeEventListener("touchstart", handleTouchStartNative);
+      container.removeEventListener("touchmove", handleTouchMoveNative);
+      container.removeEventListener("touchend", handleTouchEndNative);
+      container.removeEventListener("touchcancel", handleTouchEndNative);
     };
   }, [applyZoom, clampImagePosition]);
 
@@ -533,24 +555,30 @@ export default function PDFViewerPage() {
     }
   };
 
-  // Image Viewer Mouse Dragging
+  // Image Viewer Mouse Dragging (Bound to Window)
   const handleImageMouseDown = (e: React.MouseEvent) => {
-    if (scale <= 1.0 || !isImage) return;
+    if (scaleRef.current <= 1.0 || !isImageRef.current) return;
+    e.preventDefault(); // Prevent native image dragging
     setIsImgDragging(true);
-    setImgDragStart({
-      x: e.clientX - imgPosition.x,
-      y: e.clientY - imgPosition.y,
-    });
-  };
+    const startX = e.clientX - imgPositionRef.current.x;
+    const startY = e.clientY - imgPositionRef.current.y;
+    setImgDragStart({ x: startX, y: startY });
 
-  const handleImageMouseMove = (e: React.MouseEvent) => {
-    if (!isImgDragging || !isImage) return;
-    const targetX = e.clientX - imgDragStart.x;
-    const targetY = e.clientY - imgDragStart.y;
-    setImgPosition(clampImagePosition(targetX, targetY, scaleRef.current));
-  };
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const targetX = moveEvent.clientX - startX;
+      const targetY = moveEvent.clientY - startY;
+      setImgPosition(clampImagePosition(targetX, targetY, scaleRef.current));
+    };
 
-  const handleImageMouseUp = () => setIsImgDragging(false);
+    const handleMouseUp = () => {
+      setIsImgDragging(false);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
 
   // Toggle Fullscreen
   const toggleFullscreen = () => {
@@ -765,8 +793,6 @@ export default function PDFViewerPage() {
           /* Direct Image Viewer with HD Scaling & Bounded Pan */
           <div
             onMouseDown={handleImageMouseDown}
-            onMouseMove={handleImageMouseMove}
-            onMouseUp={handleImageMouseUp}
             className="w-full h-full flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing touch-none p-4"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
