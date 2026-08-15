@@ -91,6 +91,19 @@ export default function PDFViewerPage() {
     [fileUrl]
   );
 
+  // Cleanup PDF document to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (pdfDoc) {
+        try {
+          pdfDoc.destroy().catch(() => {});
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+  }, [pdfDoc]);
+
   // 1. Fetch PDF binary stream into Blob URL
   useEffect(() => {
     if (!fileUrl) return;
@@ -127,6 +140,14 @@ export default function PDFViewerPage() {
               if (isMounted) {
                 setPdfDoc(doc);
                 setNumPages(doc.numPages);
+                
+                // Pre-calculate base dimensions for first page immediately to prevent collapse
+                const page1 = await doc.getPage(1);
+                const unscaled = page1.getViewport({ scale: 1.0, rotation: 0 });
+                for (let i = 1; i <= doc.numPages; i++) {
+                  baseDimensionsRef.current[i] = { width: unscaled.width, height: unscaled.height };
+                }
+                
                 setLoading(false);
               }
             } catch (err) {
@@ -222,6 +243,10 @@ export default function PDFViewerPage() {
 
         await renderTask.promise;
         renderTasksRef.current.delete(pageNum);
+        
+        // Ensure layout is updated correctly after render finishes
+        pageContainer.style.width = `${Math.floor(baseWidth * scaleRef.current)}px`;
+        pageContainer.style.height = `${Math.floor(baseHeight * scaleRef.current)}px`;
       } catch (err: any) {
         if (err?.name !== "RenderingCancelledException") {
           console.error(`Page ${pageNum} render error:`, err);
@@ -342,6 +367,22 @@ export default function PDFViewerPage() {
     },
     [scale]
   );
+  
+  // Clamps panning for image viewer to avoid infinite drag
+  const clampImagePosition = useCallback((x: number, y: number, currentScale: number) => {
+    if (currentScale <= 1.0) return { x: 0, y: 0 };
+    const container = containerRef.current;
+    if (!container) return { x, y };
+    
+    // Approximate boundaries based on viewport expansion
+    const maxPanX = Math.max(0, (container.clientWidth * (currentScale - 1)) / 1.5);
+    const maxPanY = Math.max(0, (container.clientHeight * (currentScale - 1)) / 1.5);
+    
+    return {
+      x: Math.max(-maxPanX, Math.min(maxPanX, x)),
+      y: Math.max(-maxPanY, Math.min(maxPanY, y)),
+    };
+  }, []);
 
   // Keyboard & Mouse Wheel Zoom Controls
   useEffect(() => {
@@ -448,10 +489,9 @@ export default function PDFViewerPage() {
       } else if (e.touches.length === 1 && isImgDraggingNative && isImageRef.current) {
         e.preventDefault(); // Prevent scrolling while panning image
         const touch = e.touches[0];
-        setImgPosition({
-          x: touch.clientX - imgDragStartNative.x,
-          y: touch.clientY - imgDragStartNative.y,
-        });
+        const targetX = touch.clientX - imgDragStartNative.x;
+        const targetY = touch.clientY - imgDragStartNative.y;
+        setImgPosition(clampImagePosition(targetX, targetY, scaleRef.current));
       }
     };
 
@@ -472,7 +512,7 @@ export default function PDFViewerPage() {
       viewport.removeEventListener("touchend", handleTouchEndNative);
       viewport.removeEventListener("touchcancel", handleTouchEndNative);
     };
-  }, [applyZoom]);
+  }, [applyZoom, clampImagePosition]);
 
   // Reset View Handler
   const resetView = () => {
@@ -497,10 +537,9 @@ export default function PDFViewerPage() {
 
   const handleImageMouseMove = (e: React.MouseEvent) => {
     if (!isImgDragging || !isImage) return;
-    setImgPosition({
-      x: e.clientX - imgDragStart.x,
-      y: e.clientY - imgDragStart.y,
-    });
+    const targetX = e.clientX - imgDragStart.x;
+    const targetY = e.clientY - imgDragStart.y;
+    setImgPosition(clampImagePosition(targetX, targetY, scaleRef.current));
   };
 
   const handleImageMouseUp = () => setIsImgDragging(false);
@@ -749,8 +788,7 @@ export default function PDFViewerPage() {
                   ref={(el) => {
                     pageContainerRefs.current[index] = el;
                   }}
-                  className="relative rounded-xl overflow-hidden shadow-2xl border border-border/80 bg-card flex items-center justify-center"
-                  style={{ transform: `rotate(${rotation}deg)` }}
+                  className="relative rounded-xl overflow-hidden shadow-2xl border border-border/80 bg-card flex items-center justify-center min-h-[40vh]"
                 >
                   <canvas
                     ref={(el) => {
