@@ -129,24 +129,69 @@ export default function PDFViewerPage() {
         return res;
       })
       .then(async (res) => {
-        const contentType = res.headers.get("content-type") || "";
+        let contentType = res.headers.get("content-type") || "";
         let isActuallyImg = isImg || contentType.startsWith("image/");
         
-        const blob = await res.blob();
+        let blob = await res.blob();
         
-        // Robust detection: if it doesn't start with %PDF, we assume it's an image.
-        // PDF files start with %PDF (hex: 25 50 44 46)
         if (blob.size >= 4) {
-          const slice = blob.slice(0, 5);
+          const slice = blob.slice(0, 12);
           const buf = await slice.arrayBuffer();
-          const text = new TextDecoder().decode(buf);
-          const isPdfMagic = text.includes("%PDF");
+          const view = new DataView(buf);
+          const magic = view.getUint32(0, false);
           
-          if (isPdfMagic) {
-            isActuallyImg = false;
-          } else if (!isActuallyImg) {
-            isActuallyImg = true;
+          let detectedType = "";
+
+          // PDF: %PDF
+          if (magic === 0x25504446) {
+            detectedType = "application/pdf";
           }
+          // PNG: \x89PNG
+          else if (magic === 0x89504E47) {
+            detectedType = "image/png";
+          }
+          // JPEG: FF D8 FF ...
+          else if ((magic & 0xFFFFFF00) === 0xFFD8FF00 || (magic & 0xFFFF0000) === 0xFFD80000) {
+            detectedType = "image/jpeg";
+          }
+          // GIF: GIF8
+          else if (magic === 0x47494638) {
+            detectedType = "image/gif";
+          }
+          // WebP: RIFF ... WEBP
+          else if (magic === 0x52494646 && view.getUint32(8, false) === 0x57454250) {
+            detectedType = "image/webp";
+          }
+          // BMP: BM
+          else if ((magic & 0xFFFF0000) === 0x424D0000) {
+            detectedType = "image/bmp";
+          }
+
+          if (detectedType === "application/pdf") {
+            isActuallyImg = false;
+            contentType = "application/pdf";
+          } else if (detectedType.startsWith("image/")) {
+            isActuallyImg = true;
+            contentType = detectedType;
+          } else if (!isActuallyImg) {
+            // Fallback: If not PDF and not a known image, but extension says image, try to force it.
+            // Or if we know it's not a PDF, we try to load it as image anyway.
+            // Wait, we can check if it has '%PDF' anywhere in the first 12 bytes just in case.
+            const text = new TextDecoder().decode(buf);
+            if (text.includes("%PDF")) {
+              isActuallyImg = false;
+              contentType = "application/pdf";
+            } else {
+              isActuallyImg = true;
+            }
+          }
+        }
+        
+        // Recreate the blob with the corrected MIME type if needed
+        if (contentType && blob.type !== contentType) {
+          blob = new Blob([blob], { type: contentType || (isActuallyImg ? "image/jpeg" : "application/pdf") });
+        } else if (!blob.type) {
+          blob = new Blob([blob], { type: isActuallyImg ? "image/jpeg" : "application/pdf" });
         }
         
         if (isMounted && isActuallyImg !== isImg) {

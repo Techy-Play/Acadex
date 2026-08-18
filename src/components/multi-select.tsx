@@ -1,16 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronsUpDown } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
+import { Check } from "lucide-react"
 
 export function MultiSelect({
   options,
@@ -23,47 +14,48 @@ export function MultiSelect({
   onChange: (values: string[]) => void
   placeholder?: string
 }) {
+  if (options.length === 0) {
+    return (
+      <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-xl border border-border/50 text-center">
+        {placeholder}
+      </div>
+    )
+  }
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          className="w-full justify-between rounded-xl font-normal h-auto min-h-10 py-2"
-        >
-          {selected.length > 0 ? (
-            <div className="flex gap-1 flex-wrap">
-              {selected.map((val) => {
-                const opt = options.find((o) => o.value === val)
-                return (
-                  <Badge key={val} variant="secondary" className="rounded-sm">
-                    {opt?.label}
-                  </Badge>
-                )
-              })}
-            </div>
-          ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
-          )}
-          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] rounded-xl max-h-64 overflow-y-auto">
-        {options.map((option) => (
-          <DropdownMenuCheckboxItem
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 border border-border rounded-xl bg-card">
+      {options.map((option) => {
+        const isChecked = selected.includes(option.value);
+        return (
+          <label
             key={option.value}
-            checked={selected.includes(option.value)}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                onChange([...selected, option.value])
-              } else {
-                onChange(selected.filter((val) => val !== option.value))
-              }
-            }}
+            className={`relative flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${
+              isChecked 
+                ? "bg-primary/10 border-primary/40 text-primary font-medium" 
+                : "bg-background border-border hover:bg-muted/50"
+            }`}
           >
-            {option.label}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <input
+              type="checkbox"
+              className="absolute opacity-0 w-0 h-0"
+              checked={isChecked}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  onChange([...selected, option.value]);
+                } else {
+                  onChange(selected.filter((val) => val !== option.value));
+                }
+              }}
+            />
+            <div className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center transition-colors ${
+              isChecked ? "bg-primary border-primary text-primary-foreground" : "border-primary"
+            }`}>
+              {isChecked && <Check className="h-3 w-3" />}
+            </div>
+            <span className="text-xs line-clamp-1">{option.label}</span>
+          </label>
+        );
+      })}
+    </div>
   )
 }
