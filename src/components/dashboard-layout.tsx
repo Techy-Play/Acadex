@@ -120,6 +120,7 @@ interface UserData {
   adminAlias?: string | null;
   college_id: string;
   role: "admin" | "student";
+  isStudent?: boolean;
   profileImage?: string | null;
   isSuperAdmin?: boolean;
   isAdminSubject?: boolean;

@@ -196,8 +196,8 @@ export async function PATCH(request: Request) {
           section: (data.section as string) || null,
           semester: (data.semester as number) || null,
           must_change_password: true,
-          ...(data.isStudent !== undefined && { isStudent: data.isStudent as boolean }),
-          ...(data.assignedSections && (data.assignedSections as string[]).length > 0 && { assignedSections: data.assignedSections as string[] }),
+          ...(data.isStudent !== undefined ? { isStudent: data.isStudent as boolean } : {}),
+          ...((data.assignedSections && (data.assignedSections as string[]).length > 0) ? { assignedSections: data.assignedSections as string[] } : {}),
         });
 
         await ActivityLog.create({
@@ -238,7 +238,7 @@ export async function PATCH(request: Request) {
           user.semester = data.newSemester ? Number(data.newSemester) : null;
         }
         if (data.newAssignedSections !== undefined) {
-          user.assignedSections = data.newAssignedSections as string[];
+          user.assignedSections = (data.newAssignedSections as string[]).map((id: string) => new mongoose.Types.ObjectId(id));
         }
         if (data.newIsStudent !== undefined) {
           user.isStudent = data.newIsStudent as boolean;
