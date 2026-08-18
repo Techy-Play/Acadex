@@ -37,6 +37,7 @@ export async function GET(
       .select("-password_hash")
       .populate("stream", "name")
       .populate("section", "name")
+      .populate("assignedSections", "name")
       .lean();
 
     if (!user) {
@@ -99,7 +100,7 @@ export async function PATCH(
 
     // Admin changing their OWN section/stream/semester → requires super admin approval
     const isChangingSectionStream =
-      body.stream !== undefined || body.section !== undefined || body.semester !== undefined;
+      body.stream !== undefined || body.section !== undefined || body.semester !== undefined || body.assignedSections !== undefined || body.isStudent !== undefined;
     const isEditingSelf = id === adminId;
     const isTargetAdmin = user.role === "admin";
 
@@ -118,6 +119,8 @@ export async function PATCH(
           newStream: body.stream !== undefined ? body.stream || null : undefined,
           newSection: body.section !== undefined ? body.section || null : undefined,
           newSemester: body.semester !== undefined ? (body.semester ? Number(body.semester) : null) : undefined,
+          newAssignedSections: body.assignedSections !== undefined ? body.assignedSections : undefined,
+          newIsStudent: body.isStudent !== undefined ? body.isStudent : undefined,
         },
       });
 
@@ -163,6 +166,14 @@ export async function PATCH(
     // Only super admin can change roles
     if (body.role !== undefined && isSuperAdmin) {
       user.role = body.role;
+    }
+
+    if (body.assignedSections !== undefined && isSuperAdmin) {
+      user.assignedSections = body.assignedSections;
+    }
+
+    if (body.isStudent !== undefined && isSuperAdmin) {
+      user.isStudent = body.isStudent;
     }
 
     // Update status if provided

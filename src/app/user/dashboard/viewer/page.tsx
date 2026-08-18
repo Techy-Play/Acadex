@@ -134,14 +134,17 @@ export default function PDFViewerPage() {
         
         const blob = await res.blob();
         
-        // Fallback robust Magic Byte detection for images missing Content-Type (like Google Drive Octet-Stream)
-        if (!isActuallyImg && blob.size >= 4) {
-          const slice = blob.slice(0, 4);
+        // Robust detection: if it doesn't start with %PDF, we assume it's an image.
+        // PDF files start with %PDF (hex: 25 50 44 46)
+        if (blob.size >= 4) {
+          const slice = blob.slice(0, 5);
           const buf = await slice.arrayBuffer();
-          const view = new DataView(buf);
-          const magic = view.getUint32(0, false);
-          // PNG (0x89504E47), JPEG (0xFFD8FF...), GIF8 (0x47494638)
-          if (magic === 0x89504E47 || (magic & 0xFFFFFF00) === 0xFFD8FF00 || magic === 0x47494638) {
+          const text = new TextDecoder().decode(buf);
+          const isPdfMagic = text.includes("%PDF");
+          
+          if (isPdfMagic) {
+            isActuallyImg = false;
+          } else if (!isActuallyImg) {
             isActuallyImg = true;
           }
         }
@@ -402,8 +405,8 @@ export default function PDFViewerPage() {
           const cx = rect.width / 2;
           const cy = rect.height / 2;
           
-          const newTx = (focalPoint.x - cx) * (1 - scaleRatio) + tx * scaleRatio;
-          const newTy = (focalPoint.y - cy) * (1 - scaleRatio) + ty * scaleRatio;
+          const newTx = tx - (focalPoint.x - cx) * (scaleRatio - 1);
+          const newTy = ty - (focalPoint.y - cy) * (scaleRatio - 1);
           
           setImgPosition(clampImagePosition(newTx, newTy, clampedScale));
         }
@@ -467,10 +470,11 @@ export default function PDFViewerPage() {
     const handleWheel = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        const delta = e.deltaY < 0 ? 0.15 : -0.15;
+        // Use a proportional scale factor for smooth touchpad pinch
+        const zoomFactor = Math.pow(0.99, e.deltaY);
         const rect = container.getBoundingClientRect();
         const focal = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        applyZoom(scaleRef.current + delta, focal);
+        applyZoom(scaleRef.current * zoomFactor, focal);
       }
     };
 
@@ -524,7 +528,21 @@ export default function PDFViewerPage() {
         const ratio = dist / touchStartDistRef.current;
         const targetScale = touchStartScaleRef.current * ratio;
 
-        applyZoom(targetScale, touchFocalPointRef.current || undefined);
+        const rect = container.getBoundingClientRect();
+        const currentFocal = {
+          x: (t1.clientX + t2.clientX) / 2 - rect.left,
+          y: (t1.clientY + t2.clientY) / 2 - rect.top,
+        };
+
+        applyZoom(targetScale, currentFocal);
+
+        // Update focal point to allow panning while pinching
+        if (isImageRef.current && touchFocalPointRef.current) {
+          const dx = currentFocal.x - touchFocalPointRef.current.x;
+          const dy = currentFocal.y - touchFocalPointRef.current.y;
+          setImgPosition((prev) => clampImagePosition(prev.x + dx, prev.y + dy, scaleRef.current));
+        }
+        touchFocalPointRef.current = currentFocal;
       } else if (e.touches.length === 1 && isImgDraggingNative && isImageRef.current) {
         e.preventDefault(); // Prevent scrolling while panning image
         const touch = e.touches[0];

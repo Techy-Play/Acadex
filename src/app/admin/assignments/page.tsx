@@ -35,14 +35,9 @@ import {
 import { FileUploadInput } from "@/components/file-upload-input";
 import { SearchableSelect } from "@/components/searchable-select";
 import { uploadFileDirectToDestination } from "@/lib/direct-upload";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { MultiSelect } from "@/components/multi-select";
 
 interface Subject {
   _id: string;
@@ -65,6 +60,7 @@ interface Assignment {
   createdAt: string;
   subject: { _id: string; name: string; semester?: number };
   section?: { _id: string; name: string } | null;
+  sections?: { _id: string; name: string }[];
   uploadedBy?: { _id: string; name: string } | null;
 }
 
@@ -99,7 +95,7 @@ export default function ManageAssignmentsPage() {
   const [addFileUrl, setAddFileUrl] = useState("");
   const [addStagedFile, setAddStagedFile] = useState<File | null>(null);
   const [addDeadline, setAddDeadline] = useState("");
-  const [addSection, setAddSection] = useState("");
+  const [addSections, setAddSections] = useState<string[]>([]);
 
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -110,7 +106,7 @@ export default function ManageAssignmentsPage() {
   const [editStagedFile, setEditStagedFile] = useState<File | null>(null);
   const [editSubject, setEditSubject] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
-  const [editSection, setEditSection] = useState("");
+  const [editSections, setEditSections] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Delete state
@@ -332,8 +328,8 @@ export default function ManageAssignmentsPage() {
           title: addTitle,
           description: addDescription || undefined,
           file_url: finalFileUrl,
-          deadline: addDeadline || undefined,
-          ...(isSuperAdmin && addSection && { section: addSection }),
+          deadline: addDeadline || null,
+          ...(isSuperAdmin && addSections.length > 0 && { sections: addSections }),
         }),
       });
 
@@ -350,9 +346,8 @@ export default function ManageAssignmentsPage() {
       setAddDescription("");
       setAddFileUrl("");
       setAddStagedFile(null);
-      setAddDeadline("");
       setAddSubject("");
-      setAddSection("");
+      setAddSections([]);
       setShowAddForm(false);
       fetchAssignments();
     } catch (err) {
@@ -378,7 +373,10 @@ export default function ManageAssignmentsPage() {
     setEditFileUrl(a.file_url || "");
     setEditStagedFile(null);
     setEditSubject(a.subject._id);
-    setEditSection(a.section?._id || "");
+    const initialSections = a.sections && a.sections.length > 0 
+      ? a.sections.map(s => s._id) 
+      : a.section ? [a.section._id] : [];
+    setEditSections(initialSections);
     setEditDeadline(
       a.deadline ? new Date(a.deadline).toISOString().slice(0, 16) : ""
     );
@@ -468,9 +466,9 @@ export default function ManageAssignmentsPage() {
           title: editTitle,
           description: editDescription,
           file_url: finalFileUrl,
-          subject: editSubject,
           deadline: editDeadline || null,
-          ...(editSection && { section: editSection }),
+          subject: editSubject,
+          sections: editSections,
         }),
       });
 
@@ -683,19 +681,13 @@ export default function ManageAssignmentsPage() {
 
               {isSuperAdmin && sections.length > 0 ? (
                 <div className="space-y-2">
-                  <Label>Section</Label>
-                  <Select value={addSection} onValueChange={setAddSection}>
-                    <SelectTrigger className="rounded-xl w-full sm:w-[200px]">
-                      <SelectValue placeholder="Select section (optional)" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {sections.map((s) => (
-                        <SelectItem key={s._id} value={s._id}>
-                          🏫 {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Sections</Label>
+                  <MultiSelect
+                    options={sections.map(s => ({ label: `🏫 ${s.name}`, value: s._id }))}
+                    selected={addSections}
+                    onChange={setAddSections}
+                    placeholder="Select sections (optional)"
+                  />
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -822,7 +814,15 @@ export default function ManageAssignmentsPage() {
                                 )}
                               </TableCell>
                               <TableCell>
-                                {a.section ? (
+                                {a.sections && a.sections.length > 0 ? (
+                                  <div className="flex gap-1 flex-wrap">
+                                    {a.sections.map(s => (
+                                      <Badge key={s._id} variant="outline" className="rounded-full text-xs">
+                                        🏫 {s.name}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                ) : a.section ? (
                                   <Badge variant="outline" className="rounded-full text-xs">
                                     🏫 {a.section.name}
                                   </Badge>
@@ -948,19 +948,13 @@ export default function ManageAssignmentsPage() {
             </div>
             {sections.length > 0 && (
               <div className="space-y-2">
-                <Label>Section</Label>
-                <Select value={editSection} onValueChange={setEditSection}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="No section" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {sections.map((s) => (
-                      <SelectItem key={s._id} value={s._id}>
-                        🏫 {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Sections</Label>
+                <MultiSelect
+                  options={sections.map(s => ({ label: `🏫 ${s.name}`, value: s._id }))}
+                  selected={editSections}
+                  onChange={setEditSections}
+                  placeholder="No sections"
+                />
               </div>
             )}
           </div>

@@ -56,6 +56,8 @@ interface AdminRequestItem {
   admin_note: string;
   _streamName: string | null;
   _sectionName: string | null;
+  _assignedSectionsNames: string[];
+  _isStudent?: boolean;
   createdAt: string;
 }
 
@@ -562,6 +564,22 @@ export default function AdminRequestsPage() {
                         </span>
                       </div>
                     )}
+                    {detailRequest._assignedSectionsNames.length > 0 && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Assigned Sections:</span>{" "}
+                        <span className="font-medium">
+                          {detailRequest._assignedSectionsNames.map(name => `🏫 ${name}`).join(", ")}
+                        </span>
+                      </div>
+                    )}
+                    {detailRequest._isStudent !== undefined && (
+                      <div>
+                        <span className="text-muted-foreground">Student Dashboard:</span>{" "}
+                        <span className="font-medium">
+                          {detailRequest._isStudent ? "Yes" : "No"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -626,6 +644,26 @@ export default function AdminRequestsPage() {
                           {detailRequest.data.newSemester
                             ? `Semester ${String(detailRequest.data.newSemester)}`
                             : <span className="italic">None</span>}
+                        </span>
+                      </div>
+                    )}
+                    {detailRequest._assignedSectionsNames.length > 0 && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">
+                          New Assigned Sections:
+                        </span>{" "}
+                        <span className="font-medium">
+                          {detailRequest._assignedSectionsNames.map(name => `🏫 ${name}`).join(", ")}
+                        </span>
+                      </div>
+                    )}
+                    {detailRequest._isStudent !== undefined && (
+                      <div>
+                        <span className="text-muted-foreground">
+                          New Student Access:
+                        </span>{" "}
+                        <span className="font-medium">
+                          {detailRequest._isStudent ? "Yes" : "No"}
                         </span>
                       </div>
                     )}

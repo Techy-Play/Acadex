@@ -9,6 +9,7 @@ export interface IPractical extends Document {
   _id: mongoose.Types.ObjectId;
   subject: mongoose.Types.ObjectId;
   section: mongoose.Types.ObjectId | null;
+  sections?: mongoose.Types.ObjectId[];
   uploadedBy: mongoose.Types.ObjectId | null;
   title: string;
   description: string;
@@ -30,6 +31,12 @@ const PracticalSchema = new Schema<IPractical>(
       ref: "Section",
       default: null,
     },
+    sections: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Section",
+      },
+    ],
     uploadedBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -61,6 +68,7 @@ const PracticalSchema = new Schema<IPractical>(
 
 // Common list/query patterns for dashboard and admin tables.
 PracticalSchema.index({ section: 1, subject: 1, createdAt: -1 });
+PracticalSchema.index({ sections: 1, subject: 1, createdAt: -1 });
 PracticalSchema.index({ uploadedBy: 1, createdAt: -1 });
 PracticalSchema.index({ deadline: 1 });
 

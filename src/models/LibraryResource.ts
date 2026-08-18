@@ -11,6 +11,7 @@ export interface ILibraryResource extends Document {
   description: string;
   subject: mongoose.Types.ObjectId;
   section: mongoose.Types.ObjectId | null;
+  sections?: mongoose.Types.ObjectId[];
   semester: number;
   academicYear: string;
   resourceType: "notes" | "assignments" | "practicals" | "oldyearpapers" | "reference";
@@ -45,6 +46,12 @@ const LibraryResourceSchema = new Schema<ILibraryResource>(
       ref: "Section",
       default: null,
     },
+    sections: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Section",
+      },
+    ],
     semester: {
       type: Number,
       required: [true, "Semester is required"],
@@ -89,6 +96,7 @@ LibraryResourceSchema.index({ subject: 1, semester: 1 });
 LibraryResourceSchema.index({ resourceType: 1 });
 LibraryResourceSchema.index({ academicYear: 1 });
 LibraryResourceSchema.index({ section: 1 });
+LibraryResourceSchema.index({ sections: 1 });
 
 const LibraryResource: Model<ILibraryResource> =
   mongoose.models.LibraryResource ||

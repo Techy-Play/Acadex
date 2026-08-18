@@ -181,6 +181,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             }
           });
         }
+        
+        // Restrict student dashboard access for admins without student privileges
+        if (!isOnAdminRoute && data.user.role === "admin" && data.user.isStudent === false) {
+          router.replace("/admin");
+        }
       } catch {
         router.push("/login");
       } finally {
@@ -242,7 +247,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         userRole={user.role}
         profileImage={user.profileImage}
         onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-        isAdmin={isAdmin}
+        isAdmin={isAdmin && user.isStudent !== false}
         isOnAdminRoute={isOnAdminRoute}
         onViewToggle={() => {
           setSidebarOpen(false);

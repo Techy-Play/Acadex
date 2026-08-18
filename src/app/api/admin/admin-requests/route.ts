@@ -53,8 +53,14 @@ export async function GET(request: Request) {
       const d = r.data as Record<string, unknown>;
       if (d.stream) streamIds.add(d.stream as string);
       if (d.section) sectionIds.add(d.section as string);
+      if (d.assignedSections) {
+        (d.assignedSections as string[]).forEach(s => sectionIds.add(s));
+      }
       if (d.newStream) streamIds.add(d.newStream as string);
       if (d.newSection) sectionIds.add(d.newSection as string);
+      if (d.newAssignedSections) {
+        (d.newAssignedSections as string[]).forEach(s => sectionIds.add(s));
+      }
     }
 
     const [streamsArr, sectionsArr] = await Promise.all([
@@ -89,6 +95,12 @@ export async function GET(request: Request) {
           : d.newSection
           ? sectionMap[d.newSection as string] || null
           : null,
+        _assignedSectionsNames: d.assignedSections
+          ? (d.assignedSections as string[]).map(s => sectionMap[s]).filter(Boolean)
+          : d.newAssignedSections
+          ? (d.newAssignedSections as string[]).map(s => sectionMap[s]).filter(Boolean)
+          : [],
+        _isStudent: d.isStudent !== undefined ? d.isStudent : d.newIsStudent !== undefined ? d.newIsStudent : undefined,
       };
     });
 
@@ -184,6 +196,8 @@ export async function PATCH(request: Request) {
           section: (data.section as string) || null,
           semester: (data.semester as number) || null,
           must_change_password: true,
+          ...(data.isStudent !== undefined && { isStudent: data.isStudent as boolean }),
+          ...(data.assignedSections && (data.assignedSections as string[]).length > 0 && { assignedSections: data.assignedSections as string[] }),
         });
 
         await ActivityLog.create({
@@ -222,6 +236,12 @@ export async function PATCH(request: Request) {
         }
         if (data.newSemester !== undefined) {
           user.semester = data.newSemester ? Number(data.newSemester) : null;
+        }
+        if (data.newAssignedSections !== undefined) {
+          user.assignedSections = data.newAssignedSections as string[];
+        }
+        if (data.newIsStudent !== undefined) {
+          user.isStudent = data.newIsStudent as boolean;
         }
         await user.save();
 

@@ -29,7 +29,9 @@ export interface IUser extends Document {
   adminAlias: string | null;
   stream: mongoose.Types.ObjectId | null;
   section: mongoose.Types.ObjectId | null;
+  assignedSections: mongoose.Types.ObjectId[];
   semester: number | null;
+  isStudent: boolean;
   must_change_password: boolean;
   theme: string;
   accentColor: string;
@@ -98,11 +100,21 @@ const UserSchema = new Schema<IUser>(
       ref: "Section",
       default: null,
     },
+    assignedSections: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Section",
+      },
+    ],
     semester: {
       type: Number,
       default: null,
       min: [1, "Semester must be between 1 and 8"],
       max: [8, "Semester must be between 1 and 8"],
+    },
+    isStudent: {
+      type: Boolean,
+      default: true,
     },
     must_change_password: {
       type: Boolean,

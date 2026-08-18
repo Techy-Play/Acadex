@@ -9,6 +9,7 @@ export interface INote extends Document {
   _id: mongoose.Types.ObjectId;
   subject: mongoose.Types.ObjectId;
   section: mongoose.Types.ObjectId | null;
+  sections?: mongoose.Types.ObjectId[];
   uploadedBy: mongoose.Types.ObjectId | null;
   title: string;
   file_url: string;
@@ -26,6 +27,12 @@ const NoteSchema = new Schema<INote>({
     ref: "Section",
     default: null,
   },
+  sections: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "Section",
+    },
+  ],
   uploadedBy: {
     type: Schema.Types.ObjectId,
     ref: "User",
@@ -49,6 +56,7 @@ const NoteSchema = new Schema<INote>({
 
 // Common list/query patterns for student and admin note pages.
 NoteSchema.index({ section: 1, subject: 1, uploadedAt: -1 });
+NoteSchema.index({ sections: 1, subject: 1, uploadedAt: -1 });
 NoteSchema.index({ uploadedBy: 1, uploadedAt: -1 });
 NoteSchema.index({ subject: 1, uploadedAt: -1 });
 

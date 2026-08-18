@@ -35,14 +35,9 @@ import {
 import { FileUploadInput } from "@/components/file-upload-input";
 import { SearchableSelect } from "@/components/searchable-select";
 import { uploadFileDirectToDestination } from "@/lib/direct-upload";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { MultiSelect } from "@/components/multi-select";
 
 interface Subject {
   _id: string;
@@ -63,6 +58,7 @@ interface Note {
   uploadedAt: string;
   subject: { _id: string; name: string; semester?: number };
   section?: { _id: string; name: string } | null;
+  sections?: { _id: string; name: string }[];
   uploadedBy?: { _id: string; name: string } | null;
 }
 
@@ -95,7 +91,7 @@ export default function ManageNotesPage() {
   const [addTitle, setAddTitle] = useState("");
   const [addFileUrl, setAddFileUrl] = useState("");
   const [addStagedFile, setAddStagedFile] = useState<File | null>(null);
-  const [addSection, setAddSection] = useState("");
+  const [addSections, setAddSections] = useState<string[]>([]);
 
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -104,7 +100,7 @@ export default function ManageNotesPage() {
   const [editFileUrl, setEditFileUrl] = useState("");
   const [editStagedFile, setEditStagedFile] = useState<File | null>(null);
   const [editSubject, setEditSubject] = useState("");
-  const [editSection, setEditSection] = useState("");
+  const [editSections, setEditSections] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Delete state
@@ -323,7 +319,7 @@ export default function ManageNotesPage() {
           subject: addSubject,
           title: addTitle,
           file_url: finalFileUrl,
-          ...(isSuperAdmin && addSection && { section: addSection }),
+          ...(isSuperAdmin && addSections.length > 0 && { sections: addSections }),
         }),
       });
 
@@ -340,7 +336,7 @@ export default function ManageNotesPage() {
       setAddFileUrl("");
       setAddStagedFile(null);
       setAddSubject("");
-      setAddSection("");
+      setAddSections([]);
       setShowAddForm(false);
       fetchNotes();
     } catch (err) {
@@ -365,7 +361,10 @@ export default function ManageNotesPage() {
     setEditFileUrl(note.file_url);
     setEditStagedFile(null);
     setEditSubject(note.subject._id);
-    setEditSection(note.section?._id || "");
+    const initialSections = note.sections && note.sections.length > 0 
+      ? note.sections.map(s => s._id) 
+      : note.section ? [note.section._id] : [];
+    setEditSections(initialSections);
     setEditDialogOpen(true);
   };
 
@@ -452,7 +451,7 @@ export default function ManageNotesPage() {
           title: editTitle,
           file_url: finalFileUrl,
           subject: editSubject,
-          ...(editSection && { section: editSection }),
+          sections: editSections,
         }),
       });
 
@@ -642,19 +641,13 @@ export default function ManageNotesPage() {
                 />
                 {isSuperAdmin && sections.length > 0 ? (
                   <div className="space-y-2">
-                    <Label>Section</Label>
-                    <Select value={addSection} onValueChange={setAddSection}>
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="Select section (optional)" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {sections.map((s) => (
-                          <SelectItem key={s._id} value={s._id}>
-                            🏫 {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Sections</Label>
+                    <MultiSelect
+                      options={sections.map(s => ({ label: `🏫 ${s.name}`, value: s._id }))}
+                      selected={addSections}
+                      onChange={setAddSections}
+                      placeholder="Select sections (optional)"
+                    />
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -775,7 +768,15 @@ export default function ManageNotesPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {note.section ? (
+                            {note.sections && note.sections.length > 0 ? (
+                              <div className="flex gap-1 flex-wrap">
+                                {note.sections.map(s => (
+                                  <Badge key={s._id} variant="outline" className="rounded-full text-xs">
+                                    🏫 {s.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : note.section ? (
                               <Badge variant="outline" className="rounded-full text-xs">
                                 🏫 {note.section.name}
                               </Badge>
@@ -856,19 +857,13 @@ export default function ManageNotesPage() {
             />
             {sections.length > 0 && (
               <div className="space-y-2">
-                <Label>Section</Label>
-                <Select value={editSection} onValueChange={setEditSection}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="No section" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {sections.map((s) => (
-                      <SelectItem key={s._id} value={s._id}>
-                        🏫 {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Sections</Label>
+                <MultiSelect
+                  options={sections.map(s => ({ label: `🏫 ${s.name}`, value: s._id }))}
+                  selected={editSections}
+                  onChange={setEditSections}
+                  placeholder="No sections"
+                />
               </div>
             )}
           </div>

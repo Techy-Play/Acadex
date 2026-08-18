@@ -110,20 +110,26 @@ export async function GET(request: Request) {
       }
     }
 
-    // Section filtering logic:
-    // - Super admins see all (unless they explicitly filter)
-    // - Sub-admins are hard-filtered to their own section
-    // - Students default to their section; can use ?section=all to see all
-    if (userRole === "admin" && !isSuperAdmin && userSection) {
+    const assignedSectionsRaw = request.headers.get("x-user-assigned-sections");
+    const assignedSections = assignedSectionsRaw ? JSON.parse(assignedSectionsRaw) : [];
+    
+    let allowedSections: string[] = [];
+    if (userSection) allowedSections.push(userSection);
+    allowedSections = Array.from(new Set([...allowedSections, ...assignedSections]));
+
+    if (userRole === "admin" && !isSuperAdmin && allowedSections.length > 0) {
       if (sectionParam && sectionParam !== "all") {
-        filter.section = sectionParam;
+        filter.$or = [{ section: sectionParam }, { sections: sectionParam }];
       } else if (sectionParam !== "all") {
-        filter.section = userSection;
+        filter.$or = [
+          { section: { $in: allowedSections } },
+          { sections: { $in: allowedSections } }
+        ];
       }
     } else if (sectionParam && sectionParam !== "all") {
-      filter.section = sectionParam;
+      filter.$or = [{ section: sectionParam }, { sections: sectionParam }];
     } else if (userRole === "student" && userSection && sectionParam !== "all") {
-      filter.section = userSection;
+      filter.$or = [{ section: userSection }, { sections: userSection }];
     }
 
     const assignments = await Assignment.find(filter)
@@ -166,8 +172,16 @@ export async function POST(request: Request) {
     }
 
     let sectionId = parsed.data.section || null;
+    let sectionsIds = parsed.data.sections || [];
     if (!isSuperAdmin) {
-      sectionId = adminSection || null;
+      if (adminSection && sectionsIds.length === 0 && !sectionId) {
+        sectionId = adminSection;
+        sectionsIds = [adminSection];
+      }
+    } else {
+      if (sectionId && sectionsIds.length === 0) {
+        sectionsIds = [sectionId];
+      }
     }
 
     await connectDB();
@@ -180,6 +194,7 @@ export async function POST(request: Request) {
       file_url: parsed.data.file_url || "",
       deadline: parsed.data.deadline ? new Date(parsed.data.deadline) : null,
       section: sectionId,
+      sections: sectionsIds,
       uploadedBy: adminId,
     });
 

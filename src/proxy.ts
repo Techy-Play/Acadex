@@ -26,7 +26,9 @@ async function verifyJWT(token: string) {
       name: string;
       isSuperAdmin?: boolean;
       section?: string | null;
+      assignedSections?: string[];
       semester?: number | null;
+      isStudent?: boolean;
       mustChangePassword?: boolean;
     };
   } catch {
@@ -144,6 +146,10 @@ export async function proxy(request: NextRequest) {
   requestHeaders.set("x-user-name", payload.name);
   requestHeaders.set("x-user-college-id", payload.collegeId);
   requestHeaders.set("x-user-is-super-admin", String(payload.isSuperAdmin || false));
+  requestHeaders.set("x-user-is-student", String(payload.isStudent !== false));
+  if (payload.assignedSections) {
+    requestHeaders.set("x-user-assigned-sections", JSON.stringify(payload.assignedSections));
+  }
   if (payload.section) {
     requestHeaders.set("x-user-section", payload.section);
   }

@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
     const user = await User.findById(userId)
       .select(
-        "name adminAlias college_id email role isSuperAdmin profileImage profileImageDriveId stream section semester must_change_password theme accentColor mobileNavPosition dashboardView savedFilters notificationPreferences status isAdminSubject isAdminStream isAdminSection createdAt"
+        "name adminAlias college_id email role isStudent isSuperAdmin profileImage profileImageDriveId stream section assignedSections semester must_change_password theme accentColor mobileNavPosition dashboardView savedFilters notificationPreferences status isAdminSubject isAdminStream isAdminSection createdAt"
       )
       .lean();
     if (!user) {
@@ -44,7 +44,9 @@ export async function GET(request: Request) {
         name: user.name,
         isSuperAdmin: user.isSuperAdmin || false,
         section: dbSection,
+        assignedSections: user.assignedSections?.map((s: unknown) => String(s)) || [],
         semester: dbSemester,
+        isStudent: user.isStudent !== false,
       });
       await setAuthCookie(token);
     }
@@ -88,10 +90,12 @@ export async function GET(request: Request) {
           email: user.email || null,
           role: user.role,
           isSuperAdmin: user.isSuperAdmin || false,
+          isStudent: user.isStudent !== false,
           profileImage: formatProfileImageUrl(user.profileImage, user.profileImageDriveId),
           profileImageDriveId: user.profileImageDriveId || null,
           stream: streamData,
           section: sectionData,
+          assignedSections: user.assignedSections || [],
           semester: user.semester || null,
           must_change_password: user.must_change_password,
           theme: user.theme || "system",

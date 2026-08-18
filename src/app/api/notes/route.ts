@@ -110,23 +110,28 @@ export async function GET(request: Request) {
       }
     }
 
+    const assignedSectionsRaw = request.headers.get("x-user-assigned-sections");
+    const assignedSections = assignedSectionsRaw ? JSON.parse(assignedSectionsRaw) : [];
+    
+    // Build allowed sections array for the user
+    let allowedSections: string[] = [];
+    if (userSection) allowedSections.push(userSection);
+    allowedSections = Array.from(new Set([...allowedSections, ...assignedSections]));
+
     // Section filtering logic:
-    // - Super admins see all (unless they explicitly filter)
-    // - Sub-admins are hard-filtered to their own section
-    // - Students default to their section; can use ?section=all to see all
-    if (userRole === "admin" && !isSuperAdmin && userSection) {
-      // Sub-admin: default to own section, but allow explicit section/all filter
+    if (userRole === "admin" && !isSuperAdmin && allowedSections.length > 0) {
       if (sectionParam && sectionParam !== "all") {
-        filter.section = sectionParam;
+        filter.$or = [{ section: sectionParam }, { sections: sectionParam }];
       } else if (sectionParam !== "all") {
-        filter.section = userSection;
+        filter.$or = [
+          { section: { $in: allowedSections } },
+          { sections: { $in: allowedSections } }
+        ];
       }
     } else if (sectionParam && sectionParam !== "all") {
-      // Explicit section filter from query param
-      filter.section = sectionParam;
+      filter.$or = [{ section: sectionParam }, { sections: sectionParam }];
     } else if (userRole === "student" && userSection && sectionParam !== "all") {
-      // Student: default to own section
-      filter.section = userSection;
+      filter.$or = [{ section: userSection }, { sections: userSection }];
     }
 
     const notes = await Note.find(filter)
@@ -170,8 +175,16 @@ export async function POST(request: Request) {
 
     // Determine section: super admin can choose any; section admin auto-fills their section
     let sectionId = parsed.data.section || null;
+    let sectionsIds = parsed.data.sections || [];
     if (!isSuperAdmin) {
-      sectionId = adminSection || null;
+      if (adminSection && sectionsIds.length === 0 && !sectionId) {
+        sectionId = adminSection;
+        sectionsIds = [adminSection];
+      }
+    } else {
+      if (sectionId && sectionsIds.length === 0) {
+        sectionsIds = [sectionId];
+      }
     }
 
     await connectDB();
@@ -181,7 +194,8 @@ export async function POST(request: Request) {
       subject: parsed.data.subject,
       title: parsed.data.title,
       file_url: parsed.data.file_url,
-      section: sectionId,
+      section: sectionId, // Keep for backward compatibility
+      sections: sectionsIds,
       uploadedBy: adminId,
     });
 

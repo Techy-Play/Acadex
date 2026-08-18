@@ -43,6 +43,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { formatProfileImageUrl } from "@/lib/utils";
+import { MultiSelect } from "@/components/multi-select";
+import { Switch } from "@/components/ui/switch";
 
 interface StreamItem {
   _id: string;
@@ -70,6 +72,8 @@ interface User {
   must_change_password: boolean;
   status: "active" | "banned" | "suspended";
   createdAt: string;
+  isStudent?: boolean;
+  assignedSections?: SectionItem[];
 }
 
 interface UserDetails {
@@ -89,6 +93,8 @@ interface UserDetails {
   status: "active" | "banned" | "suspended";
   createdAt: string;
   updatedAt: string;
+  isStudent?: boolean;
+  assignedSections?: SectionItem[];
 }
 
 interface AdminUsersSavedFilters {
@@ -130,6 +136,8 @@ export default function UsersPage() {
   const [selectedStream, setSelectedStream] = useState("none");
   const [selectedSection, setSelectedSection] = useState("none");
   const [selectedSemester, setSelectedSemester] = useState("none");
+  const [selectedIsStudent, setSelectedIsStudent] = useState(false);
+  const [selectedAssignedSections, setSelectedAssignedSections] = useState<string[]>([]);
   const [savingStream, setSavingStream] = useState(false);
 
   // Add student state
@@ -143,6 +151,8 @@ export default function UsersPage() {
   const [addStream, setAddStream] = useState("none");
   const [addSection, setAddSection] = useState("none");
   const [addSemester, setAddSemester] = useState("none");
+  const [addIsStudent, setAddIsStudent] = useState(false);
+  const [addAssignedSections, setAddAssignedSections] = useState<string[]>([]);
 
   // User details dialog state
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -280,6 +290,10 @@ export default function UsersPage() {
           stream: addStream === "none" ? null : addStream,
           section: addSection === "none" ? null : addSection,
           semester: addSemester === "none" ? null : Number(addSemester),
+          ...(addRole === "admin" && {
+            isStudent: addIsStudent,
+            assignedSections: addAssignedSections,
+          }),
         }),
       });
 
@@ -303,6 +317,8 @@ export default function UsersPage() {
       setAddStream("none");
       setAddSection("none");
       setAddSemester("none");
+      setAddIsStudent(false);
+      setAddAssignedSections([]);
       setShowAddForm(false);
       fetchUsers();
     } catch {
@@ -375,6 +391,8 @@ export default function UsersPage() {
     setSelectedStream(user.stream?._id || "none");
     setSelectedSection(user.section?._id || "none");
     setSelectedSemester(user.semester ? String(user.semester) : "none");
+    setSelectedIsStudent(user.isStudent ?? false);
+    setSelectedAssignedSections(user.assignedSections?.map(s => s._id) || []);
     setStreamDialogOpen(true);
   };
 
@@ -390,6 +408,10 @@ export default function UsersPage() {
           stream: selectedStream === "none" ? null : selectedStream,
           section: selectedSection === "none" ? null : selectedSection,
           semester: selectedSemester === "none" ? null : Number(selectedSemester),
+          ...(streamUser?.role === "admin" && {
+            isStudent: selectedIsStudent,
+            assignedSections: selectedAssignedSections,
+          }),
         }),
       });
 
@@ -744,7 +766,32 @@ export default function UsersPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-end">
+              {addRole === "admin" && currentIsSuperAdmin && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Assigned Sections (Admin View)</Label>
+                    <MultiSelect
+                      options={sections.map(s => ({ label: `🏫 ${s.name}`, value: s._id }))}
+                      selected={addAssignedSections}
+                      onChange={setAddAssignedSections}
+                      placeholder="Select assigned sections"
+                    />
+                  </div>
+                  <div className="space-y-2 flex flex-col justify-center">
+                    <Label className="mb-2">Is Student?</Label>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={addIsStudent}
+                        onCheckedChange={setAddIsStudent}
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {addIsStudent ? "Yes, can access student dashboard" : "No, admin only"}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+              <div className="flex items-end lg:col-span-3 sm:col-span-2">
                 <Button
                   type="submit"
                   className="w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
@@ -1081,6 +1128,31 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
+            {streamUser?.role === "admin" && currentIsSuperAdmin && (
+              <>
+                <div className="space-y-2">
+                  <Label>Assigned Sections (Admin View)</Label>
+                  <MultiSelect
+                    options={sections.map(s => ({ label: `🏫 ${s.name}`, value: s._id }))}
+                    selected={selectedAssignedSections}
+                    onChange={setSelectedAssignedSections}
+                    placeholder="Select assigned sections"
+                  />
+                </div>
+                <div className="space-y-2 flex flex-col justify-center">
+                  <Label className="mb-2">Is Student?</Label>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={selectedIsStudent}
+                      onCheckedChange={setSelectedIsStudent}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {selectedIsStudent ? "Yes, can access student dashboard" : "No, admin only"}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button

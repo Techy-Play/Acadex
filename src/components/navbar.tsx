@@ -12,6 +12,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { clearMeCache } from "@/lib/client-auth";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -159,6 +160,7 @@ export function Navbar({ userName, userRole, profileImage, onMenuToggle, isAdmin
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       // Clear any cached client-side data
+      clearMeCache();
       localStorage.removeItem("acadex-accent");
       toast.success("Logged out successfully");
       router.push("/login");

@@ -60,6 +60,8 @@ export const addStudentSchema = z.object({
     .max(128, "Password too long"),
   role: z.enum(["admin", "student"]).default("student"),
   semester: z.number().int().min(1, "Min semester is 1").max(8, "Max semester is 8").optional().nullable(),
+  isStudent: z.boolean().optional(),
+  assignedSections: z.array(z.string()).optional(),
 });
 
 export const resetPasswordSchema = z.object({
@@ -88,6 +90,7 @@ export const addNoteSchema = z.object({
     .url("Must be a valid URL")
     .min(1, "File URL is required"),
   section: z.string().optional().nullable(),
+  sections: z.array(z.string()).optional().default([]),
 });
 
 export const addAssignmentSchema = z.object({
@@ -100,6 +103,7 @@ export const addAssignmentSchema = z.object({
   file_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   deadline: z.string().optional().nullable(),
   section: z.string().optional().nullable(),
+  sections: z.array(z.string()).optional().default([]),
 });
 
 export const addPracticalSchema = z.object({
@@ -112,6 +116,7 @@ export const addPracticalSchema = z.object({
   file_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   deadline: z.string().optional().nullable(),
   section: z.string().optional().nullable(),
+  sections: z.array(z.string()).optional().default([]),
 });
 
 export const addLibraryResourceSchema = z.object({
@@ -135,6 +140,7 @@ export const addLibraryResourceSchema = z.object({
     .url("Must be a valid URL")
     .min(1, "File URL is required"),
   section: z.string().optional().nullable(),
+  sections: z.array(z.string()).optional().default([]),
 });
 
 export const accessRequestSchema = z.object({

@@ -52,11 +52,13 @@ export async function GET(request: Request) {
 
     // Collect unique section IDs
     const sectionIds = [
-      ...new Set(
-        users
+      ...new Set([
+        ...users
           .map((u) => u.section?.toString())
-          .filter((id): id is string => !!id)
-      ),
+          .filter((id): id is string => !!id),
+        ...users
+          .flatMap((u) => (u as any).assignedSections?.map((s: any) => s.toString()) || [])
+      ]),
     ];
 
     // Fetch streams in one query if any exist
@@ -82,10 +84,11 @@ export async function GET(request: Request) {
     }
 
     // Attach stream and section objects to each user
-    const students = users.map((u) => ({
+    const students = users.map((u: any) => ({
       ...u,
       stream: u.stream ? streamMap[u.stream.toString()] || null : null,
       section: u.section ? sectionMap[u.section.toString()] || null : null,
+      assignedSections: u.assignedSections?.map((id: any) => sectionMap[id.toString()]).filter(Boolean) || [],
     }));
 
     return NextResponse.json({ students });
@@ -163,6 +166,8 @@ export async function POST(request: Request) {
           stream,
           section,
           semester: semester || null,
+          ...(parsed.data.isStudent !== undefined && { isStudent: parsed.data.isStudent }),
+          ...(parsed.data.assignedSections && parsed.data.assignedSections.length > 0 && { assignedSections: parsed.data.assignedSections }),
         },
       });
 
@@ -209,6 +214,8 @@ export async function POST(request: Request) {
       section,
       semester: semester || null,
       must_change_password: true,
+      ...(parsed.data.isStudent !== undefined && { isStudent: parsed.data.isStudent }),
+      ...(parsed.data.assignedSections && parsed.data.assignedSections.length > 0 && { assignedSections: parsed.data.assignedSections }),
     });
 
     // Log activity

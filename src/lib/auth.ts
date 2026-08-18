@@ -25,7 +25,9 @@ export interface JWTPayload {
   name: string;
   isSuperAdmin?: boolean;
   section?: string | null;
+  assignedSections?: string[];
   semester?: number | null;
+  isStudent?: boolean;
 }
 
 /** Signs a JWT with the given payload and returns the token string. */

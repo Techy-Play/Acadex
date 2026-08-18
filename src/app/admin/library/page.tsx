@@ -36,14 +36,9 @@ import {
 import { FileUploadInput } from "@/components/file-upload-input";
 import { SearchableSelect } from "@/components/searchable-select";
 import { uploadFileDirectToDestination } from "@/lib/direct-upload";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { MultiSelect } from "@/components/multi-select";
 
 /* ────────── Interfaces ────────── */
 
@@ -69,8 +64,9 @@ interface LibraryResource {
   resourceType: string;
   tags: string[];
   createdAt: string;
-  subject: { _id: string; name: string };
+  subject: { _id: string; name: string; type?: string };
   section?: { _id: string; name: string } | null;
+  sections?: { _id: string; name: string }[];
   uploadedBy?: { _id: string; name: string } | null;
 }
 
@@ -111,9 +107,9 @@ export default function ManageLibraryPage() {
   const [addYear, setAddYear] = useState("");
   const [addType, setAddType] = useState("");
   const [addTags, setAddTags] = useState("");
+  const [addSections, setAddSections] = useState<string[]>([]);
   const [addFileUrl, setAddFileUrl] = useState("");
   const [addStagedFile, setAddStagedFile] = useState<File | null>(null);
-  const [addSection, setAddSection] = useState("");
 
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -124,10 +120,10 @@ export default function ManageLibraryPage() {
   const [editSemester, setEditSemester] = useState("");
   const [editYear, setEditYear] = useState("");
   const [editType, setEditType] = useState("");
-  const [editTags, setEditTags] = useState("");
   const [editFileUrl, setEditFileUrl] = useState("");
   const [editStagedFile, setEditStagedFile] = useState<File | null>(null);
-  const [editSection, setEditSection] = useState("");
+  const [editTags, setEditTags] = useState("");
+  const [editSections, setEditSections] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Delete state
@@ -276,6 +272,11 @@ export default function ManageLibraryPage() {
         }
       }
 
+      const tagsArray = addTags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+
       const res = await fetch("/api/library", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -286,12 +287,9 @@ export default function ManageLibraryPage() {
           semester: parseInt(addSemester),
           academicYear: addYear,
           resourceType: addType,
-          tags: addTags
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean),
+          tags: tagsArray,
           fileUrl: finalFileUrl,
-          ...(addSection && { section: addSection }),
+          sections: addSections,
         }),
       });
 
@@ -311,9 +309,10 @@ export default function ManageLibraryPage() {
       setAddYear("");
       setAddType("");
       setAddTags("");
+      setAddSubject("");
       setAddFileUrl("");
       setAddStagedFile(null);
-      setAddSection("");
+      setAddSections([]);
       setShowAddForm(false);
       fetchResources();
     } catch (err) {
@@ -333,18 +332,21 @@ export default function ManageLibraryPage() {
 
   /* ──── Edit Resource ──── */
 
-  const openEditDialog = (r: LibraryResource) => {
-    setEditResource(r);
-    setEditTitle(r.title);
-    setEditDescription(r.description);
-    setEditSubject(r.subject._id);
-    setEditSemester(String(r.semester));
-    setEditYear(r.academicYear);
-    setEditType(r.resourceType);
-    setEditTags(r.tags.join(", "));
-    setEditFileUrl(r.fileUrl);
+  const openEditDialog = (resource: LibraryResource) => {
+    setEditResource(resource);
+    setEditTitle(resource.title);
+    setEditDescription(resource.description);
+    setEditSubject(resource.subject._id);
+    setEditSemester(String(resource.semester));
+    setEditYear(resource.academicYear);
+    setEditType(resource.resourceType);
+    setEditTags(resource.tags.join(", "));
+    setEditFileUrl(resource.fileUrl || "");
     setEditStagedFile(null);
-    setEditSection(r.section?._id || "");
+    const initialSections = resource.sections && resource.sections.length > 0 
+      ? resource.sections.map(s => s._id) 
+      : resource.section ? [resource.section._id] : [];
+    setEditSections(initialSections);
     setEditDialogOpen(true);
   };
 
@@ -430,7 +432,6 @@ export default function ManageLibraryPage() {
         body: JSON.stringify({
           title: editTitle,
           description: editDescription,
-          subject: editSubject,
           semester: parseInt(editSemester),
           academicYear: editYear,
           resourceType: editType,
@@ -439,7 +440,8 @@ export default function ManageLibraryPage() {
             .map((t) => t.trim())
             .filter(Boolean),
           fileUrl: finalFileUrl,
-          ...(editSection && { section: editSection }),
+          subject: editSubject,
+          sections: editSections,
         }),
       });
 
@@ -708,22 +710,13 @@ export default function ManageLibraryPage() {
                 </div>
                 {sections.length > 0 && (
                   <div className="space-y-2">
-                    <Label>Section (Optional)</Label>
-                    <Select
-                      value={addSection}
-                      onValueChange={setAddSection}
-                    >
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="Auto (your section)" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {sections.map((s) => (
-                          <SelectItem key={s._id} value={s._id}>
-                            🏫 {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Sections</Label>
+                    <MultiSelect
+                      options={sections.map(s => ({ label: `🏫 ${s.name}`, value: s._id }))}
+                      selected={addSections}
+                      onChange={setAddSections}
+                      placeholder="Select sections (optional)"
+                    />
                   </div>
                 )}
               </div>
@@ -773,7 +766,7 @@ export default function ManageLibraryPage() {
                     <TableHead>Type</TableHead>
                     <TableHead>Year</TableHead>
                     <TableHead>Tags</TableHead>
-                    <TableHead>Section</TableHead>
+                    <TableHead>Sections</TableHead>
                     <TableHead>Uploaded By</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -825,7 +818,15 @@ export default function ManageLibraryPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {r.section ? (
+                        {r.sections && r.sections.length > 0 ? (
+                          <div className="flex gap-1 flex-wrap">
+                            {r.sections.map(s => (
+                              <Badge key={s._id} variant="outline" className="rounded-full text-xs">
+                                🏫 {s.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : r.section ? (
                           <Badge
                             variant="outline"
                             className="rounded-full text-xs"
@@ -991,19 +992,13 @@ export default function ManageLibraryPage() {
             </div>
             {sections.length > 0 && (
               <div className="space-y-2">
-                <Label>Section</Label>
-                <Select value={editSection} onValueChange={setEditSection}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="No section" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {sections.map((s) => (
-                      <SelectItem key={s._id} value={s._id}>
-                        🏫 {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Sections</Label>
+                <MultiSelect
+                  options={sections.map(s => ({ label: `🏫 ${s.name}`, value: s._id }))}
+                  selected={editSections}
+                  onChange={setEditSections}
+                  placeholder="No sections"
+                />
               </div>
             )}
           </div>

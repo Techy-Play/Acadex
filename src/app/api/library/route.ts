@@ -41,22 +41,46 @@ export async function GET(request: Request) {
     if (resourceType) filter.resourceType = resourceType;
     if (academicYear) filter.academicYear = academicYear;
 
+    const assignedSectionsRaw = request.headers.get("x-user-assigned-sections");
+    const assignedSections = assignedSectionsRaw ? JSON.parse(assignedSectionsRaw) : [];
+    
+    let allowedSections: string[] = [];
+    if (userSection) allowedSections.push(userSection);
+    allowedSections = Array.from(new Set([...allowedSections, ...assignedSections]));
+
     // Section filtering
-    if (userRole === "admin" && !isSuperAdmin && userSection) {
-      filter.section = userSection;
+    let sectionFilterOr: Record<string, any>[] | null = null;
+    if (userRole === "admin" && !isSuperAdmin && allowedSections.length > 0) {
+      if (sectionParam && sectionParam !== "all") {
+        sectionFilterOr = [{ section: sectionParam }, { sections: sectionParam }];
+      } else if (sectionParam !== "all") {
+        sectionFilterOr = [
+          { section: { $in: allowedSections } },
+          { sections: { $in: allowedSections } }
+        ];
+      }
     } else if (sectionParam && sectionParam !== "all") {
-      filter.section = sectionParam;
+      sectionFilterOr = [{ section: sectionParam }, { sections: sectionParam }];
     } else if (userRole === "student" && userSection && sectionParam !== "all") {
-      filter.section = userSection;
+      sectionFilterOr = [{ section: userSection }, { sections: userSection }];
     }
 
     // Text search on title/description/tags
+    let searchFilterOr: Record<string, any>[] | null = null;
     if (search) {
-      filter.$or = [
+      searchFilterOr = [
         { title: { $regex: search, $options: "i" } },
         { description: { $regex: search, $options: "i" } },
         { tags: { $regex: search, $options: "i" } },
       ];
+    }
+
+    if (sectionFilterOr && searchFilterOr) {
+      filter.$and = [{ $or: sectionFilterOr }, { $or: searchFilterOr }];
+    } else if (sectionFilterOr) {
+      filter.$or = sectionFilterOr;
+    } else if (searchFilterOr) {
+      filter.$or = searchFilterOr;
     }
 
     const resources = await LibraryResource.find(filter)
@@ -100,8 +124,16 @@ export async function POST(request: Request) {
     }
 
     let sectionId = parsed.data.section || null;
+    let sectionsIds = parsed.data.sections || [];
     if (!isSuperAdmin) {
-      sectionId = adminSection || null;
+      if (adminSection && sectionsIds.length === 0 && !sectionId) {
+        sectionId = adminSection;
+        sectionsIds = [adminSection];
+      }
+    } else {
+      if (sectionId && sectionsIds.length === 0) {
+        sectionsIds = [sectionId];
+      }
     }
 
     await connectDB();
@@ -117,6 +149,7 @@ export async function POST(request: Request) {
       tags: parsed.data.tags,
       fileUrl: parsed.data.fileUrl,
       section: sectionId,
+      sections: sectionsIds,
       uploadedBy: adminId,
     });
 

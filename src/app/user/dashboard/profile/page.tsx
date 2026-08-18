@@ -99,6 +99,23 @@ export default function ProfilePage() {
   const [viewProfileModalOpen, setViewProfileModalOpen] = useState(false);
   const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Superadmin self-edit
+  const [editDetailsOpen, setEditDetailsOpen] = useState(false);
+  const [editDetailsSaving, setEditDetailsSaving] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editStream, setEditStream] = useState("none");
+  const [editSection, setEditSection] = useState("none");
+  const [editSemester, setEditSemester] = useState("none");
+  const [streams, setStreams] = useState<{_id: string, name: string}[]>([]);
+  const [sections, setSections] = useState<{_id: string, name: string}[]>([]);
+
+  useEffect(() => {
+    if (user?.isSuperAdmin) {
+      fetch("/api/admin/streams").then(r => r.json()).then(d => setStreams(d.streams || []));
+      fetch("/api/admin/sections").then(r => r.json()).then(d => setSections(d.sections || []));
+    }
+  }, [user?.isSuperAdmin]);
+
   function handleAvatarFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -224,6 +241,32 @@ export default function ProfilePage() {
       router.push("/login");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSaveDetails() {
+    setEditDetailsSaving(true);
+    try {
+      const res = await fetch(`/api/admin/students/${user?.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editName,
+          stream: editStream === "none" ? null : editStream,
+          section: editSection === "none" ? null : editSection,
+          semester: editSemester === "none" ? null : Number(editSemester),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success("Profile details updated!");
+      setEditDetailsOpen(false);
+      clearMeCache();
+      fetchUser();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update details");
+    } finally {
+      setEditDetailsSaving(false);
     }
   }
 
@@ -552,12 +595,30 @@ export default function ProfilePage() {
                 <Badge className="capitalize text-xs font-semibold">{user.role}</Badge>
               </div>
 
-              {/* Admin Alias */}
-              {user.adminAlias && (
-                <p className="text-sm text-muted-foreground mb-3">
-                  Alias: <span className="font-medium text-primary">{user.adminAlias}</span>
-                </p>
-              )}
+              <div className="flex items-center gap-2 mb-3">
+                {user.adminAlias && (
+                  <p className="text-sm text-muted-foreground">
+                    Alias: <span className="font-medium text-primary">{user.adminAlias}</span>
+                  </p>
+                )}
+                {user.isSuperAdmin && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-muted-foreground hover:text-primary ml-auto"
+                    onClick={() => {
+                      setEditName(user.name);
+                      setEditStream(user.stream?.id || "none");
+                      setEditSection(user.section?.id || "none");
+                      setEditSemester(user.semester ? String(user.semester) : "none");
+                      setEditDetailsOpen(true);
+                    }}
+                  >
+                    ✏️ Edit Profile
+                  </Button>
+                )}
+              </div>
 
               <Separator className="mb-3" />
 
@@ -1212,6 +1273,82 @@ export default function ProfilePage() {
           reader.readAsDataURL(file);
         }}
       />
+
+      {/* Edit Details Dialog (Super Admin) */}
+      <Dialog open={editDetailsOpen} onOpenChange={setEditDetailsOpen}>
+        <DialogContent className="rounded-2xl max-w-sm p-6 shadow-2xl border border-border">
+          <DialogHeader>
+            <DialogTitle>Edit Profile Details</DialogTitle>
+            <DialogDescription>
+              Update your basic details directly.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Full Name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Stream</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={editStream}
+                onChange={(e) => setEditStream(e.target.value)}
+              >
+                <option value="none">No Stream</option>
+                {streams.map((s) => (
+                  <option key={s._id} value={s._id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Section</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={editSection}
+                onChange={(e) => setEditSection(e.target.value)}
+              >
+                <option value="none">No Section</option>
+                {sections.map((s) => (
+                  <option key={s._id} value={s._id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Semester</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={editSemester}
+                onChange={(e) => setEditSemester(e.target.value)}
+              >
+                <option value="none">No Semester</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                  <option key={sem} value={sem}>Semester {sem}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditDetailsOpen(false)}
+              disabled={editDetailsSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveDetails}
+              disabled={editDetailsSaving}
+            >
+              {editDetailsSaving ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -68,7 +68,9 @@ export async function POST(request: Request) {
       name: user.name,
       isSuperAdmin: user.isSuperAdmin || false,
       section: user.section ? user.section.toString() : null,
+      assignedSections: user.assignedSections?.map((s: unknown) => String(s)) || [],
       semester: user.semester || null,
+      isStudent: user.isStudent !== false, // default true
     });
 
     // Log activity
