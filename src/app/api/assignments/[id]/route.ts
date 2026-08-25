@@ -14,6 +14,7 @@ import ActivityLog from "@/models/ActivityLog";
 const populateFields = [
   { path: "subject", select: "name type" },
   { path: "section", select: "name" },
+  { path: "sections", select: "name" },
 ];
 
 // GET /api/assignments/[id] - Get a single assignment

@@ -378,7 +378,7 @@ export default function ManageAssignmentsPage() {
       : a.section ? [a.section._id] : [];
     setEditSections(initialSections);
     setEditDeadline(
-      a.deadline ? new Date(a.deadline).toISOString().slice(0, 16) : ""
+      a.deadline ? new Date(a.deadline).toISOString().split('T')[0] : ""
     );
     setEditDialogOpen(true);
   };
@@ -671,7 +671,7 @@ export default function ManageAssignmentsPage() {
                   <Label htmlFor="addDeadline">Deadline (Optional)</Label>
                   <Input
                     id="addDeadline"
-                    type="datetime-local"
+                    type="date"
                     value={addDeadline}
                     onChange={(e) => setAddDeadline(e.target.value)}
                     className="rounded-xl"
@@ -843,6 +843,7 @@ export default function ManageAssignmentsPage() {
                                     {new Date(a.deadline).toLocaleDateString("en-IN", {
                                       month: "short",
                                       day: "numeric",
+                                      timeZone: "UTC"
                                     })}
                                   </Badge>
                                 ) : (
@@ -940,7 +941,7 @@ export default function ManageAssignmentsPage() {
             <div className="space-y-2">
               <Label>Deadline</Label>
               <Input
-                type="datetime-local"
+                type="date"
                 value={editDeadline}
                 onChange={(e) => setEditDeadline(e.target.value)}
                 className="rounded-xl"

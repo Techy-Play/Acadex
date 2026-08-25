@@ -52,6 +52,7 @@ export function AssignmentCard({
         year: "numeric",
         month: "short",
         day: "numeric",
+        timeZone: "UTC"
       })
     : null;
 

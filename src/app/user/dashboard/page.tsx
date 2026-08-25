@@ -1184,7 +1184,7 @@ export default function StudentDashboard() {
                             <div key={a._id} className="flex items-center justify-between text-xs">
                               <span className="font-medium truncate mr-2">{a.title}</span>
                               <span className="text-muted-foreground whitespace-nowrap">
-                                {new Date(a.deadline!).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                                {new Date(a.deadline!).toLocaleDateString("en-IN", { month: "short", day: "numeric", timeZone: "UTC" })}
                               </span>
                             </div>
                           ))}

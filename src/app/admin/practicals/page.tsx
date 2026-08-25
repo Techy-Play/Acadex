@@ -375,7 +375,7 @@ export default function ManagePracticalsPage() {
     setEditFileUrl(p.file_url || "");
     setEditStagedFile(null);
     setEditDeadline(
-      p.deadline ? new Date(p.deadline).toISOString().slice(0, 16) : ""
+      p.deadline ? new Date(p.deadline).toISOString().split('T')[0] : ""
     );
     setEditSubject(p.subject._id);
     const initialSections = p.sections && p.sections.length > 0 
@@ -678,7 +678,7 @@ export default function ManagePracticalsPage() {
                   <Label htmlFor="addDeadline">Deadline (Optional)</Label>
                   <Input
                     id="addDeadline"
-                    type="datetime-local"
+                    type="date"
                     value={addDeadline}
                     onChange={(e) => setAddDeadline(e.target.value)}
                     className="rounded-xl"
@@ -818,11 +818,10 @@ export default function ManagePracticalsPage() {
                             <TableCell>
                               {p.deadline ? (
                                 <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                                  {new Date(p.deadline).toLocaleString("en-IN", {
+                                  {new Date(p.deadline).toLocaleDateString("en-IN", {
                                     month: "short",
                                     day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
+                                    timeZone: "UTC"
                                   })}
                                 </span>
                               ) : (
@@ -948,9 +947,9 @@ export default function ManagePracticalsPage() {
               label="PDF Document / File"
             />
             <div className="space-y-2">
-              <Label>Deadline (Optional)</Label>
+              <Label>Deadline</Label>
               <Input
-                type="datetime-local"
+                type="date"
                 value={editDeadline}
                 onChange={(e) => setEditDeadline(e.target.value)}
                 className="rounded-xl"

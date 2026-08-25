@@ -135,6 +135,7 @@ export async function GET(request: Request) {
     const assignments = await Assignment.find(filter)
       .populate("subject", "name type semester")
       .populate("section", "name")
+      .populate("sections", "name")
       .populate("uploadedBy", "name")
       .sort({ createdAt: -1 })
       .lean();
@@ -201,6 +202,7 @@ export async function POST(request: Request) {
     const populated = await assignment.populate([
       { path: "subject", select: "name type" },
       { path: "section", select: "name" },
+      { path: "sections", select: "name" },
     ]);
 
     // Log activity

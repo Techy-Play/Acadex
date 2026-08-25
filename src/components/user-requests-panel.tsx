@@ -879,9 +879,9 @@ export default function UserRequestsPanel() {
 
             {formResourceType === "assignment" && (
               <div>
-                <Label>Deadline</Label>
+                <Label>Deadline (Required for Assignments)</Label>
                 <Input
-                  type="datetime-local"
+                  type="date"
                   value={formDeadline}
                   onChange={(e) => setFormDeadline(e.target.value)}
                 />

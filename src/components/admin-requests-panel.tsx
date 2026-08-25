@@ -557,7 +557,7 @@ export default function AdminRequestsPanel() {
                     <p>
                       {new Date(reviewTarget.deadline).toLocaleDateString(
                         undefined,
-                        { year: "numeric", month: "long", day: "numeric" }
+                        { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }
                       )}
                     </p>
                   </div>

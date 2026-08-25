@@ -15,6 +15,7 @@ import ActivityLog from "@/models/ActivityLog";
 const populateFields = [
   { path: "subject", select: "name type" },
   { path: "section", select: "name" },
+  { path: "sections", select: "name" },
 ];
 
 // GET /api/practicals/[id] - Get a single practical

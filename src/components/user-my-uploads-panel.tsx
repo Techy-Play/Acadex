@@ -727,7 +727,7 @@ export function UserMyUploadsPanel() {
             {formType === "assignment" && (
               <div className="space-y-1.5">
                 <Label>Deadline</Label>
-                <Input type="datetime-local" value={formDeadline} onChange={(event) => setFormDeadline(event.target.value)} />
+                <Input type="date" value={formDeadline} onChange={(event) => setFormDeadline(event.target.value)} />
               </div>
             )}
           </div>
