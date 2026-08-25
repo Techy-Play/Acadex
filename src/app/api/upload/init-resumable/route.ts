@@ -50,15 +50,14 @@ export async function POST(request: Request) {
       success: true,
       uploadUrl,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Init resumable upload error:", error);
+    let errorMsg = error instanceof Error ? error.message : "Failed to initialize resumable upload.";
+    if (errorMsg.includes("invalid_grant") || error.response?.data?.error === "invalid_grant") {
+      errorMsg = "Google Drive Error: 'invalid_grant'. Your GOOGLE_REFRESH_TOKEN has expired or is invalid. If your Google Cloud app is in 'Testing' mode, tokens expire every 7 days. Please generate a new refresh token.";
+    }
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to initialize resumable upload.",
-      },
+      { error: errorMsg },
       { status: 500 }
     );
   }

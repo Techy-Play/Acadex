@@ -114,11 +114,17 @@ export async function GET(request: Request) {
     const userObjId = new mongoose.Types.ObjectId(userId);
 
     // Build list of muted notification types from user preferences
+    // Also fetch user creation date to restrict older notifications
     const mutedTypes: string[] = [];
-    if (userRole === "student") {
-      const currentUser = await User.findById(userId).select("notificationPreferences").lean();
-      const prefs = currentUser?.notificationPreferences;
-      if (prefs) {
+    let userCreatedAt = thirtyDaysAgo;
+    
+    const currentUser = await User.findById(userId).select("notificationPreferences createdAt").lean();
+    if (currentUser) {
+      if (currentUser.createdAt && new Date(currentUser.createdAt) > thirtyDaysAgo) {
+        userCreatedAt = new Date(currentUser.createdAt);
+      }
+      if (userRole === "student" && currentUser.notificationPreferences) {
+        const prefs = currentUser.notificationPreferences;
         const prefMap: Record<string, boolean | undefined> = {
           new_note: prefs.new_note,
           new_assignment: prefs.new_assignment,
@@ -137,7 +143,7 @@ export async function GET(request: Request) {
     // Fetch notifications for this role OR targeted to this specific user
     // Exclude dismissed ones and muted types
     const query: Record<string, unknown> = {
-      createdAt: { $gte: thirtyDaysAgo },
+      createdAt: { $gte: userCreatedAt },
       dismissedBy: { $ne: userObjId },
       $or: [
         { targetRole: userRole },

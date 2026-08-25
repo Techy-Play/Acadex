@@ -58,7 +58,7 @@ export async function proxy(request: NextRequest) {
         }
         const dest =
           payload.role === "admin"
-            ? payload.isSuperAdmin
+            ? payload.isStudent === false
               ? "/admin"
               : "/user/dashboard"
             : "/user/dashboard";

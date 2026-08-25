@@ -39,15 +39,14 @@ export async function POST(request: Request) {
       existingFileId: result.existingFileId,
       existingFileName: result.existingFileName,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Check duplicate upload error:", error);
+    let errorMsg = error instanceof Error ? error.message : "Failed to check for duplicate file.";
+    if (errorMsg.includes("invalid_grant") || error.response?.data?.error === "invalid_grant") {
+      errorMsg = "Google Drive Error: 'invalid_grant'. Your GOOGLE_REFRESH_TOKEN has expired or is invalid. If your Google Cloud app is in 'Testing' mode, tokens expire every 7 days. Please generate a new refresh token.";
+    }
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to check for duplicate file.",
-      },
+      { error: errorMsg },
       { status: 500 }
     );
   }

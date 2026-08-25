@@ -54,15 +54,14 @@ export async function POST(request: Request) {
       fileId: uploadResult.fileId,
       webViewLink: uploadResult.webViewLink,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Google Drive API upload error:", error);
+    let errorMsg = error instanceof Error ? error.message : "Failed to upload file to Google Drive.";
+    if (errorMsg.includes("invalid_grant") || error.response?.data?.error === "invalid_grant") {
+      errorMsg = "Google Drive Error: 'invalid_grant'. Your GOOGLE_REFRESH_TOKEN has expired or is invalid. If your Google Cloud app is in 'Testing' mode, tokens expire every 7 days. Please generate a new refresh token.";
+    }
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to upload file to Google Drive.",
-      },
+      { error: errorMsg },
       { status: 500 }
     );
   }

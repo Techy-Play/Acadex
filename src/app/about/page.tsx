@@ -315,6 +315,9 @@ export default function AboutPage() {
             <Link href="/about/privacy" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Privacy Policy
             </Link>
+            <Link href="/about/terms" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Terms of Service
+            </Link>
             <div className="flex items-center gap-4">
               <a href="https://github.com/Techy-Play/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="GitHub">
               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">

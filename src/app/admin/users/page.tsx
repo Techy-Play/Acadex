@@ -133,6 +133,7 @@ export default function UsersPage() {
   // Stream/Section assign state
   const [streamDialogOpen, setStreamDialogOpen] = useState(false);
   const [streamUser, setStreamUser] = useState<User | null>(null);
+  const [selectedRole, setSelectedRole] = useState("student");
   const [selectedStream, setSelectedStream] = useState("none");
   const [selectedSection, setSelectedSection] = useState("none");
   const [selectedSemester, setSelectedSemester] = useState("none");
@@ -151,7 +152,7 @@ export default function UsersPage() {
   const [addStream, setAddStream] = useState("none");
   const [addSection, setAddSection] = useState("none");
   const [addSemester, setAddSemester] = useState("none");
-  const [addIsStudent, setAddIsStudent] = useState(false);
+  const [addIsStudent, setAddIsStudent] = useState(true);
   const [addAssignedSections, setAddAssignedSections] = useState<string[]>([]);
 
   // User details dialog state
@@ -317,7 +318,7 @@ export default function UsersPage() {
       setAddStream("none");
       setAddSection("none");
       setAddSemester("none");
-      setAddIsStudent(false);
+      setAddIsStudent(true);
       setAddAssignedSections([]);
       setShowAddForm(false);
       fetchUsers();
@@ -388,10 +389,11 @@ export default function UsersPage() {
   // ─── Stream/Section Assignment ────────────────────────
   const openStreamDialog = (user: User) => {
     setStreamUser(user);
+    setSelectedRole(user.role || "student");
     setSelectedStream(user.stream?._id || "none");
     setSelectedSection(user.section?._id || "none");
     setSelectedSemester(user.semester ? String(user.semester) : "none");
-    setSelectedIsStudent(user.isStudent ?? false);
+    setSelectedIsStudent(user.isStudent ?? true);
     setSelectedAssignedSections(user.assignedSections?.map(s => s._id) || []);
     setStreamDialogOpen(true);
   };
@@ -408,7 +410,8 @@ export default function UsersPage() {
           stream: selectedStream === "none" ? null : selectedStream,
           section: selectedSection === "none" ? null : selectedSection,
           semester: selectedSemester === "none" ? null : Number(selectedSemester),
-          ...(streamUser?.role === "admin" && {
+          ...(currentIsSuperAdmin && { role: selectedRole }),
+          ...(selectedRole === "admin" && {
             isStudent: selectedIsStudent,
             assignedSections: selectedAssignedSections,
           }),
@@ -559,7 +562,11 @@ export default function UsersPage() {
         const emailMatch = u.email ? u.email.toLowerCase().includes(q) : false;
         if (!u.name.toLowerCase().includes(q) && !u.college_id.toLowerCase().includes(q) && !emailMatch) return false;
       }
-      if (filterRole !== "all" && u.role !== filterRole) return false;
+      if (filterRole !== "all") {
+        if (filterRole === "faculty") {
+          if (u.role !== "admin" || u.isStudent !== false) return false;
+        } else if (u.role !== filterRole) return false;
+      }
       if (filterStatus !== "all") {
         const userStatus = u.status || "active";
         if (filterStatus === "pending" && !u.must_change_password) return false;
@@ -857,6 +864,7 @@ export default function UsersPage() {
                 <SelectContent className="rounded-xl">
                   <SelectItem value="all">All Roles</SelectItem>
                   <SelectItem value="admin">👑 Admin</SelectItem>
+                  <SelectItem value="faculty">👨‍🏫 Faculty</SelectItem>
                   <SelectItem value="student">🎓 Student</SelectItem>
                 </SelectContent>
               </Select>
@@ -1082,6 +1090,20 @@ export default function UsersPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            {currentIsSuperAdmin && (
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Stream</Label>
               <Select value={selectedStream} onValueChange={setSelectedStream}>
@@ -1128,7 +1150,7 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
-            {streamUser?.role === "admin" && currentIsSuperAdmin && (
+            {selectedRole === "admin" && currentIsSuperAdmin && (
               <>
                 <div className="space-y-2">
                   <Label>Assigned Sections (Admin View)</Label>
@@ -1343,6 +1365,14 @@ export default function UsersPage() {
 
               {/* Details grid */}
               <div className="grid grid-cols-2 gap-3 bg-muted/50 rounded-xl p-4">
+                {detailUser.role === "admin" && (
+                  <div className="col-span-2 sm:col-span-1">
+                    <p className="text-xs text-muted-foreground">Admin Type</p>
+                    <p className="text-sm font-medium">
+                      {detailUser.isStudent !== false ? "Student Admin" : "Faculty (Non-Student)"}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs text-muted-foreground">College ID</p>
                   <p className="text-sm font-medium font-mono">{detailUser.college_id}</p>
@@ -1435,6 +1465,8 @@ export default function UsersPage() {
                           must_change_password: detailUser.must_change_password,
                           status: detailUser.status,
                           createdAt: detailUser.createdAt,
+                          isStudent: detailUser.isStudent,
+                          assignedSections: detailUser.assignedSections,
                         }), 150);
                       }}
                     >

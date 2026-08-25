@@ -316,11 +316,32 @@ export async function initResumableDriveUpload({
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   let accessToken = "";
-  if (refreshToken && clientId && clientSecret) {
-    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
-    oauth2Client.setCredentials({ refresh_token: refreshToken });
-    const tokenRes = await oauth2Client.getAccessToken();
-    accessToken = tokenRes.token || "";
+  try {
+    if (refreshToken && clientId && clientSecret) {
+      const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+      oauth2Client.setCredentials({ refresh_token: refreshToken });
+      const tokenRes = await oauth2Client.getAccessToken();
+      accessToken = tokenRes.token || "";
+    } else if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      const auth = new google.auth.GoogleAuth({
+        credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+        scopes: [
+          "https://www.googleapis.com/auth/drive",
+          "https://www.googleapis.com/auth/drive.file",
+        ],
+        clientOptions: process.env.GOOGLE_DRIVE_IMPERSONATE_USER
+          ? { subject: process.env.GOOGLE_DRIVE_IMPERSONATE_USER }
+          : undefined,
+      });
+      const client = await auth.getClient();
+      const tokenRes = await client.getAccessToken();
+      accessToken = tokenRes.token || "";
+    }
+  } catch (err: any) {
+    if (err.message?.includes("invalid_grant") || err.response?.data?.error === "invalid_grant") {
+      throw new Error("Google Drive Error: 'invalid_grant'. Your GOOGLE_REFRESH_TOKEN has expired or is invalid. If your Google Cloud app is in 'Testing' mode, tokens expire every 7 days. Please generate a new refresh token.");
+    }
+    throw err;
   }
 
   const res = await fetch(

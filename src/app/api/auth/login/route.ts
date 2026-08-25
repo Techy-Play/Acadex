@@ -90,6 +90,7 @@ export async function POST(request: Request) {
         college_id: user.college_id,
         role: user.role,
         isSuperAdmin: user.isSuperAdmin || false,
+        isStudent: user.isStudent !== false,
         must_change_password: user.must_change_password,
       },
     });

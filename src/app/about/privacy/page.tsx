@@ -786,6 +786,9 @@ export default function PrivacyPolicyPage() {
             <Link href="/about/privacy" className="text-sm font-medium text-foreground hover:underline transition-colors">
               Privacy Policy
             </Link>
+            <Link href="/about/terms" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Terms of Service
+            </Link>
             <Link href="/contact" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Contact
             </Link>

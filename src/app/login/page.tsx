@@ -72,7 +72,7 @@ function LoginPageInner() {
       if (data.user.must_change_password) {
         router.push("/change-password");
       } else if (data.user.role === "admin") {
-        router.push(data.user.isSuperAdmin ? "/admin" : "/user/dashboard");
+        router.push(data.user.isStudent === false ? "/admin" : "/user/dashboard");
       } else {
         router.push("/user/dashboard");
       }
@@ -143,7 +143,7 @@ function LoginPageInner() {
             </div>
 
             <p className="text-xs text-muted-foreground/60">
-              Acadex &bull; Engineered by Mr Techie &bull; <Link href="/about/privacy" className="hover:underline">Privacy Policy</Link>
+              Acadex &bull; Engineered by Mr Techie &bull; <Link href="/about/privacy" className="hover:underline">Privacy Policy</Link> &bull; <Link href="/about/terms" className="hover:underline">Terms of Service</Link>
             </p>
           </div>
 
@@ -277,7 +277,8 @@ function LoginPageInner() {
             
             <div className="md:hidden mt-4 text-center">
               <p className="text-xs text-muted-foreground/60">
-                <Link href="/about/privacy" className="hover:underline">Privacy Policy</Link>
+                <Link href="/about/privacy" className="hover:underline">Privacy Policy</Link> &bull;{" "}
+                <Link href="/about/terms" className="hover:underline">Terms of Service</Link>
               </p>
             </div>
           </div>
