@@ -148,6 +148,7 @@ export async function GET(request: Request) {
     const notes = await Note.find(filter)
       .populate("subject", "name type semester")
       .populate("section", "name")
+      .populate("sections", "name")
       .populate("uploadedBy", "name")
       .sort({ uploadedAt: -1 })
       .skip(skip)
@@ -255,9 +256,11 @@ export async function POST(request: Request) {
       uploadedBy: authUser.userId,
     });
 
-    const populated = await note.populate(["subject", "section"].map(f =>
-      f === "subject" ? { path: "subject", select: "name type" } : { path: "section", select: "name" }
-    ));
+    const populated = await note.populate([
+      { path: "subject", select: "name type" },
+      { path: "section", select: "name" },
+      { path: "sections", select: "name" },
+    ]);
 
     // Log activity
     await ActivityLog.create({

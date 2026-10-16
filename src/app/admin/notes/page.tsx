@@ -94,7 +94,7 @@ export default function ManageNotesPage() {
       const subjectMatch = (n.subject?.name || "").toLowerCase().includes(q);
       const sectionMatch =
         (n.section?.name || "").toLowerCase().includes(q) ||
-        (n.sections || []).some((s) => s.name.toLowerCase().includes(q));
+        (n.sections || []).some((s) => s?.name?.toLowerCase().includes(q));
       return titleMatch || subjectMatch || sectionMatch;
     });
   }, [notes, searchQuery]);
@@ -377,10 +377,10 @@ export default function ManageNotesPage() {
     setEditTitle(note.title);
     setEditFileUrl(note.file_url);
     setEditStagedFile(null);
-    setEditSubject(note.subject._id);
+    setEditSubject(note.subject?._id || "");
     const initialSections = note.sections && note.sections.length > 0 
-      ? note.sections.map(s => s._id) 
-      : note.section ? [note.section._id] : [];
+      ? note.sections.filter(Boolean).map(s => s._id) 
+      : note.section?._id ? [note.section._id] : [];
     setEditSections(initialSections);
     setEditDialogOpen(true);
   };
@@ -806,13 +806,15 @@ export default function ManageNotesPage() {
                           <TableCell>
                             {note.sections && note.sections.length > 0 ? (
                               <div className="flex gap-1 flex-wrap">
-                                {note.sections.map(s => (
-                                  <Badge key={s._id} variant="outline" className="rounded-full text-xs">
-                                    {s.name}
-                                  </Badge>
-                                ))}
+                                {note.sections
+                                  .filter((s): s is SectionItem => Boolean(s && s.name))
+                                  .map((s) => (
+                                    <Badge key={s._id} variant="outline" className="rounded-full text-xs">
+                                      {s.name}
+                                    </Badge>
+                                  ))}
                               </div>
-                            ) : note.section ? (
+                            ) : note.section?.name ? (
                               <Badge variant="outline" className="rounded-full text-xs">
                                 {note.section.name}
                               </Badge>

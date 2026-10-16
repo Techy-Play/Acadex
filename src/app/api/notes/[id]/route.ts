@@ -16,6 +16,7 @@ import { requireAdmin, canAdminManageResource } from "@/lib/rbac";
 const populateFields = [
   { path: "subject", select: "name type" },
   { path: "section", select: "name" },
+  { path: "sections", select: "name" },
 ];
 
 // GET /api/notes/[id] - Get a single note
