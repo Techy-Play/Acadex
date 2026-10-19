@@ -469,7 +469,12 @@ export function AdobePdfViewer({
         }
         #${containerDivId} iframe {
           background-color: ${activeTheme === "light" ? "#f4f4f5" : "#000000"} !important;
-          transition: background-color 0.2s ease;
+          ${
+            activeTheme === "dark"
+              ? "filter: invert(0.92) hue-rotate(180deg) contrast(0.95) brightness(0.95) !important;"
+              : ""
+          }
+          transition: filter 0.2s ease, background-color 0.2s ease;
         }
       `}</style>
 
