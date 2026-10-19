@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { UserProvider } from "@/context/user-context";
+import { AdminLightboxProvider } from "@/context/admin-lightbox-context";
 
 export const metadata: Metadata = {
   title: {
@@ -28,7 +29,9 @@ export default function AdminRootLayout({
 }) {
   return (
     <UserProvider>
-      <DashboardLayout>{children}</DashboardLayout>
+      <AdminLightboxProvider>
+        <DashboardLayout>{children}</DashboardLayout>
+      </AdminLightboxProvider>
     </UserProvider>
   );
 }

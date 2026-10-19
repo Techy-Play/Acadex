@@ -185,6 +185,8 @@ export default function DocumentViewerPage() {
             key={fileUrl}
             src={fileUrl}
             fileName={resolved.title}
+            embedMode="FULL_WINDOW"
+            showAnnotationTools={false}
             onError={(err) => setViewerError(err.message || "Failed to render document.")}
             className="w-full h-full"
           />

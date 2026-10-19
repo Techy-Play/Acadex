@@ -38,7 +38,8 @@ import { uploadFileDirectToDestination } from "@/lib/direct-upload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { MultiSelect } from "@/components/multi-select";
-import { Search, X } from "lucide-react";
+import { Search, X, Eye } from "lucide-react";
+import { useAdminLightbox } from "@/context/admin-lightbox-context";
 
 interface Subject {
   _id: string;
@@ -72,6 +73,7 @@ interface AdminNotesSavedFilters {
 const FILTER_KEY = "adminNotes";
 
 export default function ManageNotesPage() {
+  const { openLightbox } = useAdminLightbox();
   const [notes, setNotes] = useState<Note[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
@@ -793,10 +795,7 @@ export default function ManageNotesPage() {
                           className={note.file_url ? "cursor-pointer hover:bg-muted/50" : ""}
                           onClick={() => {
                             if (note.file_url) {
-                              window.open(
-                                `/user/dashboard/viewer?url=${encodeURIComponent(note.file_url)}&title=${encodeURIComponent(note.title)}`,
-                                "_blank"
-                              );
+                              openLightbox(note.file_url, note.title);
                             }
                           }}
                         >
@@ -833,6 +832,20 @@ export default function ManageNotesPage() {
                             })}
                           </TableCell>
                           <TableCell className="text-right space-x-2">
+                            {note.file_url && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-lg gap-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openLightbox(note.file_url, note.title);
+                                }}
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                Open
+                              </Button>
+                            )}
                             <Button variant="outline" size="sm" className="rounded-lg" onClick={(e) => { e.stopPropagation(); openEditDialog(note); }}>
                               Edit
                             </Button>

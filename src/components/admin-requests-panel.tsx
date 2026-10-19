@@ -38,6 +38,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import { useAdminLightbox } from "@/context/admin-lightbox-context";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -103,6 +104,7 @@ function toEmbedUrl(url: string): string {
 /* ------------------------------------------------------------------ */
 
 export default function AdminRequestsPanel() {
+  const { openLightbox } = useAdminLightbox();
   /* --- data --- */
   const [requests, setRequests] = useState<Request[]>([]);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -573,10 +575,10 @@ export default function AdminRequestsPanel() {
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        window.open(reviewTarget.file_url, "_blank")
+                        openLightbox(reviewTarget.file_url, reviewTarget.title || "File Preview")
                       }
                     >
-                      Open in New Tab
+                      Open in Lightbox
                     </Button>
                     <Button
                       variant="outline"

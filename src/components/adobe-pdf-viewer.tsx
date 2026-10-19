@@ -79,9 +79,14 @@ export interface AdobePdfViewerProps {
    */
   clientId?: string;
   /**
-   * Viewer embedding mode: "IN_LINE" (default responsive inline) or "FULL_WINDOW" or "SIZED_CONTAINER".
+   * Viewer embedding mode: "FULL_WINDOW" (default) or "IN_LINE" or "SIZED_CONTAINER".
    */
   embedMode?: "IN_LINE" | "FULL_WINDOW" | "SIZED_CONTAINER";
+  /**
+   * Whether to display Adobe commenting/annotation tools.
+   * Disabled by default (showAnnotationTools: false) for clean document reading.
+   */
+  showAnnotationTools?: boolean;
   /**
    * Theme mode: "dark" (pure black canvas), "night" (inverted high-contrast reader), or "light" (clean canvas).
    */
@@ -157,7 +162,8 @@ export function AdobePdfViewer({
   title = "Document.pdf",
   downloadUrl,
   clientId,
-  embedMode = "IN_LINE",
+  embedMode = "FULL_WINDOW",
+  showAnnotationTools = false,
   themeMode: propThemeMode,
   onThemeModeChange,
   onError,
@@ -330,7 +336,7 @@ export function AdobePdfViewer({
               }
             : {
                 embedMode: "FULL_WINDOW",
-                showAnnotationTools: true,
+                showAnnotationTools: Boolean(showAnnotationTools),
                 showLeftHandPanel: true,
                 showDownloadPDF: true,
                 showPrintPDF: true,

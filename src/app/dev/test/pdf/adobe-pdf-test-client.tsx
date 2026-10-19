@@ -37,7 +37,7 @@ export function AdobePdfTestClient() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isViewerActive, setIsViewerActive] = useState<boolean>(false);
-  const [embedMode, setEmbedMode] = useState<"IN_LINE" | "FULL_WINDOW">("IN_LINE");
+  const [embedMode, setEmbedMode] = useState<"IN_LINE" | "FULL_WINDOW">("FULL_WINDOW");
 
   const activeClientId = customClientId.trim() || envClientId.trim() || "fe8e73aff7644345838859be2c119dd9";
 

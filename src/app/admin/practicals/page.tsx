@@ -38,7 +38,8 @@ import { uploadFileDirectToDestination } from "@/lib/direct-upload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { MultiSelect } from "@/components/multi-select";
-import { Search, X } from "lucide-react";
+import { Search, X, Eye } from "lucide-react";
+import { useAdminLightbox } from "@/context/admin-lightbox-context";
 
 interface Subject {
   _id: string;
@@ -74,6 +75,7 @@ interface AdminPracticalsSavedFilters {
 const FILTER_KEY = "adminPracticals";
 
 export default function ManagePracticalsPage() {
+  const { openLightbox } = useAdminLightbox();
   const [practicals, setPracticals] = useState<Practical[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
@@ -842,10 +844,7 @@ export default function ManagePracticalsPage() {
                             className={p.file_url ? "cursor-pointer hover:bg-muted/50" : ""}
                             onClick={() => {
                               if (p.file_url) {
-                                window.open(
-                                  `/user/dashboard/viewer?url=${encodeURIComponent(p.file_url)}&title=${encodeURIComponent(p.title)}`,
-                                  "_blank"
-                                );
+                                openLightbox(p.file_url, p.title);
                               }
                             }}
                           >
@@ -893,6 +892,20 @@ export default function ManagePracticalsPage() {
                               })}
                             </TableCell>
                             <TableCell className="text-right space-x-2">
+                              {p.file_url && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-lg gap-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openLightbox(p.file_url, p.title);
+                                  }}
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  Open
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"

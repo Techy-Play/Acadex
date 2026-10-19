@@ -37,6 +37,14 @@ export interface UniversalDocumentViewerProps {
    */
   mimeType?: string;
   /**
+   * Embedding mode for PDF viewer. Defaults to "FULL_WINDOW".
+   */
+  embedMode?: "IN_LINE" | "FULL_WINDOW" | "SIZED_CONTAINER";
+  /**
+   * Whether to display Adobe commenting tools. Defaults to false.
+   */
+  showAnnotationTools?: boolean;
+  /**
    * Callback fired on error.
    */
   onError?: (error: Error) => void;
@@ -50,6 +58,8 @@ export function UniversalDocumentViewer({
   src,
   fileName = "Document",
   mimeType,
+  embedMode = "FULL_WINDOW",
+  showAnnotationTools = false,
   onError,
   className = "",
 }: UniversalDocumentViewerProps) {
@@ -101,6 +111,8 @@ export function UniversalDocumentViewer({
         src={effectivePdfSource}
         title={resolved.title}
         downloadUrl={resolved.downloadUrl}
+        embedMode={embedMode}
+        showAnnotationTools={showAnnotationTools}
         onError={onError}
         className={className}
       />
