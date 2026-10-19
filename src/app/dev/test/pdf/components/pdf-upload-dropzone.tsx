@@ -102,7 +102,7 @@ export function PdfUploadDropzone({
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto flex flex-col gap-4">
+    <div className="w-full max-w-xl mx-auto flex flex-col gap-3 sm:gap-4 px-1 sm:px-0">
       {/* Hidden native input */}
       <input
         ref={fileInputRef}
@@ -127,24 +127,24 @@ export function PdfUploadDropzone({
             fileInputRef.current?.click();
           }
         }}
-        className={`relative flex flex-col items-center justify-center p-8 sm:p-10 rounded-2xl border-2 border-dashed transition-all cursor-pointer select-none text-center ${
+        className={`relative flex flex-col items-center justify-center p-5 min-[400px]:p-6 sm:p-10 rounded-2xl border-2 border-dashed transition-all cursor-pointer select-none text-center ${
           isDragOver
             ? "border-primary bg-primary/5 scale-[1.01]"
             : "border-border hover:border-primary/50 hover:bg-muted/40 bg-card/60"
         } ${disabled ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
       >
-        <div className="p-4 rounded-2xl bg-primary/10 text-primary mb-4 shadow-xs">
-          <UploadCloud className="h-8 w-8" />
+        <div className="p-3 min-[400px]:p-3.5 sm:p-4 rounded-2xl bg-primary/10 text-primary mb-2.5 sm:mb-4 shadow-xs">
+          <UploadCloud className="h-6 w-6 min-[400px]:h-7 min-[400px]:w-7 sm:h-8 sm:w-8" />
         </div>
 
-        <h3 className="text-base font-semibold text-foreground">
+        <h3 className="text-sm sm:text-base font-semibold text-foreground">
           {isDragOver ? "Drop your PDF file here" : "Choose a local PDF document"}
         </h3>
-        <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+        <p className="text-xs text-muted-foreground mt-1 max-w-sm px-1">
           Drag and drop a PDF file here, or click to browse from your computer.
         </p>
 
-        <div className="flex items-center gap-2 mt-4 text-[11px] font-mono text-muted-foreground bg-muted/60 px-3 py-1.5 rounded-full border border-border/60">
+        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-3 sm:mt-4 text-[10px] sm:text-[11px] font-mono text-muted-foreground bg-muted/60 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border border-border/60 max-w-full">
           <span>Supported format: .pdf</span>
           <span>•</span>
           <span>Max size: 100 MB</span>
@@ -153,15 +153,15 @@ export function PdfUploadDropzone({
 
       {/* Validation Error Alert */}
       {validationError && (
-        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs animate-in fade-in slide-in-from-top-1">
+        <div className="flex items-start gap-2.5 sm:gap-3 p-3 sm:p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs animate-in fade-in slide-in-from-top-1">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <p className="font-semibold">Invalid File</p>
-            <p className="mt-0.5 opacity-90">{validationError}</p>
+            <p className="mt-0.5 opacity-90 break-words">{validationError}</p>
           </div>
           <button
             onClick={() => setValidationError(null)}
-            className="p-1 rounded-md hover:bg-destructive/20 text-destructive/80 transition-colors"
+            className="p-1 rounded-md hover:bg-destructive/20 text-destructive/80 transition-colors shrink-0"
             title="Dismiss error"
           >
             <X className="h-3.5 w-3.5" />
@@ -171,17 +171,17 @@ export function PdfUploadDropzone({
 
       {/* Selected File Card & Launch Action */}
       {selectedFile && !validationError && (
-        <div className="flex flex-col gap-3 p-4 rounded-2xl bg-card border border-border shadow-xs animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center justify-between gap-3 min-w-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
-                <FileCheck2 className="h-5 w-5" />
+        <div className="flex flex-col gap-3 p-3.5 sm:p-4 rounded-2xl bg-card border border-border shadow-xs animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center justify-between gap-2.5 min-w-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+              <div className="p-2 sm:p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
+                <FileCheck2 className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold truncate text-foreground" title={selectedFile.name}>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-semibold truncate text-foreground" title={selectedFile.name}>
                   {selectedFile.name}
                 </p>
-                <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground font-mono">
+                <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 text-[10px] sm:text-[11px] text-muted-foreground font-mono">
                   <span>{formatFileSize(selectedFile.size)}</span>
                   <span>•</span>
                   <span>Local Document</span>
@@ -209,7 +209,7 @@ export function PdfUploadDropzone({
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              className="rounded-xl text-xs"
+              className="w-full sm:w-auto h-9 sm:h-8 rounded-xl text-xs"
             >
               Choose Different File
             </Button>
@@ -217,7 +217,7 @@ export function PdfUploadDropzone({
             <Button
               size="sm"
               onClick={onOpenViewer}
-              className="rounded-xl text-xs gap-1.5 shadow-sm font-semibold"
+              className="w-full sm:w-auto h-9 sm:h-8 rounded-xl text-xs gap-1.5 shadow-sm font-semibold justify-center"
             >
               <span>Open in Adobe Reader</span>
               <ArrowRight className="h-3.5 w-3.5" />
@@ -227,10 +227,10 @@ export function PdfUploadDropzone({
       )}
 
       {/* Privacy Guarantee Note */}
-      <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/40 border border-border/60 text-[11px] text-muted-foreground">
-        <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+      <div className="flex items-start sm:items-center gap-2 p-2.5 sm:p-3 rounded-xl bg-muted/40 border border-border/60 text-[10px] sm:text-[11px] text-muted-foreground leading-relaxed">
+        <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5 sm:mt-0" />
         <span>
-          <strong>Local Privacy Guaranteed:</strong> Your document is read in-memory via browser ArrayBuffer and rendered directly into the Adobe client SDK. No files are uploaded to Acadex servers, Google Drive, or external storage.
+          <strong className="font-semibold text-foreground">Local Privacy Guaranteed:</strong> Your document is read in-memory via browser ArrayBuffer and rendered directly into the Adobe client SDK. No files are uploaded to Acadex servers, Google Drive, or external storage.
         </span>
       </div>
     </div>

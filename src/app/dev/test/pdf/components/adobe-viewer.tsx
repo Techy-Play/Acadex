@@ -220,18 +220,18 @@ export function AdobeViewer({
   };
 
   return (
-    <div className="relative w-full h-full min-h-[500px] flex flex-col bg-background select-none overflow-hidden">
+    <div className="relative w-full h-full min-h-0 flex-1 flex flex-col bg-background select-none overflow-hidden">
       {/* Loading Overlay */}
       {isLoading && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-xs text-center p-6">
-          <div className="p-3.5 rounded-2xl bg-primary/10 text-primary shadow-xs">
-            <RefreshCw className="h-7 w-7 animate-spin" />
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-xs text-center p-4 sm:p-6">
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-primary/10 text-primary shadow-xs">
+            <RefreshCw className="h-6 w-6 sm:h-7 sm:w-7 animate-spin" />
           </div>
           <div>
             <h4 className="text-sm font-semibold text-foreground">
               Initializing Adobe PDF Embed API...
             </h4>
-            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm px-2">
               Rendering local document via client ArrayBuffer into Adobe&apos;s embedded Acrobat engine.
             </p>
           </div>
@@ -240,19 +240,19 @@ export function AdobeViewer({
 
       {/* Initialization Failure State */}
       {initError && !isLoading && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center p-6 text-center bg-background">
-          <div className="flex flex-col items-center max-w-md p-6 rounded-2xl bg-card border border-border shadow-md">
-            <div className="p-3 rounded-full bg-destructive/10 text-destructive mb-3">
-              <AlertCircle className="h-7 w-7" />
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center p-4 sm:p-6 text-center bg-background overflow-y-auto">
+          <div className="flex flex-col items-center max-w-md w-full p-4 sm:p-6 rounded-2xl bg-card border border-border shadow-md my-auto">
+            <div className="p-2.5 sm:p-3 rounded-full bg-destructive/10 text-destructive mb-2.5 sm:mb-3">
+              <AlertCircle className="h-6 w-6 sm:h-7 sm:w-7" />
             </div>
             <h3 className="text-sm font-semibold text-foreground">
               Adobe Embed API Error
             </h3>
-            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed break-words max-w-full">
               {initError}
             </p>
 
-            <div className="mt-4 p-3 rounded-xl bg-muted/60 border border-border/80 text-[11px] text-muted-foreground text-left w-full space-y-1.5 font-mono">
+            <div className="mt-3.5 sm:mt-4 p-3 rounded-xl bg-muted/60 border border-border/80 text-[10px] sm:text-[11px] text-muted-foreground text-left w-full space-y-1.5 font-mono">
               <p className="font-semibold text-foreground">Common Root Causes:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li>Client ID is invalid or not registered for this domain.</li>
@@ -261,12 +261,12 @@ export function AdobeViewer({
               </ul>
             </div>
 
-            <div className="flex items-center gap-2 mt-5">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 mt-4 sm:mt-5 w-full">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleRetry}
-                className="rounded-xl text-xs gap-1.5"
+                className="w-full sm:w-auto rounded-xl text-xs gap-1.5"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Retry Initialization
@@ -275,8 +275,9 @@ export function AdobeViewer({
                 href="https://developer.adobe.com/console"
                 target="_blank"
                 rel="noopener noreferrer"
+                className="w-full sm:w-auto"
               >
-                <Button size="sm" variant="secondary" className="rounded-xl text-xs gap-1.5">
+                <Button size="sm" variant="secondary" className="w-full rounded-xl text-xs gap-1.5">
                   <ExternalLink className="h-3.5 w-3.5" />
                   Adobe Console
                 </Button>
@@ -289,7 +290,7 @@ export function AdobeViewer({
       {/* Adobe DC View Mount Point */}
       <div
         id={containerDivId}
-        className="w-full h-full min-h-[500px] flex-1 overflow-hidden"
+        className="w-full h-full min-h-0 flex-1 overflow-hidden"
       />
     </div>
   );

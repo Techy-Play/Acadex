@@ -77,37 +77,41 @@ export function AdobePdfTestClient() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-background select-none overflow-hidden">
+    <div className="flex flex-col h-screen h-[100dvh] w-full bg-background select-none overflow-hidden">
       {/* Top Application Header Bar matching /user/dashboard/viewer */}
-      <header className="h-12 border-b border-border/80 bg-card/95 backdrop-blur-md flex items-center justify-between px-3 sm:px-4 z-20 shrink-0">
+      <header className="h-12 border-b border-border/80 bg-card/95 backdrop-blur-md flex items-center justify-between px-2.5 sm:px-4 z-20 shrink-0">
         {/* Left Section: Back button, Title, and Badges */}
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1 sm:flex-initial">
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8 rounded-lg shrink-0"
             onClick={handleBackNavigation}
             title={isViewerActive ? "Return to Upload Screen" : "Go Back"}
+            aria-label="Back"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
 
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             <FileText className="h-4 w-4 text-red-500 shrink-0 hidden sm:block" />
-            <h1 className="text-sm font-semibold truncate text-foreground">
+            <h1
+              className="text-xs sm:text-sm font-semibold truncate text-foreground max-w-[130px] min-[400px]:max-w-[180px] sm:max-w-[280px] md:max-w-md lg:max-w-xl"
+              title={isViewerActive && selectedFile ? selectedFile.name : "Adobe PDF Reader — Test Lab"}
+            >
               {isViewerActive && selectedFile ? selectedFile.name : "Adobe PDF Reader — Test Lab"}
             </h1>
 
             <Badge
               variant="outline"
-              className="text-[10px] font-mono tracking-tight shrink-0 hidden sm:inline-flex border-red-500/30 text-red-600 dark:text-red-400 bg-red-500/5"
+              className="text-[10px] font-mono tracking-tight shrink-0 hidden md:inline-flex border-red-500/30 text-red-600 dark:text-red-400 bg-red-500/5"
             >
               Adobe PDF Embed API
             </Badge>
 
             <Badge
               variant="secondary"
-              className="text-[10px] font-mono shrink-0 hidden md:inline-flex bg-muted/60 text-muted-foreground"
+              className="text-[10px] font-mono shrink-0 hidden lg:inline-flex bg-muted/60 text-muted-foreground"
             >
               Isolated Lab
             </Badge>
@@ -115,26 +119,29 @@ export function AdobePdfTestClient() {
         </div>
 
         {/* Right Section: Actions & Client ID Pill */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-1">
           {/* Client ID Status Pill */}
           <button
             onClick={() => setShowKeySettings(!showKeySettings)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono transition-colors border ${
+            className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-mono transition-colors border ${
               activeClientId
                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
                 : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
             }`}
             title="Click to view or update Adobe Client ID settings"
+            aria-label="Client ID Settings"
           >
             {activeClientId ? (
               <>
-                <CheckCircle2 className="h-3 w-3" />
+                <CheckCircle2 className="h-3 w-3 shrink-0" />
                 <span className="hidden sm:inline">Client ID Set</span>
+                <span className="sm:hidden text-[11px]">ID Set</span>
               </>
             ) : (
               <>
-                <KeyRound className="h-3 w-3 animate-pulse" />
-                <span>Client ID Needed</span>
+                <KeyRound className="h-3 w-3 shrink-0 animate-pulse" />
+                <span className="hidden sm:inline">Client ID Needed</span>
+                <span className="sm:hidden text-[11px]">Set ID</span>
               </>
             )}
           </button>
@@ -145,7 +152,7 @@ export function AdobePdfTestClient() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs font-medium rounded-lg gap-1.5 shadow-xs"
+                className="h-8 px-2 sm:px-3 text-xs font-medium rounded-lg gap-1.5 shadow-xs"
                 onClick={() => setIsViewerActive(false)}
                 title="Choose a different PDF file"
               >
@@ -156,7 +163,7 @@ export function AdobePdfTestClient() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 text-xs font-medium rounded-lg gap-1.5 text-muted-foreground hover:text-foreground"
+                className="h-8 px-2 sm:px-3 text-xs font-medium rounded-lg gap-1.5 text-muted-foreground hover:text-foreground"
                 onClick={handleClearFile}
                 title="Clear current document and return to upload"
               >
@@ -170,11 +177,11 @@ export function AdobePdfTestClient() {
 
       {/* Client ID Configuration Modal / Popover Banner */}
       {showKeySettings && (
-        <div className="shrink-0 p-4 bg-card/98 border-b border-border shadow-md z-15 animate-in slide-in-from-top-2">
-          <div className="max-w-2xl mx-auto flex flex-col gap-3">
+        <div className="shrink-0 p-3 sm:p-4 bg-card/98 border-b border-border shadow-md z-15 animate-in slide-in-from-top-2 max-h-[85vh] overflow-y-auto">
+          <div className="max-w-2xl mx-auto flex flex-col gap-2.5 sm:gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4 text-primary" />
+                <SlidersHorizontal className="h-4 w-4 text-primary shrink-0" />
                 <h3 className="text-xs font-semibold text-foreground">
                   Adobe PDF Embed API Configuration
                 </h3>
@@ -182,7 +189,7 @@ export function AdobePdfTestClient() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 text-xs text-muted-foreground"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => setShowKeySettings(false)}
               >
                 Close
@@ -191,47 +198,50 @@ export function AdobePdfTestClient() {
 
             <p className="text-xs text-muted-foreground leading-relaxed">
               Adobe requires a valid Client ID registered for the domain accessing the SDK.
-              For local development, register <code className="bg-muted px-1 rounded">localhost:3000</code>. For production, register <code className="bg-muted px-1 rounded">au-acadex.com</code>.
+              For local development, register <code className="bg-muted px-1 py-0.5 rounded text-foreground font-mono">localhost:3000</code>. For production, register <code className="bg-muted px-1 py-0.5 rounded text-foreground font-mono">au-acadex.com</code>.
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              <div className="flex-1 relative">
+              <div className="flex-1 min-w-0">
                 <Input
                   type="text"
                   placeholder="Enter Adobe Client ID (e.g., e7d4f...)"
                   value={customClientId}
                   onChange={(e) => handleSaveCustomClientId(e.target.value)}
-                  className="h-8 text-xs font-mono"
+                  className="h-8 text-xs font-mono w-full"
                 />
               </div>
 
-              {envClientId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-xs text-muted-foreground"
-                  onClick={() => handleSaveCustomClientId("")}
-                  title="Revert to environment variable"
-                >
-                  Use .env Default
-                </Button>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {envClientId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs text-muted-foreground flex-1 sm:flex-initial"
+                    onClick={() => handleSaveCustomClientId("")}
+                    title="Revert to environment variable"
+                  >
+                    Use .env Default
+                  </Button>
+                )}
 
-              <a
-                href="https://developer.adobe.com/console"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button size="sm" variant="secondary" className="h-8 text-xs gap-1.5 w-full sm:w-auto">
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Adobe Console
-                </Button>
-              </a>
+                <a
+                  href="https://developer.adobe.com/console"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 sm:flex-initial"
+                >
+                  <Button size="sm" variant="secondary" className="h-8 text-xs gap-1.5 w-full">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span>Adobe Console</span>
+                  </Button>
+                </a>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
-              <span>Environment Variable: {envClientId ? "Configured" : "None"}</span>
-              <span>Active Client ID: {activeClientId ? `${activeClientId.slice(0, 10)}...` : "None"}</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-muted-foreground font-mono pt-1 border-t border-border/40">
+              <span className="truncate">Environment Key: {envClientId ? "Configured" : "None"}</span>
+              <span className="truncate">Active Key: {activeClientId ? `${activeClientId.slice(0, 10)}...` : "None"}</span>
             </div>
           </div>
         </div>
@@ -241,7 +251,7 @@ export function AdobePdfTestClient() {
       <main className="relative flex-1 w-full h-full min-h-0 bg-muted/30 overflow-hidden flex items-center justify-center">
         {/* State A: File Upload & Setup Panel */}
         {!isViewerActive && (
-          <div className="w-full h-full overflow-y-auto p-4 sm:p-6 flex flex-col items-center justify-center">
+          <div className="w-full h-full overflow-y-auto p-3 sm:p-6 flex flex-col items-center justify-center">
             {/* Missing Client ID Alert Box (if not configured) */}
             {!activeClientId && (
               <div className="w-full max-w-xl mx-auto mb-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-foreground shadow-xs animate-in fade-in">
