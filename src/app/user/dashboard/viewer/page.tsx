@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -41,10 +41,13 @@ export default function DocumentViewerPage() {
         return "PDF";
       case "image":
         return (resolved.fileExtension || "IMAGE").toUpperCase();
+      case "file_download":
       case "office_drive":
         if (resolved.fileExtension === "pptx" || resolved.fileExtension === "ppt") return "PowerPoint";
         if (resolved.fileExtension === "xlsx" || resolved.fileExtension === "xls" || resolved.fileExtension === "csv") return "Excel";
-        return "Word Document";
+        if (resolved.fileExtension === "docx" || resolved.fileExtension === "doc") return "Word";
+        if (resolved.fileExtension === "zip" || resolved.fileExtension === "rar" || resolved.fileExtension === "7z") return "Archive";
+        return resolved.fileExtension ? resolved.fileExtension.toUpperCase() : "File";
       case "google_workspace":
         return "Google Docs";
       case "external_website":
@@ -102,27 +105,9 @@ export default function DocumentViewerPage() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {resolved.directOpenUrl && (
+          {resolved.category === "external_website" ? (
             <a
-              href={resolved.directOpenUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex"
-            >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-lg shrink-0"
-                title="Open in New Tab"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-            </a>
-          )}
-
-          {resolved.downloadUrl && (
-            <a
-              href={resolved.downloadUrl}
+              href={resolved.directOpenUrl || fileUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex"
@@ -132,10 +117,48 @@ export default function DocumentViewerPage() {
                 size="sm"
                 className="h-8 text-xs font-medium rounded-lg gap-1.5 shadow-xs"
               >
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Download</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span>Open Link</span>
               </Button>
             </a>
+          ) : (
+            <>
+              {resolved.directOpenUrl && (
+                <a
+                  href={resolved.directOpenUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex"
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-lg shrink-0"
+                    title="Open in New Tab"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </a>
+              )}
+
+              {resolved.downloadUrl && (
+                <a
+                  href={resolved.downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex"
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs font-medium rounded-lg gap-1.5 shadow-xs"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Download</span>
+                  </Button>
+                </a>
+              )}
+            </>
           )}
         </div>
       </header>

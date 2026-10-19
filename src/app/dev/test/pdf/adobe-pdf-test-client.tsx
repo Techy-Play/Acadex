@@ -305,6 +305,7 @@ export function AdobePdfTestClient() {
         {isViewerActive && selectedFile && (
           <div className="relative w-full h-full flex flex-col overflow-hidden">
             <AdobeViewer
+              key={`${selectedFile.name}-${selectedFile.size}-${selectedFile.lastModified}`}
               file={selectedFile}
               clientId={activeClientId}
               embedMode={embedMode}

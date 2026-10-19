@@ -7,14 +7,17 @@
 export type ResourceCategory =
   | "pdf"
   | "image"
+  | "file_download"
   | "office_drive"
   | "google_workspace"
   | "external_website"
   | "unknown";
 
 export type ViewerKind =
+  | "adobe_pdf"
   | "pdfjs"
   | "image"
+  | "file_download"
   | "office_iframe"
   | "google_iframe"
   | "external_card"
@@ -36,7 +39,23 @@ export interface ResolvedResource {
 }
 
 const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "svg", "gif", "bmp"]);
-const OFFICE_EXTENSIONS = new Set(["docx", "doc", "pptx", "ppt", "xlsx", "xls", "csv"]);
+const OTHER_FILE_EXTENSIONS = new Set([
+  "docx",
+  "doc",
+  "pptx",
+  "ppt",
+  "xlsx",
+  "xls",
+  "csv",
+  "zip",
+  "rar",
+  "7z",
+  "tar",
+  "gz",
+  "txt",
+  "rtf",
+  "json",
+]);
 
 /**
  * Extracts a file extension (without dot, lowercase) from a URL or title.
@@ -147,7 +166,6 @@ export function resolveResource(
   if (driveId) {
     const directDownload = `https://drive.google.com/uc?export=download&confirm=t&id=${driveId}`;
     const directOpen = `https://drive.google.com/file/d/${driveId}/view`;
-    const drivePreview = `https://drive.google.com/file/d/${driveId}/preview`;
 
     // A. Image stored in Google Drive
     if (IMAGE_EXTENSIONS.has(ext) || (knownMime && knownMime.startsWith("image/"))) {
@@ -168,27 +186,36 @@ export function resolveResource(
       };
     }
 
-    // B. Office document (DOCX, PPTX, XLSX) stored in Google Drive
-    // Previewed through Google Drive's native Office preview iframe!
-    if (OFFICE_EXTENSIONS.has(ext) || (knownMime && (knownMime.includes("word") || knownMime.includes("presentation") || knownMime.includes("spreadsheet")))) {
+    // B. Other non-PDF files stored in Google Drive (DOCX, PPTX, XLSX, ZIP, etc.)
+    // Requirement 4: Show the file name, basic details, and a Download File button instead of trying to preview them.
+    if (
+      OTHER_FILE_EXTENSIONS.has(ext) ||
+      (knownMime &&
+        (knownMime.includes("word") ||
+          knownMime.includes("presentation") ||
+          knownMime.includes("spreadsheet") ||
+          knownMime.includes("zip") ||
+          knownMime.includes("compressed")))
+    ) {
       return {
-        category: "office_drive",
+        category: "file_download",
         rawUrl: trimmedUrl,
         cleanUrl: directOpen,
         driveFileId: driveId,
-        previewUrl: drivePreview,
+        previewUrl: directDownload,
         downloadUrl: directDownload,
         directOpenUrl: directOpen,
-        canEmbed: true,
-        viewerKind: "office_iframe",
+        canEmbed: false,
+        viewerKind: "file_download",
         fileExtension: ext,
         mimeType: knownMime,
         title: cleanTitle,
       };
     }
 
-    // C. PDF (or default for Google Drive resource without explicit Office/image extension)
-    // Most resources in Acadex are PDFs. We stream via authenticated pdf-proxy.
+    // C. PDF stored in Google Drive (or default Drive resource)
+    // Requirement 1 & 2: Use Adobe PDF Embed API for all PDF resources.
+    // Preserves authenticated streaming through /api/pdf-proxy.
     const proxyPreview = `/api/pdf-proxy?url=${encodeURIComponent(trimmedUrl)}&filename=${encodeURIComponent(cleanTitle)}`;
     return {
       category: "pdf",
@@ -199,7 +226,7 @@ export function resolveResource(
       downloadUrl: directDownload,
       directOpenUrl: directOpen,
       canEmbed: true,
-      viewerKind: "pdfjs",
+      viewerKind: "adobe_pdf",
       fileExtension: ext || "pdf",
       mimeType: knownMime || "application/pdf",
       title: cleanTitle,
@@ -209,7 +236,7 @@ export function resolveResource(
   // 3. External Non-Drive URLs
   const isHttp = /^https?:\/\//i.test(trimmedUrl);
   if (isHttp) {
-    // A. Direct PDF link
+    // A. Direct PDF link -> Use Adobe PDF Embed API
     if (ext === "pdf" || knownMime === "application/pdf") {
       return {
         category: "pdf",
@@ -219,14 +246,14 @@ export function resolveResource(
         downloadUrl: trimmedUrl,
         directOpenUrl: trimmedUrl,
         canEmbed: true,
-        viewerKind: "pdfjs",
+        viewerKind: "adobe_pdf",
         fileExtension: "pdf",
         mimeType: "application/pdf",
         title: cleanTitle,
       };
     }
 
-    // B. Direct Image link
+    // B. Direct Image link -> Keep existing Image Viewer
     if (IMAGE_EXTENSIONS.has(ext) || (knownMime && knownMime.startsWith("image/"))) {
       return {
         category: "image",
@@ -243,13 +270,31 @@ export function resolveResource(
       };
     }
 
-    // C. External Website / Article / Web tool
+    // C. Direct Other downloadable files (e.g. .docx, .xlsx, .zip)
+    if (OTHER_FILE_EXTENSIONS.has(ext)) {
+      return {
+        category: "file_download",
+        rawUrl: trimmedUrl,
+        cleanUrl: trimmedUrl,
+        previewUrl: trimmedUrl,
+        downloadUrl: trimmedUrl,
+        directOpenUrl: trimmedUrl,
+        canEmbed: false,
+        viewerKind: "file_download",
+        fileExtension: ext,
+        mimeType: knownMime,
+        title: cleanTitle,
+      };
+    }
+
+    // D. External Website / Article / Web link
+    // Requirement 5: Show an Open Link button instead of treating them as downloadable files.
     return {
       category: "external_website",
       rawUrl: trimmedUrl,
       cleanUrl: trimmedUrl,
       previewUrl: trimmedUrl,
-      downloadUrl: trimmedUrl,
+      downloadUrl: "",
       directOpenUrl: trimmedUrl,
       canEmbed: false,
       viewerKind: "external_card",

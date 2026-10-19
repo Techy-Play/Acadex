@@ -7,8 +7,7 @@
     "build": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "npx tsx scripts/seed.ts",
-    "postinstall": "node scripts/copy-viewer-assets.js"
+    "seed": "npx tsx scripts/seed.ts"
   },
   "dependencies": {
     "@types/web-push": "^3.6.4",
@@ -22,7 +21,6 @@
     "motion": "^12.34.3",
     "next": "16.1.6",
     "next-themes": "^0.4.6",
-    "pdfjs-dist": "3.11.174",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",

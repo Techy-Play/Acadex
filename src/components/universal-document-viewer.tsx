@@ -4,19 +4,21 @@ import React, { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { resolveResource } from "@/lib/resource-resolver";
 import { ImageViewer } from "@/components/image-viewer";
-import { OfficeEmbedViewer } from "@/components/office-embed-viewer";
+import { FileDownloadCard } from "@/components/file-download-card";
 import { ExternalResourceCard } from "@/components/external-resource-card";
-import { Button } from "@/components/ui/button";
-import { Download, ExternalLink, AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
-const PdfViewer = dynamic(
-  () => import("@/components/pdf-viewer").then((mod) => mod.PdfViewer),
+// Dynamically load AdobePdfViewer on client side with matching skeleton
+const AdobePdfViewer = dynamic(
+  () => import("@/components/adobe-pdf-viewer").then((mod) => mod.AdobePdfViewer),
   {
     ssr: false,
     loading: () => (
-      <div className="flex flex-col items-center justify-center p-8 text-center h-full w-full">
-        <RefreshCw className="h-8 w-8 text-primary animate-spin" />
-        <p className="text-xs text-muted-foreground font-medium mt-2">Loading document viewer...</p>
+      <div className="flex flex-col items-center justify-center p-8 text-center h-full w-full bg-background">
+        <div className="p-3.5 rounded-2xl bg-primary/10 text-primary shadow-xs mb-3">
+          <RefreshCw className="h-7 w-7 animate-spin" />
+        </div>
+        <p className="text-xs text-muted-foreground font-medium">Loading Adobe Acrobat Reader...</p>
       </div>
     ),
   }
@@ -24,9 +26,9 @@ const PdfViewer = dynamic(
 
 export interface UniversalDocumentViewerProps {
   /**
-   * Document source: URL string, File object, or Uint8Array.
+   * Document source: URL string, File object, Blob, or Uint8Array.
    */
-  src: string | File | Uint8Array;
+  src: string | File | Blob | Uint8Array | ArrayBuffer;
   /**
    * Display filename or document title.
    */
@@ -52,7 +54,7 @@ export function UniversalDocumentViewer({
   onError,
   className = "",
 }: UniversalDocumentViewerProps) {
-  // Convert src to a URL string
+  // Convert src to a URL string if needed for resolver
   const sourceUrl = useMemo(() => {
     if (typeof src === "string") return src;
     if (typeof window !== "undefined") {
@@ -67,7 +69,7 @@ export function UniversalDocumentViewer({
     return "";
   }, [src, mimeType]);
 
-  // Clean up object URLs on unmount if one was generated
+  // Clean up object URLs on unmount if generated
   React.useEffect(() => {
     return () => {
       if (typeof src !== "string" && sourceUrl && sourceUrl.startsWith("blob:")) {
@@ -81,7 +83,7 @@ export function UniversalDocumentViewer({
     return resolveResource(sourceUrl, fileName, mimeType);
   }, [sourceUrl, fileName, mimeType]);
 
-  if (!sourceUrl) {
+  if (!sourceUrl && !(src instanceof ArrayBuffer)) {
     return (
       <div className={`flex flex-col items-center justify-center p-8 text-center bg-muted/20 ${className}`}>
         <AlertCircle className="h-8 w-8 text-muted-foreground" />
@@ -90,11 +92,14 @@ export function UniversalDocumentViewer({
     );
   }
 
-  // 1. PDF.js Viewer
-  if (resolved.viewerKind === "pdfjs") {
+  // 1. Adobe PDF Embed API Viewer (All PDF Resources)
+  // Requirement 1 & 2: Use Adobe PDF Embed API for all PDF resources across the application.
+  if (resolved.viewerKind === "adobe_pdf" || resolved.viewerKind === "pdfjs") {
+    // If original src was a File, Blob, or ArrayBuffer, pass it directly; otherwise pass resolved previewUrl
+    const effectivePdfSource = typeof src === "string" ? resolved.previewUrl : src;
     return (
-      <PdfViewer
-        url={resolved.previewUrl}
+      <AdobePdfViewer
+        src={effectivePdfSource}
         title={resolved.title}
         downloadUrl={resolved.downloadUrl}
         onError={onError}
@@ -103,7 +108,7 @@ export function UniversalDocumentViewer({
     );
   }
 
-  // 2. Responsive Image Viewer
+  // 2. Responsive Image Viewer (Requirement 3: Keep existing image viewer unchanged)
   if (resolved.viewerKind === "image") {
     return (
       <ImageViewer
@@ -115,20 +120,38 @@ export function UniversalDocumentViewer({
     );
   }
 
-  // 3. Office & Google Workspace Embedded Iframe Viewer
-  if (resolved.viewerKind === "office_iframe" || resolved.viewerKind === "google_iframe") {
+  // 3. Download File Card for Other Formats (Requirement 4: DOCX, XLSX, PPTX, ZIP, etc.)
+  if (
+    resolved.viewerKind === "file_download" ||
+    resolved.viewerKind === "office_iframe"
+  ) {
     return (
-      <OfficeEmbedViewer
-        previewUrl={resolved.previewUrl}
-        directOpenUrl={resolved.directOpenUrl}
-        downloadUrl={resolved.downloadUrl}
+      <FileDownloadCard
         title={resolved.title}
+        downloadUrl={resolved.downloadUrl}
+        directOpenUrl={resolved.directOpenUrl}
+        fileExtension={resolved.fileExtension}
+        mimeType={resolved.mimeType}
         className={className}
       />
     );
   }
 
-  // 4. External Website Card
+  // 4. Native Google Docs / Workspace Documents
+  if (resolved.viewerKind === "google_iframe") {
+    return (
+      <div className={`relative w-full h-full flex flex-col bg-background overflow-hidden ${className}`}>
+        <iframe
+          src={resolved.previewUrl}
+          title={resolved.title}
+          className="w-full h-full border-0"
+          allow="autoplay"
+        />
+      </div>
+    );
+  }
+
+  // 5. External Website Card (Requirement 5: Show Open Link button)
   if (resolved.viewerKind === "external_card") {
     return (
       <ExternalResourceCard
@@ -139,45 +162,16 @@ export function UniversalDocumentViewer({
     );
   }
 
-  // 5. Unsupported / Fallback View
+  // 6. Unsupported / Fallback Card
   return (
-    <div className={`flex flex-col items-center justify-center p-6 h-full w-full bg-muted/20 ${className}`}>
-      <div className="flex flex-col items-center max-w-sm w-full bg-card rounded-2xl border border-border shadow-xs p-6 text-center gap-3">
-        <AlertCircle className="h-8 w-8 text-muted-foreground" />
-        <h3 className="text-sm font-semibold text-foreground">Preview Not Available</h3>
-        <p className="text-xs text-muted-foreground">
-          This file format cannot be previewed in the browser. You can download it or open the original link.
-        </p>
-
-        <div className="flex items-center gap-2 mt-2 w-full">
-          {resolved.downloadUrl && (
-            <a
-              href={resolved.downloadUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1"
-            >
-              <Button size="sm" className="w-full gap-1.5 rounded-xl text-xs">
-                <Download className="h-3.5 w-3.5" /> Download File
-              </Button>
-            </a>
-          )}
-
-          {resolved.directOpenUrl && (
-            <a
-              href={resolved.directOpenUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1"
-            >
-              <Button variant="outline" size="sm" className="w-full gap-1.5 rounded-xl text-xs">
-                <ExternalLink className="h-3.5 w-3.5" /> Open Link
-              </Button>
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
+    <FileDownloadCard
+      title={resolved.title}
+      downloadUrl={resolved.downloadUrl}
+      directOpenUrl={resolved.directOpenUrl}
+      fileExtension={resolved.fileExtension}
+      mimeType={resolved.mimeType}
+      className={className}
+    />
   );
 }
 

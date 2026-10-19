@@ -57,7 +57,7 @@ async function runTests() {
     "Operating Systems Unit 1.pdf"
   );
   assert(pdfRes.category === "pdf", "Google Drive PDF categorized as 'pdf'");
-  assert(pdfRes.viewerKind === "pdfjs", "Google Drive PDF routes to 'pdfjs' viewer");
+  assert(pdfRes.viewerKind === "adobe_pdf", "Google Drive PDF routes to 'adobe_pdf' viewer");
   assert(pdfRes.previewUrl.includes("/api/pdf-proxy"), "Google Drive PDF uses authenticated /api/pdf-proxy");
   assert(pdfRes.downloadUrl.includes("export=download"), "Google Drive PDF provides direct download URL");
   assert(pdfRes.canEmbed === true, "Google Drive PDF is embeddable");
@@ -67,19 +67,19 @@ async function runTests() {
     "https://drive.google.com/file/d/DRIVE_DOCX_ID/view",
     "Assignment 2 Questions.docx"
   );
-  assert(docxRes.category === "office_drive", "Google Drive DOCX categorized as 'office_drive'");
-  assert(docxRes.viewerKind === "office_iframe", "Google Drive DOCX routes to 'office_iframe' viewer");
-  assert(docxRes.previewUrl === "https://drive.google.com/file/d/DRIVE_DOCX_ID/preview", "Google Drive DOCX preview uses Drive preview iframe");
-  assert(docxRes.canEmbed === true, "Google Drive DOCX is embeddable");
+  assert(docxRes.category === "file_download", "Google Drive DOCX categorized as 'file_download'");
+  assert(docxRes.viewerKind === "file_download", "Google Drive DOCX routes to 'file_download' card");
+  assert(docxRes.downloadUrl.includes("export=download"), "Google Drive DOCX provides direct download URL");
+  assert(docxRes.canEmbed === false, "Google Drive DOCX is marked as not embeddable");
 
   // C. Google Drive PowerPoint Presentation (PPTX)
   const pptxRes = resolveResource(
     "https://drive.google.com/file/d/DRIVE_PPTX_ID/view",
     "Compiler Design Lecture Slides.pptx"
   );
-  assert(pptxRes.category === "office_drive", "Google Drive PPTX categorized as 'office_drive'");
-  assert(pptxRes.viewerKind === "office_iframe", "Google Drive PPTX routes to 'office_iframe' viewer");
-  assert(pptxRes.previewUrl === "https://drive.google.com/file/d/DRIVE_PPTX_ID/preview", "Google Drive PPTX preview uses Drive preview iframe");
+  assert(pptxRes.category === "file_download", "Google Drive PPTX categorized as 'file_download'");
+  assert(pptxRes.viewerKind === "file_download", "Google Drive PPTX routes to 'file_download' card");
+  assert(pptxRes.downloadUrl.includes("export=download"), "Google Drive PPTX provides direct download URL");
 
   // D. Google Drive Image
   const imgRes = resolveResource(
@@ -105,7 +105,7 @@ async function runTests() {
     "Research Paper"
   );
   assert(extPdfRes.category === "pdf", "External PDF categorized as 'pdf'");
-  assert(extPdfRes.viewerKind === "pdfjs", "External PDF routes to 'pdfjs'");
+  assert(extPdfRes.viewerKind === "adobe_pdf", "External PDF routes to 'adobe_pdf'");
 
   // G. External Website
   const extSiteRes = resolveResource(
@@ -114,6 +114,7 @@ async function runTests() {
   );
   assert(extSiteRes.category === "external_website", "External website categorized as 'external_website'");
   assert(extSiteRes.viewerKind === "external_card", "External website routes to 'external_card'");
+  assert(extSiteRes.downloadUrl === "", "External website has empty downloadUrl (not downloadable)");
   assert(extSiteRes.canEmbed === false, "External website marked as not embedded (safe fallback)");
 
   // H. Empty URL
