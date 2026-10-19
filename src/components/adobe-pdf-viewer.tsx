@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useMemo } from "react";
-import { RefreshCw, AlertCircle, RotateCcw, ExternalLink, KeyRound, Download } from "lucide-react";
+import { RefreshCw, AlertCircle, RotateCcw, ExternalLink, KeyRound, Download, Moon, Sun, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const ADOBE_SDK_URL = "https://acrobatservices.adobe.com/view-sdk/viewer.js";
 const ADOBE_SDK_SCRIPT_ID = "adobe-dc-view-sdk-script";
 const SESSION_CLIENT_ID_KEY = "acadex_test_adobe_client_id";
+const THEME_STORAGE_KEY = "acadex-pdf-reader-theme";
+
+export type PdfThemeMode = "dark" | "night" | "light";
 
 // Global type declarations for Adobe PDF Embed API
 declare global {
@@ -79,6 +82,14 @@ export interface AdobePdfViewerProps {
    */
   embedMode?: "FULL_WINDOW" | "SIZED_CONTAINER";
   /**
+   * Theme mode: "dark" (pure black canvas), "night" (inverted high-contrast reader), or "light" (clean canvas).
+   */
+  themeMode?: PdfThemeMode;
+  /**
+   * Callback fired when theme mode changes.
+   */
+  onThemeModeChange?: (mode: PdfThemeMode) => void;
+  /**
    * Callback fired on initialization or loading error.
    */
   onError?: (error: Error) => void;
@@ -146,6 +157,8 @@ export function AdobePdfViewer({
   downloadUrl,
   clientId,
   embedMode = "FULL_WINDOW",
+  themeMode: propThemeMode,
+  onThemeModeChange,
   onError,
   onSuccess,
   className = "",
@@ -161,6 +174,30 @@ export function AdobePdfViewer({
   });
 
   const activeClientId = (clientId || sessionClientId || envClientId).trim();
+
+  // Theme Mode State: Defaults to "dark" (pure black canvas) or reads from localStorage
+  const [internalTheme, setInternalTheme] = useState<PdfThemeMode>(() => {
+    if (typeof window === "undefined") return "dark";
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      if (saved === "night" || saved === "light" || saved === "dark") return saved;
+    } catch {
+      // ignore
+    }
+    return "dark";
+  });
+
+  const activeTheme = propThemeMode || internalTheme;
+
+  const handleSelectTheme = (mode: PdfThemeMode) => {
+    setInternalTheme(mode);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, mode);
+    } catch {
+      // ignore
+    }
+    if (onThemeModeChange) onThemeModeChange(mode);
+  };
 
   const [isLoading, setIsLoading] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
@@ -406,18 +443,35 @@ export function AdobePdfViewer({
   }
 
   return (
-    <div className={`relative w-full h-full min-h-0 flex-1 flex flex-col bg-background select-none overflow-hidden ${className}`}>
+    <div className={`relative w-full h-full min-h-0 flex-1 flex flex-col bg-black text-zinc-100 select-none overflow-hidden ${className}`}>
+      {/* Scoped Dynamic Theme CSS for Adobe Viewer */}
+      <style>{`
+        #${containerDivId} {
+          background-color: ${activeTheme === "light" ? "#f4f4f5" : "#000000"} !important;
+          transition: background-color 0.2s ease;
+        }
+        #${containerDivId} iframe {
+          background-color: ${activeTheme === "light" ? "#f4f4f5" : "#000000"} !important;
+          ${
+            activeTheme === "night"
+              ? "filter: invert(0.92) hue-rotate(180deg) contrast(0.95) brightness(0.95) !important;"
+              : ""
+          }
+          transition: filter 0.2s ease, background-color 0.2s ease;
+        }
+      `}</style>
+
       {/* Loading Overlay */}
       {isLoading && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-xs text-center p-4 sm:p-6 animate-in fade-in">
-          <div className="p-3 sm:p-3.5 rounded-2xl bg-primary/10 text-primary shadow-xs">
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/90 backdrop-blur-xs text-center p-4 sm:p-6 animate-in fade-in">
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-zinc-800 text-primary shadow-xs">
             <RefreshCw className="h-6 w-6 sm:h-7 sm:w-7 animate-spin" />
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-foreground">
+            <h4 className="text-sm font-semibold text-zinc-100">
               Initializing Adobe PDF Embed API...
             </h4>
-            <p className="text-xs text-muted-foreground mt-1 max-w-sm px-2">
+            <p className="text-xs text-zinc-400 mt-1 max-w-sm px-2">
               Rendering document into Adobe&apos;s embedded Acrobat engine.
             </p>
           </div>
@@ -425,7 +479,7 @@ export function AdobePdfViewer({
           <Button
             variant="ghost"
             size="sm"
-            className="mt-2 text-xs text-muted-foreground hover:text-foreground h-7 rounded-lg"
+            className="mt-2 text-xs text-zinc-400 hover:text-white h-7 rounded-lg"
             onClick={() => setIsLoading(false)}
           >
             Document visible? Dismiss overlay
@@ -435,15 +489,15 @@ export function AdobePdfViewer({
 
       {/* Initialization Failure State */}
       {initError && !isLoading && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center p-4 sm:p-6 text-center bg-background overflow-y-auto">
-          <div className="flex flex-col items-center max-w-md w-full p-4 sm:p-6 rounded-2xl bg-card border border-border shadow-md my-auto">
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center p-4 sm:p-6 text-center bg-black overflow-y-auto">
+          <div className="flex flex-col items-center max-w-md w-full p-4 sm:p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-md my-auto">
             <div className="p-2.5 sm:p-3 rounded-full bg-destructive/10 text-destructive mb-2.5 sm:mb-3">
               <AlertCircle className="h-6 w-6 sm:h-7 sm:w-7" />
             </div>
-            <h3 className="text-sm font-semibold text-foreground">
+            <h3 className="text-sm font-semibold text-zinc-100">
               Unable to Display Document in Adobe Reader
             </h3>
-            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed break-words max-w-full">
+            <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed break-words max-w-full">
               {initError}
             </p>
 
@@ -452,7 +506,7 @@ export function AdobePdfViewer({
                 variant="outline"
                 size="sm"
                 onClick={handleRetry}
-                className="w-full sm:w-auto rounded-xl text-xs gap-1.5"
+                className="w-full sm:w-auto rounded-xl text-xs gap-1.5 border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Retry
@@ -481,6 +535,51 @@ export function AdobePdfViewer({
         id={containerDivId}
         className="w-full h-full min-h-0 flex-1 overflow-hidden"
       />
+
+      {/* Floating Theme Control Pill */}
+      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-0.5 p-1 rounded-xl bg-zinc-900/90 border border-zinc-800 backdrop-blur-md shadow-xl text-xs font-medium text-zinc-300">
+        <button
+          type="button"
+          onClick={() => handleSelectTheme("dark")}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors ${
+            activeTheme === "dark"
+              ? "bg-zinc-800 text-white font-semibold shadow-xs"
+              : "hover:text-white hover:bg-zinc-800/60"
+          }`}
+          title="Dark Canvas: Pure black background with original document"
+        >
+          <Moon className="h-3.5 w-3.5 text-zinc-300" />
+          <span className="hidden sm:inline">Dark</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleSelectTheme("night")}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors ${
+            activeTheme === "night"
+              ? "bg-indigo-600 text-white font-semibold shadow-xs"
+              : "hover:text-white hover:bg-zinc-800/60"
+          }`}
+          title="Night Reading Mode: Inverted high-contrast document for low light"
+        >
+          <Eye className="h-3.5 w-3.5 text-indigo-300" />
+          <span className="hidden sm:inline">Night</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleSelectTheme("light")}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors ${
+            activeTheme === "light"
+              ? "bg-zinc-200 text-zinc-900 font-semibold shadow-xs"
+              : "hover:text-white hover:bg-zinc-800/60"
+          }`}
+          title="Light Canvas: Clean light gray background"
+        >
+          <Sun className="h-3.5 w-3.5 text-amber-500" />
+          <span className="hidden sm:inline">Light</span>
+        </button>
+      </div>
     </div>
   );
 }
