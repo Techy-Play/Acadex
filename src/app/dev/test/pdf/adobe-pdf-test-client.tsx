@@ -37,9 +37,9 @@ export function AdobePdfTestClient() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isViewerActive, setIsViewerActive] = useState<boolean>(false);
-  const embedMode = "FULL_WINDOW";
+  const [embedMode, setEmbedMode] = useState<"IN_LINE" | "FULL_WINDOW">("IN_LINE");
 
-  const activeClientId = customClientId.trim() || envClientId.trim();
+  const activeClientId = customClientId.trim() || envClientId.trim() || "fe8e73aff7644345838859be2c119dd9";
 
   const handleSaveCustomClientId = (key: string) => {
     setCustomClientId(key);
@@ -149,6 +149,16 @@ export function AdobePdfTestClient() {
           {/* Viewer Mode Controls (When viewing PDF) */}
           {isViewerActive && (
             <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2 sm:px-2.5 text-xs font-mono rounded-lg gap-1 border-border/80"
+                onClick={() => setEmbedMode(embedMode === "IN_LINE" ? "FULL_WINDOW" : "IN_LINE")}
+                title="Toggle between Responsive Inline and Full Window modes"
+              >
+                <span className="hidden sm:inline">Mode:</span> {embedMode === "IN_LINE" ? "Inline" : "Full"}
+              </Button>
+
               <Button
                 variant="outline"
                 size="sm"

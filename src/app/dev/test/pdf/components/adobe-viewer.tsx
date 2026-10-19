@@ -6,7 +6,7 @@ import { AdobePdfViewer } from "@/components/adobe-pdf-viewer";
 export interface AdobeViewerProps {
   file: File;
   clientId: string;
-  embedMode?: "FULL_WINDOW" | "SIZED_CONTAINER";
+  embedMode?: "IN_LINE" | "FULL_WINDOW" | "SIZED_CONTAINER";
   onError?: (error: Error) => void;
   onSuccess?: () => void;
 }
@@ -14,7 +14,7 @@ export interface AdobeViewerProps {
 export function AdobeViewer({
   file,
   clientId,
-  embedMode = "FULL_WINDOW",
+  embedMode = "IN_LINE",
   onError,
   onSuccess,
 }: AdobeViewerProps) {

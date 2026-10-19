@@ -14,11 +14,10 @@ const AdobePdfViewer = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex flex-col items-center justify-center p-8 text-center h-full w-full bg-background">
-        <div className="p-3.5 rounded-2xl bg-primary/10 text-primary shadow-xs mb-3">
-          <RefreshCw className="h-7 w-7 animate-spin" />
+      <div className="flex items-center justify-center h-full w-full bg-background">
+        <div className="p-2.5 rounded-full bg-muted/60 text-muted-foreground shadow-xs">
+          <RefreshCw className="h-5 w-5 animate-spin" />
         </div>
-        <p className="text-xs text-muted-foreground font-medium">Loading Adobe Acrobat Reader...</p>
       </div>
     ),
   }

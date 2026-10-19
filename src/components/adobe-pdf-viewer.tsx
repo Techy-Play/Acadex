@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useMemo } from "react";
-import { RefreshCw, AlertCircle, RotateCcw, ExternalLink, KeyRound, Download, Moon, Sun, Eye } from "lucide-react";
+import { RefreshCw, AlertCircle, RotateCcw, ExternalLink, KeyRound, Download, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -9,8 +9,9 @@ const ADOBE_SDK_URL = "https://acrobatservices.adobe.com/view-sdk/viewer.js";
 const ADOBE_SDK_SCRIPT_ID = "adobe-dc-view-sdk-script";
 const SESSION_CLIENT_ID_KEY = "acadex_test_adobe_client_id";
 const THEME_STORAGE_KEY = "acadex-pdf-reader-theme";
+export const DEFAULT_ADOBE_CLIENT_ID = "fe8e73aff7644345838859be2c119dd9";
 
-export type PdfThemeMode = "dark" | "night" | "light";
+export type PdfThemeMode = "light" | "dark";
 
 // Global type declarations for Adobe PDF Embed API
 declare global {
@@ -33,7 +34,7 @@ declare global {
               };
             },
             viewerConfig?: {
-              embedMode?: "FULL_WINDOW" | "SIZED_CONTAINER" | "IN_LINE";
+              embedMode?: "IN_LINE" | "FULL_WINDOW" | "SIZED_CONTAINER";
               showAnnotationTools?: boolean;
               showLeftHandPanel?: boolean;
               showDownloadPDF?: boolean;
@@ -78,9 +79,9 @@ export interface AdobePdfViewerProps {
    */
   clientId?: string;
   /**
-   * Viewer embedding mode: "FULL_WINDOW" (default) or "SIZED_CONTAINER".
+   * Viewer embedding mode: "IN_LINE" (default responsive inline) or "FULL_WINDOW" or "SIZED_CONTAINER".
    */
-  embedMode?: "FULL_WINDOW" | "SIZED_CONTAINER";
+  embedMode?: "IN_LINE" | "FULL_WINDOW" | "SIZED_CONTAINER";
   /**
    * Theme mode: "dark" (pure black canvas), "night" (inverted high-contrast reader), or "light" (clean canvas).
    */
@@ -156,7 +157,7 @@ export function AdobePdfViewer({
   title = "Document.pdf",
   downloadUrl,
   clientId,
-  embedMode = "FULL_WINDOW",
+  embedMode = "IN_LINE",
   themeMode: propThemeMode,
   onThemeModeChange,
   onError,
@@ -173,18 +174,18 @@ export function AdobePdfViewer({
     }
   });
 
-  const activeClientId = (clientId || sessionClientId || envClientId).trim();
+  const activeClientId = (clientId || sessionClientId || envClientId || DEFAULT_ADOBE_CLIENT_ID).trim();
 
-  // Theme Mode State: Defaults to "dark" (pure black canvas) or reads from localStorage
+  // Theme Mode State: Defaults to "light" (standard default viewer) or reads from localStorage
   const [internalTheme, setInternalTheme] = useState<PdfThemeMode>(() => {
-    if (typeof window === "undefined") return "dark";
+    if (typeof window === "undefined") return "light";
     try {
       const saved = localStorage.getItem(THEME_STORAGE_KEY);
-      if (saved === "night" || saved === "light" || saved === "dark") return saved;
+      if (saved === "light" || saved === "dark") return saved;
     } catch {
       // ignore
     }
-    return "dark";
+    return "light";
   });
 
   const activeTheme = propThemeMode || internalTheme;
@@ -321,25 +322,31 @@ export function AdobePdfViewer({
               id: `${fileName}-${arrayBuffer.byteLength}-${Date.now()}`,
             },
           },
-          {
-            embedMode,
-            showAnnotationTools: true,
-            showLeftHandPanel: true,
-            showDownloadPDF: true,
-            showPrintPDF: true,
-            showPageControls: true,
-            dockPageControls: true,
-            defaultViewMode: "FIT_PAGE",
-          }
+          embedMode === "IN_LINE"
+            ? {
+                embedMode: "IN_LINE",
+                showDownloadPDF: true,
+                showPrintPDF: true,
+              }
+            : {
+                embedMode: "FULL_WINDOW",
+                showAnnotationTools: true,
+                showLeftHandPanel: true,
+                showDownloadPDF: true,
+                showPrintPDF: true,
+                showPageControls: true,
+                dockPageControls: true,
+                defaultViewMode: "FIT_PAGE",
+              }
         );
 
         // 7. Safety timeout: Adobe DC View renders internal spinners while opening documents.
-        // Dismiss parent overlay after 2.5s if events are delayed.
+        // Dismiss loading overlay promptly.
         safetyTimer = setTimeout(() => {
           if (isMountedRef.current && !isCancelled) {
             setIsLoading(false);
           }
-        }, 2500);
+        }, 1800);
 
         await previewPromise;
 
@@ -443,7 +450,11 @@ export function AdobePdfViewer({
   }
 
   return (
-    <div className={`relative w-full h-full min-h-0 flex-1 flex flex-col bg-black text-zinc-100 select-none overflow-hidden ${className}`}>
+    <div
+      className={`relative w-full h-full min-h-0 flex-1 flex flex-col ${
+        activeTheme === "light" ? "bg-zinc-100 text-zinc-900" : "bg-black text-zinc-100"
+      } select-none overflow-hidden ${className}`}
+    >
       {/* Scoped Dynamic Theme CSS for Adobe Viewer */}
       <style>{`
         #${containerDivId} {
@@ -452,52 +463,94 @@ export function AdobePdfViewer({
         }
         #${containerDivId} iframe {
           background-color: ${activeTheme === "light" ? "#f4f4f5" : "#000000"} !important;
-          ${
-            activeTheme === "night"
-              ? "filter: invert(0.92) hue-rotate(180deg) contrast(0.95) brightness(0.95) !important;"
-              : ""
-          }
-          transition: filter 0.2s ease, background-color 0.2s ease;
+          transition: background-color 0.2s ease;
         }
       `}</style>
 
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/90 backdrop-blur-xs text-center p-4 sm:p-6 animate-in fade-in">
-          <div className="p-3 sm:p-3.5 rounded-2xl bg-zinc-800 text-primary shadow-xs">
-            <RefreshCw className="h-6 w-6 sm:h-7 sm:w-7 animate-spin" />
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-zinc-100">
-              Initializing Adobe PDF Embed API...
-            </h4>
-            <p className="text-xs text-zinc-400 mt-1 max-w-sm px-2">
-              Rendering document into Adobe&apos;s embedded Acrobat engine.
-            </p>
-          </div>
+      {/* Top Theme Control Pill on top of PDF - Strictly 2 options: Light (Default) and Dark */}
+      <div
+        className={`absolute top-3 right-3 sm:right-4 z-20 flex items-center gap-1 p-1 rounded-xl backdrop-blur-md text-xs font-medium transition-all ${
+          activeTheme === "light"
+            ? "bg-white/95 border border-zinc-300/90 text-zinc-700 shadow-md shadow-zinc-400/20"
+            : "bg-zinc-900/95 border border-zinc-800 text-zinc-300 shadow-xl shadow-black/80"
+        }`}
+        role="group"
+        aria-label="PDF Theme Mode"
+      >
+        <button
+          type="button"
+          onClick={() => handleSelectTheme("light")}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors ${
+            activeTheme === "light"
+              ? "bg-zinc-900 text-white font-semibold shadow-xs"
+              : "text-zinc-400 hover:text-white hover:bg-zinc-800/70"
+          }`}
+          title="Light (Default) Mode: Standard clean document viewer"
+        >
+          <Sun className={`h-3.5 w-3.5 ${activeTheme === "light" ? "text-amber-400" : "text-amber-500"}`} />
+          <span>Light</span>
+          <span className="text-[11px] opacity-80">(Default)</span>
+        </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-2 text-xs text-zinc-400 hover:text-white h-7 rounded-lg"
-            onClick={() => setIsLoading(false)}
+        <button
+          type="button"
+          onClick={() => handleSelectTheme("dark")}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors ${
+            activeTheme === "dark"
+              ? "bg-zinc-800 text-white font-semibold shadow-xs border border-zinc-700"
+              : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+          }`}
+          title="Dark Mode: Pure black canvas theater mode"
+        >
+          <Moon className={`h-3.5 w-3.5 ${activeTheme === "dark" ? "text-zinc-200" : "text-zinc-400"}`} />
+          <span>Dark</span>
+        </button>
+      </div>
+
+      {/* Tiny Loading Buffer without any text */}
+      {isLoading && (
+        <div
+          className={`absolute inset-0 z-30 flex items-center justify-center pointer-events-none transition-opacity duration-200 ${
+            activeTheme === "light" ? "bg-white/60" : "bg-black/60"
+          }`}
+        >
+          <div
+            className={`p-2.5 rounded-full shadow-md animate-in fade-in zoom-in-95 ${
+              activeTheme === "light"
+                ? "bg-white text-zinc-700 border border-zinc-200"
+                : "bg-zinc-900 text-zinc-200 border border-zinc-800"
+            }`}
           >
-            Document visible? Dismiss overlay
-          </Button>
+            <RefreshCw className="h-5 w-5 animate-spin" />
+          </div>
         </div>
       )}
 
       {/* Initialization Failure State */}
       {initError && !isLoading && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center p-4 sm:p-6 text-center bg-black overflow-y-auto">
-          <div className="flex flex-col items-center max-w-md w-full p-4 sm:p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-md my-auto">
+        <div
+          className={`absolute inset-0 z-40 flex flex-col items-center justify-center p-4 sm:p-6 text-center overflow-y-auto ${
+            activeTheme === "light" ? "bg-zinc-100" : "bg-black"
+          }`}
+        >
+          <div
+            className={`flex flex-col items-center max-w-md w-full p-4 sm:p-6 rounded-2xl border shadow-md my-auto ${
+              activeTheme === "light"
+                ? "bg-white border-zinc-200 text-zinc-900"
+                : "bg-zinc-900 border-zinc-800 text-zinc-100"
+            }`}
+          >
             <div className="p-2.5 sm:p-3 rounded-full bg-destructive/10 text-destructive mb-2.5 sm:mb-3">
               <AlertCircle className="h-6 w-6 sm:h-7 sm:w-7" />
             </div>
-            <h3 className="text-sm font-semibold text-zinc-100">
+            <h3 className="text-sm font-semibold">
               Unable to Display Document in Adobe Reader
             </h3>
-            <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed break-words max-w-full">
+            <p
+              className={`text-xs mt-1.5 leading-relaxed break-words max-w-full ${
+                activeTheme === "light" ? "text-zinc-600" : "text-zinc-400"
+              }`}
+            >
               {initError}
             </p>
 
@@ -506,7 +559,7 @@ export function AdobePdfViewer({
                 variant="outline"
                 size="sm"
                 onClick={handleRetry}
-                className="w-full sm:w-auto rounded-xl text-xs gap-1.5 border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                className="w-full sm:w-auto rounded-xl text-xs gap-1.5"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Retry
@@ -532,53 +585,19 @@ export function AdobePdfViewer({
 
       {/* Adobe DC View Mount Point */}
       <div
-        id={containerDivId}
-        className="w-full h-full min-h-0 flex-1 overflow-hidden"
-      />
-
-      {/* Floating Theme Control Pill */}
-      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-0.5 p-1 rounded-xl bg-zinc-900/90 border border-zinc-800 backdrop-blur-md shadow-xl text-xs font-medium text-zinc-300">
-        <button
-          type="button"
-          onClick={() => handleSelectTheme("dark")}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors ${
-            activeTheme === "dark"
-              ? "bg-zinc-800 text-white font-semibold shadow-xs"
-              : "hover:text-white hover:bg-zinc-800/60"
+        className={`w-full h-full min-h-0 flex-1 flex flex-col items-center ${
+          embedMode === "IN_LINE" ? "overflow-y-auto" : "overflow-hidden"
+        }`}
+      >
+        <div
+          id={containerDivId}
+          className={`transition-all ${
+            embedMode === "IN_LINE"
+              ? "w-full max-w-[850px] min-h-full px-1 sm:px-2"
+              : "w-full h-full min-h-0 flex-1"
           }`}
-          title="Dark Canvas: Pure black background with original document"
-        >
-          <Moon className="h-3.5 w-3.5 text-zinc-300" />
-          <span className="hidden sm:inline">Dark</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleSelectTheme("night")}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors ${
-            activeTheme === "night"
-              ? "bg-indigo-600 text-white font-semibold shadow-xs"
-              : "hover:text-white hover:bg-zinc-800/60"
-          }`}
-          title="Night Reading Mode: Inverted high-contrast document for low light"
-        >
-          <Eye className="h-3.5 w-3.5 text-indigo-300" />
-          <span className="hidden sm:inline">Night</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleSelectTheme("light")}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors ${
-            activeTheme === "light"
-              ? "bg-zinc-200 text-zinc-900 font-semibold shadow-xs"
-              : "hover:text-white hover:bg-zinc-800/60"
-          }`}
-          title="Light Canvas: Clean light gray background"
-        >
-          <Sun className="h-3.5 w-3.5 text-amber-500" />
-          <span className="hidden sm:inline">Light</span>
-        </button>
+          style={embedMode === "IN_LINE" ? { width: "100%", maxWidth: "850px" } : undefined}
+        />
       </div>
     </div>
   );
