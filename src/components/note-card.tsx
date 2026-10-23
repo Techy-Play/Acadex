@@ -1,16 +1,14 @@
-/**
- * @component NoteCard
- * @description Renders a single note card with title, subject badge,
- * upload date, and download/view links. Uses MagicCard for hover gradient.
- */
 "use client";
 
+import { useMemo } from "react";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MagicCard } from "@/components/ui/magic-card";
 import Link from "next/link";
+import { Eye, Download, ExternalLink } from "lucide-react";
 import { toDownloadUrl } from "@/lib/document-utils";
+import { getResourceAction } from "@/lib/resource-resolver";
 
 interface NoteCardProps {
   title: string;
@@ -20,6 +18,8 @@ interface NoteCardProps {
 }
 
 export function NoteCard({ title, subjectName, fileUrl, uploadedAt }: NoteCardProps) {
+  const action = useMemo(() => getResourceAction(fileUrl, title), [fileUrl, title]);
+
   return (
     <MagicCard
       className="rounded-2xl shadow-sm hover:shadow-md transition-all"
@@ -59,33 +59,61 @@ export function NoteCard({ title, subjectName, fileUrl, uploadedAt }: NoteCardPr
                 day: "numeric",
               })}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl text-xs h-8 gap-1.5 hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
-              asChild
-            >
-              <Link href={`/user/dashboard/viewer?url=${encodeURIComponent(fileUrl)}&title=${encodeURIComponent(title)}`}>
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                Open
-              </Link>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl text-xs h-8 gap-1.5 hover:bg-accent hover:text-accent-foreground transition-colors"
-              asChild
-            >
-              <a href={toDownloadUrl(fileUrl)} target="_blank" rel="noopener noreferrer">
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download
-              </a>
-            </Button>
+            <div className="flex items-center gap-1.5">
+              {/* External web links (Canva, Figma, etc.): only show Open Link button */}
+              {action.actionKind === "open_link" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl text-xs h-8 gap-1.5 hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
+                  asChild
+                >
+                  <a href={action.targetUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Open Link
+                  </a>
+                </Button>
+              ) : action.actionKind === "download_file" ? (
+                /* Non-PDF files: DO NOT show open button, ONLY show install/download button */
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl text-xs h-8 gap-1.5 hover:bg-accent hover:text-accent-foreground transition-colors"
+                  asChild
+                >
+                  <a href={action.downloadUrl || toDownloadUrl(fileUrl)} target="_blank" rel="noopener noreferrer" download>
+                    <Download className="h-3.5 w-3.5" />
+                    {action.buttonLabel}
+                  </a>
+                </Button>
+              ) : (
+                /* PDF and Image resources: show Open (Adobe PDF Embed API) and Download */
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl text-xs h-8 gap-1.5 hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
+                    asChild
+                  >
+                    <Link href={`/user/dashboard/viewer?url=${encodeURIComponent(fileUrl)}&title=${encodeURIComponent(title)}`}>
+                      <Eye className="h-3.5 w-3.5" />
+                      Open
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl text-xs h-8 gap-1.5 hover:bg-accent hover:text-accent-foreground transition-colors"
+                    asChild
+                  >
+                    <a href={toDownloadUrl(fileUrl)} target="_blank" rel="noopener noreferrer">
+                      <Download className="h-3.5 w-3.5" />
+                      Download
+                    </a>
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </CardContent>
       </div>

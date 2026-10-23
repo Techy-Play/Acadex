@@ -12,6 +12,7 @@ import Section from "@/models/Section";
 import Subject from "@/models/Subject";
 import ActivityLog from "@/models/ActivityLog";
 import { requireAdmin, canAdminManageResource } from "@/lib/rbac";
+import { logAdminOperation, calculateAuditDiff } from "@/lib/audit-logger";
 
 const populateFields = [
   { path: "subject", select: "name type" },
@@ -101,6 +102,17 @@ export async function PUT(
       }
     }
 
+    // Capture pre-update state for audit diff
+    const beforeData = {
+      title: assignment.title,
+      description: assignment.description,
+      file_url: assignment.file_url,
+      deadline: assignment.deadline ? assignment.deadline.toISOString() : null,
+      subject: assignment.subject ? String(assignment.subject) : null,
+      section: assignment.section ? String(assignment.section) : null,
+      sections: Array.isArray(assignment.sections) ? assignment.sections.map((s: unknown) => String(s)) : [],
+    };
+
     // Update allowed fields
     if (body.title !== undefined) assignment.title = body.title;
     if (body.description !== undefined) assignment.description = body.description;
@@ -117,6 +129,38 @@ export async function PUT(
 
     await assignment.save();
     const populated = await assignment.populate(populateFields);
+
+    // Structured Audit Log with diff
+    const afterData = {
+      title: assignment.title,
+      description: assignment.description,
+      file_url: assignment.file_url,
+      deadline: assignment.deadline ? assignment.deadline.toISOString() : null,
+      subject: assignment.subject ? String(assignment.subject) : null,
+      section: assignment.section ? String(assignment.section) : null,
+      sections: Array.isArray(assignment.sections) ? assignment.sections.map((s: unknown) => String(s)) : [],
+    };
+    const diff = calculateAuditDiff(beforeData, afterData);
+
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "ASSIGNMENT_UPDATE",
+        description: `Updated assignment "${assignment.title}"`,
+        target: {
+          id: assignment._id.toString(),
+          type: "assignment",
+          name: assignment.title,
+          section: assignment.section || null,
+          subject: assignment.subject ? String(assignment.subject) : null,
+        },
+        route: `/user/dashboard/viewer?type=assignment&id=${assignment._id}`,
+        diff,
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to log assignment update:", auditErr);
+    }
 
     await ActivityLog.create({
       user: authUser.userId,
@@ -165,6 +209,33 @@ export async function DELETE(
     }
 
     await Assignment.findByIdAndDelete(id);
+
+    // Structured Audit Log with retained safe metadata
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "ASSIGNMENT_DELETE",
+        description: `Deleted assignment "${assignment.title}"`,
+        target: {
+          id: assignment._id.toString(),
+          type: "assignment",
+          name: assignment.title,
+          section: assignment.section || null,
+          subject: assignment.subject ? String(assignment.subject) : null,
+        },
+        metadata: {
+          deletedRecord: {
+            title: assignment.title,
+            deadline: assignment.deadline,
+            subject: assignment.subject ? String(assignment.subject) : null,
+            section: assignment.section ? String(assignment.section) : null,
+          },
+        },
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to log assignment delete:", auditErr);
+    }
 
     await ActivityLog.create({
       user: authUser.userId,

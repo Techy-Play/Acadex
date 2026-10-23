@@ -45,6 +45,18 @@ export interface UniversalDocumentViewerProps {
    */
   showAnnotationTools?: boolean;
   /**
+   * PDF Theme mode ("light" | "dark").
+   */
+  themeMode?: "light" | "dark";
+  /**
+   * Whether to hide the in-canvas floating theme pill.
+   */
+  hideFloatingThemeToggle?: boolean;
+  /**
+   * Callback fired when PDF theme changes.
+   */
+  onThemeModeChange?: (mode: "light" | "dark") => void;
+  /**
    * Callback fired on error.
    */
   onError?: (error: Error) => void;
@@ -60,6 +72,9 @@ export function UniversalDocumentViewer({
   mimeType,
   embedMode = "FULL_WINDOW",
   showAnnotationTools = false,
+  themeMode,
+  hideFloatingThemeToggle = false,
+  onThemeModeChange,
   onError,
   className = "",
 }: UniversalDocumentViewerProps) {
@@ -113,6 +128,9 @@ export function UniversalDocumentViewer({
         downloadUrl={resolved.downloadUrl}
         embedMode={embedMode}
         showAnnotationTools={showAnnotationTools}
+        themeMode={themeMode}
+        hideFloatingThemeToggle={hideFloatingThemeToggle}
+        onThemeModeChange={onThemeModeChange}
         onError={onError}
         className={className}
       />

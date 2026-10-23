@@ -14,6 +14,7 @@ import User from "@/models/User";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { requireSuperAdmin } from "@/lib/rbac";
+import { logAdminOperation, calculateAuditDiff } from "@/lib/audit-logger";
 
 // DELETE /api/subjects/[id] — delete a subject (super admin only + password confirmation)
 export async function DELETE(
@@ -77,6 +78,29 @@ export async function DELETE(
         { error: "Subject not found" },
         { status: 404 }
       );
+    }
+
+    try {
+      await logAdminOperation({
+        admin: authResult.authUser,
+        action: "SUBJECT_DELETE",
+        description: `Deleted subject "${deleted.name}"`,
+        target: {
+          id: deleted._id.toString(),
+          type: "subject",
+          name: deleted.name,
+        },
+        metadata: {
+          deletedRecord: {
+            name: deleted.name,
+            semester: deleted.semester,
+            type: deleted.type,
+          },
+        },
+        req: request,
+      });
+    } catch {
+      /* non-critical */
     }
 
     // Clean up reference in any streams
@@ -178,6 +202,27 @@ export async function PUT(
           $addToSet: { subjects: subject._id },
         });
       }
+    }
+
+    try {
+      await logAdminOperation({
+        admin: authResult.authUser,
+        action: "SUBJECT_UPDATE",
+        description: `Updated subject "${subject.name}"`,
+        target: {
+          id: subject._id.toString(),
+          type: "subject",
+          name: subject.name,
+        },
+        route: `/admin/subjects`,
+        metadata: {
+          updatedFields: update,
+          streamId: streamId || null,
+        },
+        req: request,
+      });
+    } catch {
+      /* non-critical */
     }
 
     return NextResponse.json({ subject });

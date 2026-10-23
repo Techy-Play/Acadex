@@ -20,6 +20,7 @@ import { buildPushPayload } from "@/lib/push/payloads";
 
 import mongoose from "mongoose";
 import { requireAdmin, canAdminManageSection } from "@/lib/rbac";
+import { logAdminOperation } from "@/lib/audit-logger";
 
 // Ensure models are registered
 void Stream;
@@ -168,6 +169,29 @@ export async function PATCH(request: Request) {
       });
 
       // Update request status
+      // Structured Audit Log
+      try {
+        await logAdminOperation({
+          admin: authUser,
+          action: "ACCESS_REQUEST_APPROVED",
+          description: `Approved access request for ${accessReq.name} (${accessReq.college_id}) as ${approvedRole}`,
+          target: {
+            id: accessReq._id.toString(),
+            type: "access_request",
+            name: accessReq.name,
+            section: accessReq.section || null,
+          },
+          route: `/admin/access-requests`,
+          metadata: {
+            collegeId: accessReq.college_id,
+            approvedRole,
+            adminNote: admin_note || "",
+          },
+          req: request,
+        });
+      } catch (auditErr) {
+        console.warn("Failed to record access request approval audit log:", auditErr);
+      }
       accessReq.status = "approved";
       accessReq.admin_note = (admin_note || "").slice(0, 500);
       await accessReq.save();
@@ -222,6 +246,28 @@ export async function PATCH(request: Request) {
       });
     } else {
       // Deny
+      // Structured Audit Log
+      try {
+        await logAdminOperation({
+          admin: authUser,
+          action: "ACCESS_REQUEST_DENIED",
+          description: `Denied access request for ${accessReq.name} (${accessReq.college_id})`,
+          target: {
+            id: accessReq._id.toString(),
+            type: "access_request",
+            name: accessReq.name,
+            section: accessReq.section || null,
+          },
+          route: `/admin/access-requests`,
+          metadata: {
+            collegeId: accessReq.college_id,
+            adminNote: admin_note || "",
+          },
+          req: request,
+        });
+      } catch (auditErr) {
+        console.warn("Failed to record access request denial audit log:", auditErr);
+      }
       accessReq.status = "denied";
       accessReq.admin_note = (admin_note || "").slice(0, 500);
       await accessReq.save();

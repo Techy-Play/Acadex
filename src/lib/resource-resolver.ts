@@ -38,24 +38,59 @@ export interface ResolvedResource {
   title: string;
 }
 
+export interface NonPdfFileMetadata {
+  extension: string;
+  name: string;
+  category: "office" | "archive" | "text" | "code" | "binary" | "installer";
+  mimeType: string;
+  buttonLabel: "Download" | "Install";
+}
+
+/**
+ * Metadata table defining non-PDF files that cannot be opened via Adobe PDF Embed API.
+ * Identifies formats that require direct download / install rather than inline PDF preview.
+ */
+export const NON_PDF_FILE_TABLE: Record<string, NonPdfFileMetadata> = {
+  // Office - Word
+  docx: { extension: "docx", name: "Microsoft Word Document", category: "office", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buttonLabel: "Download" },
+  doc: { extension: "doc", name: "Microsoft Word Document (Legacy)", category: "office", mimeType: "application/msword", buttonLabel: "Download" },
+  odt: { extension: "odt", name: "OpenDocument Text", category: "office", mimeType: "application/vnd.oasis.opendocument.text", buttonLabel: "Download" },
+  rtf: { extension: "rtf", name: "Rich Text Format", category: "office", mimeType: "application/rtf", buttonLabel: "Download" },
+
+  // Office - Spreadsheets
+  xlsx: { extension: "xlsx", name: "Microsoft Excel Spreadsheet", category: "office", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buttonLabel: "Download" },
+  xls: { extension: "xls", name: "Microsoft Excel Spreadsheet (Legacy)", category: "office", mimeType: "application/vnd.ms-excel", buttonLabel: "Download" },
+  csv: { extension: "csv", name: "Comma-Separated Values", category: "office", mimeType: "text/csv", buttonLabel: "Download" },
+  ods: { extension: "ods", name: "OpenDocument Spreadsheet", category: "office", mimeType: "application/vnd.oasis.opendocument.spreadsheet", buttonLabel: "Download" },
+
+  // Office - Presentations
+  pptx: { extension: "pptx", name: "Microsoft PowerPoint Presentation", category: "office", mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", buttonLabel: "Download" },
+  ppt: { extension: "ppt", name: "Microsoft PowerPoint Presentation (Legacy)", category: "office", mimeType: "application/vnd.ms-powerpoint", buttonLabel: "Download" },
+  odp: { extension: "odp", name: "OpenDocument Presentation", category: "office", mimeType: "application/vnd.oasis.opendocument.presentation", buttonLabel: "Download" },
+
+  // Compressed Archives
+  zip: { extension: "zip", name: "ZIP Compressed Archive", category: "archive", mimeType: "application/zip", buttonLabel: "Download" },
+  rar: { extension: "rar", name: "RAR Compressed Archive", category: "archive", mimeType: "application/vnd.rar", buttonLabel: "Download" },
+  "7z": { extension: "7z", name: "7-Zip Compressed Archive", category: "archive", mimeType: "application/x-7z-compressed", buttonLabel: "Download" },
+  tar: { extension: "tar", name: "Tape Archive", category: "archive", mimeType: "application/x-tar", buttonLabel: "Download" },
+  gz: { extension: "gz", name: "Gzip Compressed File", category: "archive", mimeType: "application/gzip", buttonLabel: "Download" },
+
+  // Software Installers & Packages (only show install button)
+  exe: { extension: "exe", name: "Windows Executable Program", category: "installer", mimeType: "application/x-msdownload", buttonLabel: "Install" },
+  msi: { extension: "msi", name: "Windows Installer Package", category: "installer", mimeType: "application/x-msi", buttonLabel: "Install" },
+  apk: { extension: "apk", name: "Android Application Package", category: "installer", mimeType: "application/vnd.android.package-archive", buttonLabel: "Install" },
+  dmg: { extension: "dmg", name: "Apple Disk Image", category: "installer", mimeType: "application/x-apple-diskimage", buttonLabel: "Install" },
+  pkg: { extension: "pkg", name: "macOS Installer Package", category: "installer", mimeType: "application/octet-stream", buttonLabel: "Install" },
+
+  // Text, Code & Other
+  txt: { extension: "txt", name: "Plain Text Document", category: "text", mimeType: "text/plain", buttonLabel: "Download" },
+  json: { extension: "json", name: "JSON Data File", category: "code", mimeType: "application/json", buttonLabel: "Download" },
+  xml: { extension: "xml", name: "XML Document", category: "code", mimeType: "application/xml", buttonLabel: "Download" },
+  epub: { extension: "epub", name: "Electronic Publication", category: "text", mimeType: "application/epub+zip", buttonLabel: "Download" },
+};
+
 const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "svg", "gif", "bmp"]);
-const OTHER_FILE_EXTENSIONS = new Set([
-  "docx",
-  "doc",
-  "pptx",
-  "ppt",
-  "xlsx",
-  "xls",
-  "csv",
-  "zip",
-  "rar",
-  "7z",
-  "tar",
-  "gz",
-  "txt",
-  "rtf",
-  "json",
-]);
+const OTHER_FILE_EXTENSIONS = new Set(Object.keys(NON_PDF_FILE_TABLE));
 
 /**
  * Extracts a file extension (without dot, lowercase) from a URL or title.
@@ -63,6 +98,15 @@ const OTHER_FILE_EXTENSIONS = new Set([
 export function extractExtension(urlOrTitle?: string | null): string {
   if (!urlOrTitle) return "";
   const clean = urlOrTitle.split(/[?#]/)[0];
+
+  // 1. Match extension anywhere before non-alphanumeric char or end of string (e.g. "file.exe (Installer)")
+  const regexMatches = clean.matchAll(/\.([a-z0-9]{2,5})(?=[^a-z0-9]|$)/gi);
+  const allMatches = Array.from(regexMatches);
+  if (allMatches.length > 0) {
+    // Return the last valid extension found
+    return allMatches[allMatches.length - 1][1].toLowerCase().trim();
+  }
+
   const lastSegment = clean.split("/").filter(Boolean).pop() || "";
   const parts = lastSegment.split(".");
   if (parts.length > 1) {
@@ -317,5 +361,131 @@ export function resolveResource(
     fileExtension: ext || undefined,
     mimeType: knownMime,
     title: cleanTitle,
+  };
+}
+
+export type ResourceActionKind =
+  | "open_pdf"
+  | "open_image"
+  | "download_file"
+  | "open_link";
+
+export interface ResourceActionInfo {
+  actionKind: ResourceActionKind;
+  buttonLabel: "Open" | "Download" | "Install" | "Open Link";
+  iconType: "eye" | "download" | "external";
+  isPdf: boolean;
+  isImage: boolean;
+  isExternalLink: boolean;
+  isDownloadOnly: boolean;
+  targetUrl: string;
+  downloadUrl?: string;
+  directUrl?: string;
+  fileExtension?: string;
+  formatName?: string;
+}
+
+/**
+ * Computes the unified action to take when a user clicks Open/Download on a resource.
+ * - PDF: opens in Adobe PDF Embed API viewer.
+ * - Image: opens in Image Viewer.
+ * - Non-PDF files: ONLY shows Install/Download button (never opens in PDF viewer).
+ * - External link (e.g. Canva, Figma, Notion, external site): opens pasted link in browser.
+ */
+export function getResourceAction(
+  url?: string | null,
+  title?: string | null,
+  knownMime?: string | null
+): ResourceActionInfo {
+  if (!url) {
+    return {
+      actionKind: "download_file",
+      buttonLabel: "Download",
+      iconType: "download",
+      isPdf: false,
+      isImage: false,
+      isExternalLink: false,
+      isDownloadOnly: true,
+      targetUrl: "",
+    };
+  }
+
+  const resolved = resolveResource(url, title || "Document", knownMime || undefined);
+  const ext = (resolved.fileExtension || "").toLowerCase();
+  const tableMetadata = NON_PDF_FILE_TABLE[ext];
+
+  // 1. PDF Resource -> Open with Adobe PDF Embed API
+  if (resolved.category === "pdf" || resolved.viewerKind === "adobe_pdf") {
+    return {
+      actionKind: "open_pdf",
+      buttonLabel: "Open",
+      iconType: "eye",
+      isPdf: true,
+      isImage: false,
+      isExternalLink: false,
+      isDownloadOnly: false,
+      targetUrl: url,
+      downloadUrl: resolved.downloadUrl,
+      directUrl: resolved.directOpenUrl,
+      fileExtension: "pdf",
+      formatName: "PDF Document",
+    };
+  }
+
+  // 2. Image Resource -> Open in Image Viewer
+  if (resolved.category === "image" || resolved.viewerKind === "image") {
+    return {
+      actionKind: "open_image",
+      buttonLabel: "Open",
+      iconType: "eye",
+      isPdf: false,
+      isImage: true,
+      isExternalLink: false,
+      isDownloadOnly: false,
+      targetUrl: url,
+      downloadUrl: resolved.downloadUrl,
+      directUrl: resolved.directOpenUrl,
+      fileExtension: ext || "image",
+      formatName: "Image",
+    };
+  }
+
+  // 3. External Web Link (Canva, Figma, Notion, external site not stored on Google Drive)
+  const isGoogleDriveStored = Boolean(resolved.driveFileId);
+  const isExternalLink =
+    resolved.category === "external_website" ||
+    (!isGoogleDriveStored && /^https?:\/\//i.test(url) && !resolved.fileExtension && !tableMetadata);
+
+  if (isExternalLink) {
+    return {
+      actionKind: "open_link",
+      buttonLabel: "Open Link",
+      iconType: "external",
+      isPdf: false,
+      isImage: false,
+      isExternalLink: true,
+      isDownloadOnly: false,
+      targetUrl: url,
+      directUrl: url,
+      formatName: "Web Link",
+    };
+  }
+
+  // 4. Non-PDF File (cannot open as PDF with Adobe API)
+  // "dont show open buttoin, only show install button"
+  const buttonLabel: "Download" | "Install" = tableMetadata?.buttonLabel || "Download";
+  return {
+    actionKind: "download_file",
+    buttonLabel,
+    iconType: "download",
+    isPdf: false,
+    isImage: false,
+    isExternalLink: false,
+    isDownloadOnly: true,
+    targetUrl: resolved.downloadUrl || url,
+    downloadUrl: resolved.downloadUrl || url,
+    directUrl: resolved.directOpenUrl || url,
+    fileExtension: ext,
+    formatName: tableMetadata?.name || (ext ? ext.toUpperCase() + " File" : "Document File"),
   };
 }

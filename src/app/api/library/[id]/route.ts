@@ -13,6 +13,7 @@ import Subject from "@/models/Subject";
 import User from "@/models/User";
 import ActivityLog from "@/models/ActivityLog";
 import { requireAdmin, canAdminManageResource } from "@/lib/rbac";
+import { logAdminOperation, calculateAuditDiff } from "@/lib/audit-logger";
 
 const populateFields = [
   { path: "subject", select: "name type" },
@@ -112,6 +113,18 @@ export async function PUT(
       }
     }
 
+    // Capture pre-update state for audit diff
+    const beforeData = {
+      title: resource.title,
+      description: resource.description,
+      semester: resource.semester,
+      academicYear: resource.academicYear,
+      resourceType: resource.resourceType,
+      fileUrl: resource.fileUrl,
+      subject: resource.subject ? String(resource.subject) : null,
+      section: resource.section ? String(resource.section) : null,
+    };
+
     // Update allowed fields
     const allowedFields = [
       "title",
@@ -135,6 +148,39 @@ export async function PUT(
     await resource.save();
 
     const populated = await resource.populate(populateFields);
+
+    // Structured Audit Log with diff
+    const afterData = {
+      title: resource.title,
+      description: resource.description,
+      semester: resource.semester,
+      academicYear: resource.academicYear,
+      resourceType: resource.resourceType,
+      fileUrl: resource.fileUrl,
+      subject: resource.subject ? String(resource.subject) : null,
+      section: resource.section ? String(resource.section) : null,
+    };
+    const diff = calculateAuditDiff(beforeData, afterData);
+
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "LIBRARY_RESOURCE_UPDATE",
+        description: `Updated library resource "${resource.title}"`,
+        target: {
+          id: resource._id.toString(),
+          type: "library",
+          name: resource.title,
+          section: resource.section || null,
+          subject: resource.subject ? String(resource.subject) : null,
+        },
+        route: `/user/dashboard/library`,
+        diff,
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to log library resource update:", auditErr);
+    }
 
     try {
       await ActivityLog.create({
@@ -190,6 +236,33 @@ export async function DELETE(
     }
 
     await LibraryResource.findByIdAndDelete(id);
+
+    // Structured Audit Log with retained safe metadata
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "LIBRARY_RESOURCE_DELETE",
+        description: `Deleted library resource "${resource.title}"`,
+        target: {
+          id: resource._id.toString(),
+          type: "library",
+          name: resource.title,
+          section: resource.section || null,
+          subject: resource.subject ? String(resource.subject) : null,
+        },
+        metadata: {
+          deletedRecord: {
+            title: resource.title,
+            resourceType: resource.resourceType,
+            subject: resource.subject ? String(resource.subject) : null,
+            section: resource.section ? String(resource.section) : null,
+          },
+        },
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to log library resource delete:", auditErr);
+    }
 
     try {
       await ActivityLog.create({

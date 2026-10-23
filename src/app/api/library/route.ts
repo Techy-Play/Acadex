@@ -14,6 +14,7 @@ import User from "@/models/User";
 import ActivityLog from "@/models/ActivityLog";
 import Notification from "@/models/Notification";
 import { getAuthUser, requireAdmin, canAdminManageSection } from "@/lib/rbac";
+import { logAdminOperation } from "@/lib/audit-logger";
 
 // GET /api/library - List library resources with optional filters
 export async function GET(request: Request) {
@@ -214,6 +215,32 @@ export async function POST(request: Request) {
       { path: "section", select: "name" },
       { path: "uploadedBy", select: "name" },
     ]);
+
+    // Structured Audit Log
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "LIBRARY_RESOURCE_CREATE",
+        description: `Added library resource "${parsed.data.title}" (${parsed.data.resourceType})`,
+        target: {
+          id: resource._id.toString(),
+          type: "library",
+          name: parsed.data.title,
+          section: parsed.data.section || null,
+          subject: parsed.data.subject,
+        },
+        route: `/user/dashboard/library`,
+        metadata: {
+          title: parsed.data.title,
+          resourceType: parsed.data.resourceType,
+          subject: parsed.data.subject,
+          section: parsed.data.section || null,
+        },
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to record library create audit log:", auditErr);
+    }
 
     // Activity log
     try {

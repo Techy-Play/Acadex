@@ -17,6 +17,7 @@ import AdminRequest from "@/models/AdminRequest";
 import Notification from "@/models/Notification";
 import { sendMail, approvalEmailHTML } from "@/lib/mail";
 import { getAuthUser, requireAdmin, canAdminManageSection } from "@/lib/rbac";
+import { logAdminOperation } from "@/lib/audit-logger";
 
 // GET /api/admin/students - List all students
 export async function GET(request: Request) {
@@ -303,6 +304,32 @@ export async function POST(request: Request) {
         assignedSections: validAssignedSectionIds,
       }),
     });
+
+    // Structured Audit Log
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "STUDENT_CREATE",
+        description: `Created ${role} account: ${name} (${college_id})`,
+        target: {
+          id: user._id.toString(),
+          type: "student",
+          name,
+          section: section || null,
+        },
+        route: `/admin/users`,
+        metadata: {
+          college_id,
+          role,
+          stream,
+          section,
+          semester,
+        },
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to record student create audit log:", auditErr);
+    }
 
     // Log activity
     await ActivityLog.create({

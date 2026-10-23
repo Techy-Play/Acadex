@@ -9,6 +9,7 @@ import { connectDB } from "@/lib/db";
 import { signToken } from "@/lib/auth";
 import User from "@/models/User";
 import ActivityLog from "@/models/ActivityLog";
+import { logUserActivity } from "@/lib/audit-logger";
 
 export async function POST(request: Request) {
   try {
@@ -52,13 +53,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Log activity
-    await ActivityLog.create({
-      user: user._id,
-      action: "PASSWORD_CHANGED",
-      details: `User ${user.name} changed their password`,
-      section: user.section || null,
-    });
+    // Structured Audit Log (passwords never logged)
+    try {
+      await logUserActivity({
+        user: {
+          userId: user._id.toString(),
+          name: user.name,
+          collegeId: user.college_id,
+          role: user.role,
+        },
+        action: "PASSWORD_CHANGED",
+        actionCategory: "security",
+        description: `User ${user.name} (${user.college_id}) updated their password`,
+        target: {
+          id: user._id.toString(),
+          type: "user",
+          name: user.name,
+          section: user.section || null,
+        },
+        route: "/auth/change-password",
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to record password change audit log:", auditErr);
+    }
+
+    // Legacy ActivityLog entry for backward compatibility
+    try {
+      await ActivityLog.create({
+        user: user._id,
+        action: "PASSWORD_CHANGED",
+        details: `User ${user.name} changed their password`,
+        section: user.section || null,
+      });
+    } catch {
+      /* ignore legacy table errors */
+    }
 
     // Issue new token (must_change_password is now false)
     const token = signToken({
@@ -79,7 +109,7 @@ export async function POST(request: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/",
     });
 

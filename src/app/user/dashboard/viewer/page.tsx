@@ -10,6 +10,8 @@ import {
   FileText,
   ExternalLink,
   FileWarning,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { UniversalDocumentViewer } from "@/components/universal-document-viewer";
 import { resolveResource } from "@/lib/resource-resolver";
@@ -23,6 +25,28 @@ export default function DocumentViewerPage() {
 
   const [viewerError, setViewerError] = useState<string | null>(null);
   const [lastUrl, setLastUrl] = useState(fileUrl);
+
+  // Single toggle theme state: defaults to light or saved preference in localStorage
+  const [pdfTheme, setPdfTheme] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "light";
+    try {
+      const saved = localStorage.getItem("acadex-pdf-reader-theme");
+      if (saved === "light" || saved === "dark") return saved;
+    } catch {
+      // ignore
+    }
+    return "light";
+  });
+
+  const handleToggleTheme = () => {
+    const next = pdfTheme === "dark" ? "light" : "dark";
+    setPdfTheme(next);
+    try {
+      localStorage.setItem("acadex-pdf-reader-theme", next);
+    } catch {
+      // ignore
+    }
+  };
 
   if (fileUrl !== lastUrl) {
     setLastUrl(fileUrl);
@@ -77,7 +101,7 @@ export default function DocumentViewerPage() {
   return (
     <div className="flex flex-col h-full w-full bg-background select-none overflow-hidden">
       {/* Top Application Header Bar */}
-      <header className="h-12 border-b border-border/80 bg-card/95 backdrop-blur-md flex items-center justify-between px-3 sm:px-4 z-20 shrink-0">
+      <header className="h-13 border-b border-border/80 bg-card/95 backdrop-blur-md flex items-center justify-between px-3 sm:px-4 z-20 shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <Button
             variant="ghost"
@@ -105,6 +129,24 @@ export default function DocumentViewerPage() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Single Toggle Theme Button (Moon and Sun) for PDF */}
+          {(resolved.category === "pdf" || resolved.viewerKind === "adobe_pdf") && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+              onClick={handleToggleTheme}
+              title={pdfTheme === "dark" ? "Switch to Light mode" : "Switch to Dark mode"}
+              aria-label="Toggle PDF Theme"
+            >
+              {pdfTheme === "dark" ? (
+                <Sun className="h-4 w-4 text-amber-400" />
+              ) : (
+                <Moon className="h-4 w-4 text-zinc-700 dark:text-zinc-300" />
+              )}
+            </Button>
+          )}
+
           {resolved.category === "external_website" ? (
             <a
               href={resolved.directOpenUrl || fileUrl}
@@ -187,6 +229,9 @@ export default function DocumentViewerPage() {
             fileName={resolved.title}
             embedMode="FULL_WINDOW"
             showAnnotationTools={false}
+            themeMode={pdfTheme}
+            hideFloatingThemeToggle={true}
+            onThemeModeChange={(m) => setPdfTheme(m)}
             onError={(err) => setViewerError(err.message || "Failed to render document.")}
             className="w-full h-full"
           />

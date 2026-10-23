@@ -10,6 +10,7 @@ import Subject from "@/models/Subject";
 import StreamModel from "@/models/Stream";
 import User from "@/models/User";
 import { requireSuperAdmin } from "@/lib/rbac";
+import { logAdminOperation } from "@/lib/audit-logger";
 
 // GET /api/subjects - List subjects based on user role and enrollment
 export async function GET(request: Request) {
@@ -137,6 +138,29 @@ export async function POST(request: Request) {
       await StreamModel.findByIdAndUpdate(streamId, {
         $addToSet: { subjects: subject._id },
       });
+    }
+
+    // Structured Audit Log
+    try {
+      await logAdminOperation({
+        admin: authResult.authUser,
+        action: "SUBJECT_CREATE",
+        description: `Created subject "${subject.name}" (Sem ${subject.semester}, ${subject.type})`,
+        target: {
+          id: subject._id.toString(),
+          type: "subject",
+          name: subject.name,
+        },
+        route: `/admin/subjects`,
+        metadata: {
+          semester: subject.semester,
+          type: subject.type,
+          streamId: streamId || null,
+        },
+        req: request,
+      });
+    } catch {
+      /* non-critical */
     }
 
     return NextResponse.json({ subject }, { status: 201 });

@@ -41,6 +41,7 @@ import { Badge } from "@/components/ui/badge";
 import { MultiSelect } from "@/components/multi-select";
 import { Eye } from "lucide-react";
 import { useAdminLightbox } from "@/context/admin-lightbox-context";
+import { ResourceActionButton } from "@/components/resource-action-button";
 
 /* ────────── Interfaces ────────── */
 
@@ -881,18 +882,11 @@ export default function ManageLibraryPage() {
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         {r.fileUrl && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-lg gap-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openLightbox(r.fileUrl, r.title);
-                            }}
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            Open
-                          </Button>
+                          <ResourceActionButton
+                            fileUrl={r.fileUrl}
+                            title={r.title}
+                            onOpen={() => openLightbox(r.fileUrl, r.title)}
+                          />
                         )}
                         <Button
                           variant="outline"

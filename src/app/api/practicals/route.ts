@@ -17,6 +17,7 @@ import { practicalUploadedPayload } from "@/lib/push/payloads";
 import { sendPushToUsers } from "@/lib/push/send";
 import { resolveStudentUserIdsForSubject } from "@/lib/push/targets";
 import { getAuthUser, requireAdmin, canAdminManageSection } from "@/lib/rbac";
+import { logAdminOperation } from "@/lib/audit-logger";
 
 // GET /api/practicals - List practicals (optionally filter by subject and/or section)
 export async function GET(request: Request) {
@@ -261,6 +262,33 @@ export async function POST(request: Request) {
       { path: "section", select: "name" },
       { path: "sections", select: "name" },
     ]);
+
+    // Structured Audit Log
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "PRACTICAL_CREATE",
+        description: `Created practical "${parsed.data.title}"`,
+        target: {
+          id: practical._id.toString(),
+          type: "practical",
+          name: parsed.data.title,
+          section: sectionId || null,
+          subject: parsed.data.subject,
+        },
+        route: `/user/dashboard/viewer?type=practical&id=${practical._id}`,
+        metadata: {
+          title: parsed.data.title,
+          deadline: parsed.data.deadline,
+          subject: parsed.data.subject,
+          section: sectionId || null,
+          sections: sectionsIds,
+        },
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to record practical create audit log:", auditErr);
+    }
 
     // Log activity
     await ActivityLog.create({

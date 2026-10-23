@@ -15,6 +15,7 @@ import ActivityLog from "@/models/ActivityLog";
 import AdminRequest from "@/models/AdminRequest";
 import Notification from "@/models/Notification";
 import { getAuthUser, requireAdmin, canAdminManageSection } from "@/lib/rbac";
+import { logAdminOperation, calculateAuditDiff } from "@/lib/audit-logger";
 
 // Ensure models are registered for populate
 void Stream;
@@ -109,6 +110,21 @@ export async function PATCH(
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    // Capture pre-update state for audit diff
+    const beforeData = {
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      stream: user.stream ? String(user.stream) : null,
+      section: user.section ? String(user.section) : null,
+      semester: user.semester,
+      status: user.status,
+      isStudent: user.isStudent,
+      assignedSections: Array.isArray(user.assignedSections)
+        ? user.assignedSections.map((s: unknown) => String(s))
+        : [],
+    };
 
     // Protect super admin from being modified by non-super admins
     if (user.isSuperAdmin && !authUser.isSuperAdmin) {
@@ -342,6 +358,41 @@ export async function PATCH(
     const { migrateUserProfilePicture } = await import("@/lib/profile-migration");
     void migrateUserProfilePicture(user._id.toString());
 
+    // Structured Audit Log with diff
+    const afterData = {
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      stream: user.stream ? String(user.stream) : null,
+      section: user.section ? String(user.section) : null,
+      semester: user.semester,
+      status: user.status,
+      isStudent: user.isStudent,
+      assignedSections: Array.isArray(user.assignedSections)
+        ? user.assignedSections.map((s: unknown) => String(s))
+        : [],
+    };
+    const diff = calculateAuditDiff(beforeData, afterData);
+
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "STUDENT_UPDATE",
+        description: `Updated ${user.role}: ${user.name} (${user.college_id})`,
+        target: {
+          id: user._id.toString(),
+          type: "student",
+          name: user.name,
+          section: user.section || null,
+        },
+        route: `/admin/users`,
+        diff,
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to record student update audit log:", auditErr);
+    }
+
     // Log activity
     await ActivityLog.create({
       user: authUser.userId,
@@ -417,6 +468,34 @@ export async function DELETE(
     }
 
     await User.findByIdAndDelete(id);
+
+    // Structured Audit Log with retained safe metadata
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "STUDENT_DELETE",
+        description: `Deleted ${user.role}: ${user.name} (${user.college_id})`,
+        target: {
+          id: user._id.toString(),
+          type: "student",
+          name: user.name,
+          section: user.section || null,
+        },
+        metadata: {
+          deletedRecord: {
+            name: user.name,
+            college_id: user.college_id,
+            role: user.role,
+            stream: user.stream ? String(user.stream) : null,
+            section: user.section ? String(user.section) : null,
+            semester: user.semester,
+          },
+        },
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to record student delete audit log:", auditErr);
+    }
 
     // Log activity
     await ActivityLog.create({

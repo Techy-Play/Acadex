@@ -12,6 +12,7 @@ import Practical from "@/models/Practical";
 import Section from "@/models/Section";
 import ActivityLog from "@/models/ActivityLog";
 import { requireAdmin, canAdminManageResource } from "@/lib/rbac";
+import { logAdminOperation, calculateAuditDiff } from "@/lib/audit-logger";
 
 const populateFields = [
   { path: "subject", select: "name type" },
@@ -109,6 +110,17 @@ export async function PUT(
       }
     }
 
+    // Capture pre-update state for audit diff
+    const beforeData = {
+      title: practical.title,
+      description: practical.description,
+      file_url: practical.file_url,
+      deadline: practical.deadline ? practical.deadline.toISOString() : null,
+      subject: practical.subject ? String(practical.subject) : null,
+      section: practical.section ? String(practical.section) : null,
+      sections: Array.isArray(practical.sections) ? practical.sections.map((s: unknown) => String(s)) : [],
+    };
+
     // Update allowed fields
     if (body.title !== undefined) practical.title = body.title;
     if (body.description !== undefined) practical.description = body.description;
@@ -125,6 +137,38 @@ export async function PUT(
 
     await practical.save();
     const populated = await practical.populate(populateFields);
+
+    // Structured Audit Log with diff
+    const afterData = {
+      title: practical.title,
+      description: practical.description,
+      file_url: practical.file_url,
+      deadline: practical.deadline ? practical.deadline.toISOString() : null,
+      subject: practical.subject ? String(practical.subject) : null,
+      section: practical.section ? String(practical.section) : null,
+      sections: Array.isArray(practical.sections) ? practical.sections.map((s: unknown) => String(s)) : [],
+    };
+    const diff = calculateAuditDiff(beforeData, afterData);
+
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "PRACTICAL_UPDATE",
+        description: `Updated practical "${practical.title}"`,
+        target: {
+          id: practical._id.toString(),
+          type: "practical",
+          name: practical.title,
+          section: practical.section || null,
+          subject: practical.subject ? String(practical.subject) : null,
+        },
+        route: `/user/dashboard/viewer?type=practical&id=${practical._id}`,
+        diff,
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to log practical update:", auditErr);
+    }
 
     await ActivityLog.create({
       user: authUser.userId,
@@ -176,6 +220,33 @@ export async function DELETE(
     }
 
     await Practical.findByIdAndDelete(id);
+
+    // Structured Audit Log with retained safe metadata
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "PRACTICAL_DELETE",
+        description: `Deleted practical "${practical.title}"`,
+        target: {
+          id: practical._id.toString(),
+          type: "practical",
+          name: practical.title,
+          section: practical.section || null,
+          subject: practical.subject ? String(practical.subject) : null,
+        },
+        metadata: {
+          deletedRecord: {
+            title: practical.title,
+            deadline: practical.deadline,
+            subject: practical.subject ? String(practical.subject) : null,
+            section: practical.section ? String(practical.section) : null,
+          },
+        },
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to log practical delete:", auditErr);
+    }
 
     await ActivityLog.create({
       user: authUser.userId,

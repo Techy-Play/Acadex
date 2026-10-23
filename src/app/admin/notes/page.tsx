@@ -40,6 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { MultiSelect } from "@/components/multi-select";
 import { Search, X, Eye } from "lucide-react";
 import { useAdminLightbox } from "@/context/admin-lightbox-context";
+import { ResourceActionButton } from "@/components/resource-action-button";
 
 interface Subject {
   _id: string;
@@ -833,19 +834,13 @@ export default function ManageNotesPage() {
                           </TableCell>
                           <TableCell className="text-right space-x-2">
                             {note.file_url && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="rounded-lg gap-1"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openLightbox(note.file_url, note.title);
-                                }}
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                                Open
-                              </Button>
+                              <ResourceActionButton
+                                fileUrl={note.file_url}
+                                title={note.title}
+                                onOpen={() => openLightbox(note.file_url, note.title)}
+                              />
                             )}
+
                             <Button variant="outline" size="sm" className="rounded-lg" onClick={(e) => { e.stopPropagation(); openEditDialog(note); }}>
                               Edit
                             </Button>

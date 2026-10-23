@@ -12,6 +12,7 @@ import User from "@/models/User";
 import ActivityLog from "@/models/ActivityLog";
 
 import { requireAdmin, canAdminManageSection } from "@/lib/rbac";
+import { logAdminOperation } from "@/lib/audit-logger";
 
 // POST /api/admin/reset-password - Reset a user's password
 export async function POST(request: Request) {
@@ -64,6 +65,29 @@ export async function POST(request: Request) {
       password_hash: passwordHash,
       must_change_password: true,
     });
+
+    // Structured Audit Log (never logs the temp password)
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "PASSWORD_RESET",
+        description: `Reset password for user ${user.name} (${user.college_id})`,
+        target: {
+          id: user._id.toString(),
+          type: "student",
+          name: user.name,
+          section: user.section || null,
+        },
+        route: `/admin/users`,
+        metadata: {
+          targetCollegeId: user.college_id,
+          targetRole: user.role,
+        },
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to record password reset audit log:", auditErr);
+    }
 
     // Log activity
     await ActivityLog.create({

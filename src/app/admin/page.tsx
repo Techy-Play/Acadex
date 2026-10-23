@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AuditLogTable } from "@/components/audit-log-table";
 
 type DashboardLayout = "overview" | "compact" | "analytics";
 
@@ -300,70 +301,29 @@ export default function AdminDashboard() {
 /* ─── Sub-components ─── */
 
 function ActivityFeed({
-  activities,
-  loading,
   expanded,
 }: {
-  activities: ActivityItem[];
-  loading: boolean;
+  activities?: ActivityItem[];
+  loading?: boolean;
   expanded?: boolean;
 }) {
   return (
     <Card className="rounded-2xl">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle className="text-lg flex items-center gap-2">
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          Recent Activity
+          Audit & Recent Activity
         </CardTitle>
+        <Link href="/admin/activity">
+          <Button variant="outline" size="sm" className="text-xs h-8">
+            Full Audit Logs &rarr;
+          </Button>
+        </Link>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="h-3 w-3/4 bg-muted rounded animate-pulse" />
-                  <div className="h-2.5 w-1/2 bg-muted rounded animate-pulse" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : activities.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">No recent activity</p>
-        ) : (
-          <div className={`space-y-1 ${expanded ? "max-h-none" : "max-h-[400px] overflow-y-auto"}`}>
-            {activities.map((a) => {
-              const info = getActionInfo(a.action);
-              return (
-                <div
-                  key={a.id}
-                  className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <span className="text-base mt-0.5 shrink-0">{info.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-medium ${info.color}`}>{info.label}</span>
-                      <span className="text-xs text-muted-foreground">{timeAgo(a.createdAt)}</span>
-                    </div>
-                    {a.details && (
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {a.details}
-                      </p>
-                    )}
-                    {a.user && (
-                      <p className="text-xs text-muted-foreground/70 mt-0.5">
-                        by {a.user.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <AuditLogTable initialLimit={expanded ? 15 : 10} />
       </CardContent>
     </Card>
   );

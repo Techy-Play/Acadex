@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { google } from "googleapis";
 import { getAuthUser } from "@/lib/rbac";
 import { extractGoogleDriveId } from "@/lib/resource-resolver";
+import { logUserActivity } from "@/lib/audit-logger";
 
 import net from "node:net";
 
@@ -115,6 +116,30 @@ export async function GET(request: Request) {
     let safeRangeHeader: string | null = null;
     if (rawRangeHeader && /^bytes=\d*-\d*$/.test(rawRangeHeader.trim())) {
       safeRangeHeader = rawRangeHeader.trim();
+    }
+
+    // Log resource view session asynchronously (skip repeated range-request chunks)
+    if (!safeRangeHeader || safeRangeHeader.startsWith("bytes=0-")) {
+      void logUserActivity({
+        user: {
+          userId: authUser.userId,
+          name: authUser.name,
+          collegeId: authUser.collegeId,
+          role: authUser.isSuperAdmin ? "superadmin" : authUser.role === "admin" ? "admin" : "student",
+        },
+        action: "RESOURCE_VIEW",
+        actionCategory: "resource",
+        description: `Viewed document "${filenameParam}"`,
+        target: {
+          type: "note",
+          name: filenameParam,
+        },
+        route: `/user/dashboard/viewer?filename=${encodedFilename}`,
+        metadata: {
+          filename: filenameParam,
+        },
+        req: request,
+      }).catch(() => {});
     }
 
     // 3. Extract Google Drive file ID

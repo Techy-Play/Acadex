@@ -12,6 +12,7 @@ import Section from "@/models/Section";
 import Subject from "@/models/Subject";
 import ActivityLog from "@/models/ActivityLog";
 import { requireAdmin, canAdminManageResource } from "@/lib/rbac";
+import { logAdminOperation, calculateAuditDiff } from "@/lib/audit-logger";
 
 const populateFields = [
   { path: "subject", select: "name type" },
@@ -101,6 +102,15 @@ export async function PUT(
       }
     }
 
+    // Capture pre-update state for audit diff
+    const beforeData = {
+      title: note.title,
+      file_url: note.file_url,
+      subject: note.subject ? String(note.subject) : null,
+      section: note.section ? String(note.section) : null,
+      sections: Array.isArray(note.sections) ? note.sections.map((s: unknown) => String(s)) : [],
+    };
+
     // Update allowed fields
     if (body.title !== undefined) note.title = body.title;
     if (body.file_url !== undefined) note.file_url = body.file_url;
@@ -113,6 +123,36 @@ export async function PUT(
 
     await note.save();
     const populated = await note.populate(populateFields);
+
+    // Structured Audit Log with diff
+    const afterData = {
+      title: note.title,
+      file_url: note.file_url,
+      subject: note.subject ? String(note.subject) : null,
+      section: note.section ? String(note.section) : null,
+      sections: Array.isArray(note.sections) ? note.sections.map((s: unknown) => String(s)) : [],
+    };
+    const diff = calculateAuditDiff(beforeData, afterData);
+
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "NOTE_UPDATE",
+        description: `Updated note "${note.title}"`,
+        target: {
+          id: note._id.toString(),
+          type: "note",
+          name: note.title,
+          section: note.section || null,
+          subject: note.subject ? String(note.subject) : null,
+        },
+        route: `/user/dashboard/viewer?type=note&id=${note._id}`,
+        diff,
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to log note update:", auditErr);
+    }
 
     await ActivityLog.create({
       user: authUser.userId,
@@ -161,6 +201,33 @@ export async function DELETE(
     }
 
     await Note.findByIdAndDelete(id);
+
+    // Structured Audit Log with retained safe metadata
+    try {
+      await logAdminOperation({
+        admin: authUser,
+        action: "NOTE_DELETE",
+        description: `Deleted note "${note.title}"`,
+        target: {
+          id: note._id.toString(),
+          type: "note",
+          name: note.title,
+          section: note.section || null,
+          subject: note.subject ? String(note.subject) : null,
+        },
+        metadata: {
+          deletedRecord: {
+            title: note.title,
+            file_url: note.file_url,
+            subject: note.subject ? String(note.subject) : null,
+            section: note.section ? String(note.section) : null,
+          },
+        },
+        req: request,
+      });
+    } catch (auditErr) {
+      console.warn("Failed to log note delete:", auditErr);
+    }
 
     await ActivityLog.create({
       user: authUser.userId,

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useCallback } from "react";
-import { X, ExternalLink, Download, FileText, Shield } from "lucide-react";
+import React, { useEffect, useCallback, useState } from "react";
+import { X, ExternalLink, Download, FileText, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UniversalDocumentViewer } from "@/components/universal-document-viewer";
@@ -22,6 +22,28 @@ export function AdminDocumentLightbox({
 }: AdminDocumentLightboxProps) {
   // Resolve resource metadata for canonical title and download URLs
   const resolved = resolveResource(url, title, mimeType);
+
+  // Single toggle theme state: defaults to light or saved preference in localStorage
+  const [pdfTheme, setPdfTheme] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "light";
+    try {
+      const saved = localStorage.getItem("acadex-pdf-reader-theme");
+      if (saved === "light" || saved === "dark") return saved;
+    } catch {
+      // ignore
+    }
+    return "light";
+  });
+
+  const handleToggleTheme = () => {
+    const next = pdfTheme === "dark" ? "light" : "dark";
+    setPdfTheme(next);
+    try {
+      localStorage.setItem("acadex-pdf-reader-theme", next);
+    } catch {
+      // ignore
+    }
+  };
 
   // Close on Escape key
   const handleKeyDown = useCallback(
@@ -56,7 +78,7 @@ export function AdminDocumentLightbox({
       role="dialog"
       aria-modal="true"
       aria-label={`Preview: ${resolved.title}`}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={handleBackdropClick}
     >
       <div
@@ -66,12 +88,7 @@ export function AdminDocumentLightbox({
         {/* Lightbox Header */}
         <header className="h-13 border-b border-border/80 bg-card/95 backdrop-blur-md flex items-center justify-between px-3 sm:px-4 z-20 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 text-[11px] font-semibold shrink-0">
-              <Shield className="h-3 w-3" />
-              <span>Admin Lightbox</span>
-            </div>
-
-            <FileText className="h-4 w-4 text-muted-foreground shrink-0 hidden sm:block" />
+            <FileText className="h-4 w-4 text-primary shrink-0" />
 
             <h2
               className="text-xs sm:text-sm font-semibold truncate max-w-[140px] xs:max-w-[200px] sm:max-w-[340px] md:max-w-lg lg:max-w-xl text-foreground"
@@ -92,6 +109,24 @@ export function AdminDocumentLightbox({
 
           {/* Action buttons on header */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {/* Single Toggle Theme Button (Moon and Sun) for PDF */}
+            {(resolved.category === "pdf" || resolved.viewerKind === "adobe_pdf") && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                onClick={handleToggleTheme}
+                title={pdfTheme === "dark" ? "Switch to Light mode" : "Switch to Dark mode"}
+                aria-label="Toggle PDF Theme"
+              >
+                {pdfTheme === "dark" ? (
+                  <Sun className="h-4 w-4 text-amber-400" />
+                ) : (
+                  <Moon className="h-4 w-4 text-zinc-700 dark:text-zinc-300" />
+                )}
+              </Button>
+            )}
+
             {resolved.directOpenUrl && (
               <a
                 href={resolved.directOpenUrl}
@@ -152,6 +187,9 @@ export function AdminDocumentLightbox({
             mimeType={mimeType}
             embedMode="FULL_WINDOW"
             showAnnotationTools={false}
+            themeMode={pdfTheme}
+            hideFloatingThemeToggle={true}
+            onThemeModeChange={(m) => setPdfTheme(m)}
             className="w-full h-full"
           />
         </div>

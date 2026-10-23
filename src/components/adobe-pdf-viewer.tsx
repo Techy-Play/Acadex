@@ -106,6 +106,10 @@ export interface AdobePdfViewerProps {
   /**
    * Additional container CSS classes.
    */
+  /**
+   * Whether to hide the in-canvas floating theme pill (e.g. when header provides toggle).
+   */
+  hideFloatingThemeToggle?: boolean;
   className?: string;
 }
 
@@ -165,6 +169,7 @@ export function AdobePdfViewer({
   embedMode = "FULL_WINDOW",
   showAnnotationTools = false,
   themeMode: propThemeMode,
+  hideFloatingThemeToggle = false,
   onThemeModeChange,
   onError,
   onSuccess,
@@ -193,6 +198,12 @@ export function AdobePdfViewer({
     }
     return "light";
   });
+
+  useEffect(() => {
+    if (propThemeMode) {
+      setInternalTheme(propThemeMode);
+    }
+  }, [propThemeMode]);
 
   const activeTheme = propThemeMode || internalTheme;
 
@@ -479,7 +490,8 @@ export function AdobePdfViewer({
       `}</style>
 
       {/* Top Theme Control Pill on top of PDF - Strictly 2 options: Light (Default) and Dark */}
-      <div
+      {!hideFloatingThemeToggle && (
+        <div
         className={`absolute top-3 right-3 sm:right-4 z-20 flex items-center gap-1 p-1 rounded-xl backdrop-blur-md text-xs font-medium transition-all ${
           activeTheme === "light"
             ? "bg-white/95 border border-zinc-300/90 text-zinc-700 shadow-md shadow-zinc-400/20"
@@ -517,6 +529,7 @@ export function AdobePdfViewer({
           <span>Dark</span>
         </button>
       </div>
+      )}
 
       {/* Tiny Loading Buffer without any text */}
       {isLoading && (

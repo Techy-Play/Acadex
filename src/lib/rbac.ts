@@ -81,6 +81,28 @@ export async function getAuthUser(request: Request): Promise<AuthUser | null> {
     };
   } catch (error) {
     console.error("RBAC getAuthUser error:", error);
+    // In development or when MongoDB is not connected, fallback to verified JWT payload
+    const cookieHeader = request.headers.get("cookie") || "";
+    const match = cookieHeader.match(/acadex-token=([^;]+)/);
+    const token = match
+      ? match[1]
+      : request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+    if (token) {
+      const payload = verifyToken(token);
+      if (payload) {
+        return {
+          userId: payload.userId,
+          collegeId: payload.collegeId,
+          name: payload.name,
+          role: payload.role,
+          isSuperAdmin: Boolean(payload.isSuperAdmin),
+          status: "active",
+          section: payload.section || null,
+          assignedSections: payload.assignedSections || [],
+          effectiveSectionIds: payload.assignedSections || [],
+        };
+      }
+    }
     return null;
   }
 }

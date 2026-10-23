@@ -17,6 +17,7 @@ import ActivityLog from "@/models/ActivityLog";
 import Notification from "@/models/Notification";
 
 import { requireAdmin, requireSuperAdmin } from "@/lib/rbac";
+import { logAdminOperation } from "@/lib/audit-logger";
 
 // Ensure models are registered for populate
 void Stream;
@@ -252,6 +253,29 @@ export async function PATCH(request: Request) {
       }
 
       adminReq.status = "approved";
+      // Structured Audit Log
+      try {
+        await logAdminOperation({
+          admin: authUser,
+          action: "ADMIN_REQUEST_APPROVED",
+          description: `Approved admin request: ${adminReq.type}`,
+          target: {
+            id: adminReq._id.toString(),
+            type: "admin_request",
+            name: String(data.name || "Admin Request"),
+            section: (data.section as string) || (data.newSection as string) || null,
+          },
+          route: `/admin/admin-requests`,
+          metadata: {
+            requestType: adminReq.type,
+            targetUser: adminReq.targetUser ? String(adminReq.targetUser) : null,
+            adminNote: admin_note || "",
+          },
+          req: request,
+        });
+      } catch (auditErr) {
+        console.warn("Failed to record admin request approval audit log:", auditErr);
+      }
       adminReq.admin_note = (admin_note || "").slice(0, 500);
       await adminReq.save();
 
@@ -262,6 +286,29 @@ export async function PATCH(request: Request) {
     } else {
       // Deny
       adminReq.status = "denied";
+      // Structured Audit Log
+      try {
+        await logAdminOperation({
+          admin: authUser,
+          action: "ADMIN_REQUEST_DENIED",
+          description: `Denied admin request: ${adminReq.type}`,
+          target: {
+            id: adminReq._id.toString(),
+            type: "admin_request",
+            name: String(data.name || "Admin Request"),
+            section: (data.section as string) || (data.newSection as string) || null,
+          },
+          route: `/admin/admin-requests`,
+          metadata: {
+            requestType: adminReq.type,
+            targetUser: adminReq.targetUser ? String(adminReq.targetUser) : null,
+            adminNote: admin_note || "",
+          },
+          req: request,
+        });
+      } catch (auditErr) {
+        console.warn("Failed to record admin request denial audit log:", auditErr);
+      }
       adminReq.admin_note = (admin_note || "").slice(0, 500);
       await adminReq.save();
 
