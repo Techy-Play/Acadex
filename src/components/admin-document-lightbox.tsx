@@ -3,7 +3,6 @@
 import React, { useEffect, useCallback, useState } from "react";
 import { X, ExternalLink, Download, FileText, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { UniversalDocumentViewer } from "@/components/universal-document-viewer";
 import { resolveResource } from "@/lib/resource-resolver";
 
@@ -97,14 +96,7 @@ export function AdminDocumentLightbox({
               {resolved.title}
             </h2>
 
-            <Badge
-              variant="outline"
-              className="text-[10px] font-mono shrink-0 hidden md:inline-flex uppercase"
-            >
-              {resolved.category === "pdf"
-                ? "PDF"
-                : resolved.fileExtension || resolved.category}
-            </Badge>
+
           </div>
 
           {/* Action buttons on header */}

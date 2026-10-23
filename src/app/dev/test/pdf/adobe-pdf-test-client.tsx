@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   ChevronLeft,
@@ -102,19 +101,7 @@ export function AdobePdfTestClient() {
               {isViewerActive && selectedFile ? selectedFile.name : "Adobe PDF Reader — Test Lab"}
             </h1>
 
-            <Badge
-              variant="outline"
-              className="text-[10px] font-mono tracking-tight shrink-0 hidden md:inline-flex border-red-500/30 text-red-600 dark:text-red-400 bg-red-500/5"
-            >
-              Adobe PDF Embed API
-            </Badge>
 
-            <Badge
-              variant="secondary"
-              className="text-[10px] font-mono shrink-0 hidden lg:inline-flex bg-muted/60 text-muted-foreground"
-            >
-              Isolated Lab
-            </Badge>
           </div>
         </div>
 

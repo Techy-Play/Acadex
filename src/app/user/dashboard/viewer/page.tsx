@@ -3,7 +3,6 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   ChevronLeft,
   Download,
@@ -58,28 +57,6 @@ export default function DocumentViewerPage() {
     return resolveResource(fileUrl, title);
   }, [fileUrl, title]);
 
-  // Derive human-readable format badge
-  const formatBadge = useMemo(() => {
-    switch (resolved.category) {
-      case "pdf":
-        return "PDF";
-      case "image":
-        return (resolved.fileExtension || "IMAGE").toUpperCase();
-      case "file_download":
-      case "office_drive":
-        if (resolved.fileExtension === "pptx" || resolved.fileExtension === "ppt") return "PowerPoint";
-        if (resolved.fileExtension === "xlsx" || resolved.fileExtension === "xls" || resolved.fileExtension === "csv") return "Excel";
-        if (resolved.fileExtension === "docx" || resolved.fileExtension === "doc") return "Word";
-        if (resolved.fileExtension === "zip" || resolved.fileExtension === "rar" || resolved.fileExtension === "7z") return "Archive";
-        return resolved.fileExtension ? resolved.fileExtension.toUpperCase() : "File";
-      case "google_workspace":
-        return "Google Docs";
-      case "external_website":
-        return "Web Link";
-      default:
-        return resolved.fileExtension ? resolved.fileExtension.toUpperCase() : "Document";
-    }
-  }, [resolved]);
 
   if (!fileUrl) {
     return (
@@ -121,9 +98,7 @@ export default function DocumentViewerPage() {
             >
               {resolved.title}
             </h1>
-            <Badge variant="secondary" className="text-[10px] font-mono shrink-0 hidden sm:inline-flex">
-              {formatBadge}
-            </Badge>
+
           </div>
         </div>
 
