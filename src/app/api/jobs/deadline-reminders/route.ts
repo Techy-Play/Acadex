@@ -117,16 +117,17 @@ export async function GET(request: Request) {
       const recipientIds = incompleteUserIds.filter((uid) => !alreadySentTo.has(uid));
       if (recipientIds.length === 0) continue;
 
+      const subjectName = subject.name || "Assignment";
       await sendPushToUsers({
         userIds: recipientIds,
         preferenceKey: "deadline_alert",
-        payload: assignmentReminderPayload(subject._id.toString()),
+        payload: assignmentReminderPayload(subject._id.toString(), subjectName, item.title),
       });
 
       await Notification.create({
         type: "deadline_alert",
-        title: "Assignment Reminder",
-        message: `"${item.title}" is due soon. Finish it before the deadline catches you!`,
+        title: `[${subjectName}] Assignment Reminder`,
+        message: `[${subjectName}] "${item.title}" is due soon. Finish it before the deadline catches you!`,
         link: `/user/dashboard/pending-work?tab=assignments&subject=${subject._id.toString()}`,
         targetUsers: recipientIds,
       });
@@ -177,16 +178,17 @@ export async function GET(request: Request) {
       const recipientIds = incompleteUserIds.filter((uid) => !alreadySentTo.has(uid));
       if (recipientIds.length === 0) continue;
 
+      const subjectName = subject.name || "Practical";
       await sendPushToUsers({
         userIds: recipientIds,
         preferenceKey: "deadline_alert",
-        payload: practicalReminderPayload(subject._id.toString()),
+        payload: practicalReminderPayload(subject._id.toString(), subjectName, item.title),
       });
 
       await Notification.create({
         type: "deadline_alert",
-        title: "Practical Reminder",
-        message: `"${item.title}" is due soon. Your lab submission is waiting for you!`,
+        title: `[${subjectName}] Practical Reminder`,
+        message: `[${subjectName}] "${item.title}" is due soon. Your lab submission is waiting for you!`,
         link: `/user/dashboard/pending-work?tab=practicals&subject=${subject._id.toString()}`,
         targetUsers: recipientIds,
       });

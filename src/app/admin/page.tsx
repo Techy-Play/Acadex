@@ -1,7 +1,7 @@
 /**
  * @page AdminDashboard (/admin)
- * @description Modernized Admin Dashboard — quick statistics, priority alerts,
- * curated command center, and integrated audit logging.
+ * @description Modern Admin Dashboard — quick statistics, priority alerts,
+ * curated command center, and simple, real-time activity feed.
  */
 "use client";
 
@@ -10,7 +10,6 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AuditLogTable } from "@/components/audit-log-table";
 import {
   Users,
   FileText,
@@ -20,25 +19,17 @@ import {
   GraduationCap,
   School,
   Shield,
-  ShieldAlert,
   Bell,
   Mail,
   ArrowUpRight,
   ArrowRight,
   Activity,
-  Plus,
-  CheckCircle2,
-  AlertCircle,
   LayoutGrid,
   ListFilter,
   Sparkles,
-  FolderArchive,
   Layers,
   ChevronRight,
-  ExternalLink,
   Clock,
-  Database,
-  Lock,
 } from "lucide-react";
 
 type DashboardLayout = "overview" | "compact" | "analytics";
@@ -56,31 +47,59 @@ interface Stats {
 interface DashStats {
   pendingRequests: number;
   unreadMessages: number;
-  pendingAdminRequests?: number;
-  latestAdminRequest?: {
-    id: string;
-    type: string;
-    requestedByName: string;
-    targetUserName?: string | null;
-    adminNote?: string;
-    createdAt?: string;
-  } | null;
-  latestMessage?: {
-    id: string;
-    name: string;
-    email: string;
-    subject: string;
-    snippet: string;
-    createdAt?: string;
-  } | null;
-  securityAlertCount?: number;
-  latestSecurityAlert?: {
-    id: string;
-    action: string;
-    description: string;
-    actorName: string;
-    createdAt?: string;
-  } | null;
+}
+
+interface ActivityItem {
+  id: string;
+  action: string;
+  details: string;
+  user: { name: string; college_id: string } | null;
+  createdAt: string;
+}
+
+const actionLabels: Record<string, { label: string; icon: string; color: string }> = {
+  USER_LOGIN: { label: "User Login", icon: "🔑", color: "text-blue-500" },
+  LOGIN: { label: "User Login", icon: "🔑", color: "text-blue-500" },
+  PASSWORD_CHANGED: { label: "Password Changed", icon: "🔐", color: "text-amber-500" },
+  NOTE_CREATED: { label: "Note Added", icon: "📄", color: "text-indigo-500" },
+  NOTE_ADDED: { label: "Note Added", icon: "📄", color: "text-indigo-500" },
+  NOTE_UPDATED: { label: "Note Updated", icon: "📝", color: "text-indigo-400" },
+  NOTE_DELETED: { label: "Note Deleted", icon: "🗑️", color: "text-red-400" },
+  ASSIGNMENT_CREATED: { label: "Assignment Added", icon: "📝", color: "text-purple-500" },
+  ASSIGNMENT_ADDED: { label: "Assignment Added", icon: "📝", color: "text-purple-500" },
+  ASSIGNMENT_UPDATED: { label: "Assignment Updated", icon: "✏️", color: "text-purple-400" },
+  ASSIGNMENT_DELETED: { label: "Assignment Deleted", icon: "🗑️", color: "text-red-400" },
+  PRACTICAL_CREATED: { label: "Practical Added", icon: "🧪", color: "text-emerald-500" },
+  PRACTICAL_ADDED: { label: "Practical Added", icon: "🧪", color: "text-emerald-500" },
+  PRACTICAL_UPDATED: { label: "Practical Updated", icon: "🔬", color: "text-emerald-400" },
+  PRACTICAL_DELETED: { label: "Practical Deleted", icon: "🗑️", color: "text-red-400" },
+  ACCESS_REQUEST_APPROVED: { label: "Request Approved", icon: "✅", color: "text-green-500" },
+  ACCESS_REQUEST_DENIED: { label: "Request Denied", icon: "❌", color: "text-red-500" },
+  STUDENT_CREATED: { label: "Student Added", icon: "👤", color: "text-blue-500" },
+  STUDENT_UPDATED: { label: "Student Updated", icon: "✏️", color: "text-blue-400" },
+  STUDENT_DELETED: { label: "Student Deleted", icon: "🗑️", color: "text-red-400" },
+  ADMIN_REQUEST_CREATED: { label: "Admin Request", icon: "🛡️", color: "text-purple-500" },
+  ADMIN_REQUEST_APPROVED: { label: "Admin Request Approved", icon: "✅", color: "text-green-500" },
+  ADMIN_REQUEST_DENIED: { label: "Admin Request Denied", icon: "❌", color: "text-red-500" },
+  SUBJECT_CREATED: { label: "Subject Added", icon: "📚", color: "text-teal-500" },
+};
+
+function getActionInfo(action: string) {
+  return actionLabels[action] || { label: action.replace(/_/g, " "), icon: "📋", color: "text-muted-foreground" };
+}
+
+function timeAgo(dateStr: string) {
+  if (!dateStr) return "recently";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
 export default function AdminDashboard() {
@@ -97,6 +116,7 @@ export default function AdminDashboard() {
     pendingRequests: 0,
     unreadMessages: 0,
   });
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [adminName, setAdminName] = useState("Administrator");
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -120,6 +140,7 @@ export default function AdminDashboard() {
           streamsRes,
           sectionsRes,
           dashStatsRes,
+          activityRes,
         ] = await Promise.all([
           fetch("/api/auth/me"),
           fetch("/api/admin/students"),
@@ -130,6 +151,7 @@ export default function AdminDashboard() {
           fetch("/api/streams"),
           fetch("/api/sections"),
           fetch("/api/admin/dashboard-stats"),
+          fetch("/api/admin/activity"),
         ]);
 
         const meData = meRes.ok ? await meRes.json() : null;
@@ -146,6 +168,7 @@ export default function AdminDashboard() {
         const streamsData = streamsRes.ok ? await streamsRes.json() : { streams: [] };
         const sectionsData = sectionsRes.ok ? await sectionsRes.json() : { sections: [] };
         const dashStatsData = dashStatsRes.ok ? await dashStatsRes.json() : { pendingRequests: 0, unreadMessages: 0 };
+        const activityData = activityRes.ok ? await activityRes.json() : { activities: [] };
 
         setStats({
           totalStudents:
@@ -158,6 +181,7 @@ export default function AdminDashboard() {
           totalSections: sectionsData.sections?.length || 0,
         });
         setDashStats(dashStatsData);
+        setActivities(activityData.activities || []);
       } catch (error) {
         console.error("Failed to fetch admin stats:", error);
       } finally {
@@ -169,7 +193,9 @@ export default function AdminDashboard() {
 
   const handleLayoutChange = (l: DashboardLayout) => {
     setLayout(l);
-    localStorage.setItem("admin-dashboard-layout", l);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("admin-dashboard-layout", l);
+    }
   };
 
   const greeting = useMemo(() => {
@@ -179,79 +205,78 @@ export default function AdminDashboard() {
     return "Good evening";
   }, []);
 
-  // Modern Stat Cards with Lucide icons & distinct accents
   const statCards = [
     {
-      title: "Students",
+      title: "Total Students",
       value: stats.totalStudents,
       sublabel: "Enrolled Learners",
       icon: Users,
-      href: "/admin/users",
       color: "text-blue-500",
       bg: "bg-blue-500/10",
       border: "border-blue-500/20",
+      href: "/admin/users",
     },
     {
-      title: "Notes",
+      title: "Active Notes",
       value: stats.totalNotes,
       sublabel: "Course Documents",
       icon: FileText,
+      color: "text-indigo-500",
+      bg: "bg-indigo-500/10",
+      border: "border-indigo-500/20",
       href: "/admin/notes",
-      color: "text-emerald-500",
-      bg: "bg-emerald-500/10",
-      border: "border-emerald-500/20",
     },
     {
       title: "Assignments",
       value: stats.totalAssignments,
       sublabel: "Tasks & Homework",
       icon: ClipboardList,
-      href: "/admin/assignments",
       color: "text-purple-500",
       bg: "bg-purple-500/10",
       border: "border-purple-500/20",
+      href: "/admin/assignments",
     },
     {
       title: "Practicals",
       value: stats.totalPracticals,
       sublabel: "Lab Experiments",
       icon: FlaskConical,
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+      border: "border-emerald-500/20",
       href: "/admin/practicals",
-      color: "text-teal-500",
-      bg: "bg-teal-500/10",
-      border: "border-teal-500/20",
     },
     ...(isSuperAdmin
       ? [
           {
             title: "Subjects",
             value: stats.totalSubjects,
-            sublabel: "Academic Courses",
+            sublabel: "Curriculum Units",
             icon: BookOpen,
+            color: "text-teal-500",
+            bg: "bg-teal-500/10",
+            border: "border-teal-500/20",
             href: "/admin/subjects",
-            color: "text-amber-500",
-            bg: "bg-amber-500/10",
-            border: "border-amber-500/20",
           },
           {
             title: "Streams",
             value: stats.totalStreams,
-            sublabel: "Departments",
+            sublabel: "Degree Tracks",
             icon: GraduationCap,
+            color: "text-amber-500",
+            bg: "bg-amber-500/10",
+            border: "border-amber-500/20",
             href: "/admin/streams",
-            color: "text-rose-500",
-            bg: "bg-rose-500/10",
-            border: "border-rose-500/20",
           },
           {
             title: "Sections",
             value: stats.totalSections,
-            sublabel: "Batches & Cohorts",
+            sublabel: "Class Batches",
             icon: School,
+            color: "text-rose-500",
+            bg: "bg-rose-500/10",
+            border: "border-rose-500/20",
             href: "/admin/sections",
-            color: "text-indigo-500",
-            bg: "bg-indigo-500/10",
-            border: "border-indigo-500/20",
           },
         ]
       : []),
@@ -260,7 +285,7 @@ export default function AdminDashboard() {
   const layoutOptions: { key: DashboardLayout; label: string; icon: typeof LayoutGrid }[] = [
     { key: "overview", label: "Overview", icon: LayoutGrid },
     { key: "compact", label: "Compact", icon: ListFilter },
-    { key: "analytics", label: "Audit Feed", icon: Activity },
+    { key: "analytics", label: "Activity", icon: Activity },
   ];
 
   return (
@@ -282,7 +307,7 @@ export default function AdminDashboard() {
               {greeting}, {adminName}
             </h1>
             <p className="text-sm text-muted-foreground max-w-xl leading-relaxed">
-              Monitor active student cohorts, publish course resources, manage workflow authorizations, and inspect high-integrity audit activity.
+              Monitor active student cohorts, publish course resources, manage workflow authorizations, and review recent activities.
             </p>
           </div>
 
@@ -305,93 +330,9 @@ export default function AdminDashboard() {
                 </button>
               ))}
             </div>
-
-            {/* Quick Action to Dedicated Audit Logs Page */}
-            <Link href="/admin/activity">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl text-xs gap-1.5 h-9 font-medium shadow-xs hover:bg-primary/10 hover:text-primary hover:border-primary/20"
-              >
-                <Shield className="h-3.5 w-3.5 text-primary" />
-                <span>Audit Logs</span>
-              </Button>
-            </Link>
           </div>
         </div>
       </div>
-
-      {/* ─── Super Admin Priority Red Alert Section ─── */}
-      {isSuperAdmin && ((dashStats.pendingAdminRequests && dashStats.pendingAdminRequests > 0) || (dashStats.securityAlertCount && dashStats.securityAlertCount > 0)) && (
-        <div className="space-y-3">
-          {dashStats.pendingAdminRequests && dashStats.pendingAdminRequests > 0 && (
-            <div className="rounded-2xl border-2 border-red-500/60 bg-linear-to-r from-red-500/15 via-red-500/10 to-transparent p-4 sm:p-5 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-start gap-3.5">
-                  <div className="h-10 w-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <ShieldAlert className="h-5 w-5 animate-pulse" />
-                  </div>
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
-                      </span>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
-                        Critical Super Admin Alert
-                      </span>
-                      <Badge className="bg-red-600 text-white text-[10px] font-bold">
-                        {dashStats.pendingAdminRequests} Pending
-                      </Badge>
-                    </div>
-                    <p className="text-sm font-bold text-foreground">
-                      {dashStats.latestAdminRequest?.requestedByName || "Sub-Admin"} requested:{" "}
-                      <span className="text-red-600 dark:text-red-400 font-semibold">
-                        {dashStats.latestAdminRequest?.type === "create_admin"
-                          ? "New Admin Account Authorization"
-                          : "Section / Stream Privilege Escalation"}
-                      </span>
-                      {dashStats.latestAdminRequest?.targetUserName && ` for ${dashStats.latestAdminRequest.targetUserName}`}
-                    </p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {dashStats.latestAdminRequest?.adminNote
-                        ? `Message: "${dashStats.latestAdminRequest.adminNote}"`
-                        : "Sub-admins cannot proceed with these system alterations without your Super Admin approval."}
-                    </p>
-                  </div>
-                </div>
-                <Link href="/admin/admin-requests" className="shrink-0 self-end sm:self-auto">
-                  <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold gap-1.5 h-9 shadow-xs">
-                    <span>Review & Authorize</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          )}
-
-          {dashStats.securityAlertCount && dashStats.securityAlertCount > 0 && (
-            <div className="rounded-2xl border border-red-500/40 bg-red-500/5 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
-              <div className="flex items-center gap-3">
-                <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
-                <div>
-                  <span className="font-bold text-red-600 dark:text-red-400 mr-2">
-                    Security Notice ({dashStats.securityAlertCount} failed events):
-                  </span>
-                  <span className="text-foreground">
-                    {dashStats.latestSecurityAlert?.description || "Authentication or authorization failure recorded in audit log."}
-                  </span>
-                </div>
-              </div>
-              <Link href="/admin/activity?status=failure" className="shrink-0">
-                <Button variant="outline" size="sm" className="border-red-500/40 text-red-600 hover:bg-red-500/10 rounded-lg text-xs h-8">
-                  Inspect Security Log →
-                </Button>
-              </Link>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ─── Metric & Stats Cards Grid ─── */}
       <div
@@ -429,15 +370,19 @@ export default function AdminDashboard() {
       {/* ─── Dynamic Layout Content ─── */}
       {layout === "overview" && (
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Column: Interactive Audit Activity Table (2/3 width) */}
+          {/* Left Column: Recent Activity Feed (2/3 width) */}
           <div className="lg:col-span-2 space-y-6">
-            <AuditActivitySection expanded={false} />
+            <ActivityFeed
+              activities={activities.slice(0, 10)}
+              loading={loading}
+            />
           </div>
 
-          {/* Right Column: Workflow Action Cards & Command Center (1/3 width) */}
+          {/* Right Column: Priority Alerts & Command Center (1/3 width) */}
           <div className="space-y-6">
             <PriorityAlertCards
-              dashStats={dashStats}
+              pendingRequests={dashStats.pendingRequests}
+              unreadMessages={dashStats.unreadMessages}
               loading={loading}
             />
             <AdminCommandCenter isSuperAdmin={isSuperAdmin} />
@@ -448,23 +393,32 @@ export default function AdminDashboard() {
       {layout === "compact" && (
         <div className="space-y-6">
           <PriorityAlertCards
-            dashStats={dashStats}
+            pendingRequests={dashStats.pendingRequests}
+            unreadMessages={dashStats.unreadMessages}
             loading={loading}
             horizontal
           />
           <AdminCommandCenter isSuperAdmin={isSuperAdmin} grid />
-          <AuditActivitySection expanded={false} />
+          <ActivityFeed
+            activities={activities.slice(0, 10)}
+            loading={loading}
+          />
         </div>
       )}
 
       {layout === "analytics" && (
         <div className="space-y-6">
           <PriorityAlertCards
-            dashStats={dashStats}
+            pendingRequests={dashStats.pendingRequests}
+            unreadMessages={dashStats.unreadMessages}
             loading={loading}
             horizontal
           />
-          <AuditActivitySection expanded={true} />
+          <ActivityFeed
+            activities={activities}
+            loading={loading}
+            expanded
+          />
         </div>
       )}
     </div>
@@ -472,55 +426,100 @@ export default function AdminDashboard() {
 }
 
 /* ─────────────────────────────────────────────────────────────
- * Sub-components: Priority Alerts, Command Center, Audit Table
+ * Sub-components: Priority Alerts, Command Center, Activity Feed
  * ───────────────────────────────────────────────────────────── */
 
-function AuditActivitySection({ expanded }: { expanded: boolean }) {
+function ActivityFeed({
+  activities,
+  loading,
+  expanded,
+}: {
+  activities: ActivityItem[];
+  loading: boolean;
+  expanded?: boolean;
+}) {
   return (
     <Card className="rounded-3xl border border-border/80 shadow-xs overflow-hidden">
-      <CardHeader className="pb-3 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <CardHeader className="pb-3 border-b border-border/60 bg-muted/20 flex flex-row items-center justify-between gap-3">
         <div className="space-y-0.5">
           <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-            <Shield className="h-4 w-4 text-primary" />
-            Audit & Activity Logs
+            <Activity className="h-4.5 w-4.5 text-primary" />
+            Recent Activity
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Real-time high-integrity audit trail with before/after comparisons and actor identities.
+            Latest moderation, uploads, and student activities across your sections.
           </p>
         </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className="text-[11px] gap-1 font-mono py-0.5 px-2 bg-muted/40">
-            <Lock className="h-3 w-3 text-emerald-500" />
-            Strict 500 Global Limit
-          </Badge>
-          <Link href="/admin/activity">
-            <Button variant="ghost" size="sm" className="h-8 text-xs font-semibold gap-1 text-primary hover:text-primary">
-              Full View
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
-        </div>
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+          {activities.length} recent
+        </span>
       </CardHeader>
       <CardContent className="p-4 sm:p-5">
-        <AuditLogTable initialLimit={expanded ? 15 : 8} />
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 py-1">
+                <div className="h-9 w-9 rounded-xl bg-muted animate-pulse shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3.5 w-3/4 bg-muted rounded animate-pulse" />
+                  <div className="h-2.5 w-1/2 bg-muted rounded animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : activities.length === 0 ? (
+          <div className="py-12 text-center space-y-2">
+            <Clock className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+            <p className="text-sm font-medium text-muted-foreground">No recent activity</p>
+          </div>
+        ) : (
+          <div className={`space-y-1.5 divide-y divide-border/40 ${expanded ? "max-h-none" : "max-h-[460px] overflow-y-auto pr-1"}`}>
+            {activities.map((a) => {
+              const info = getActionInfo(a.action);
+              return (
+                <div
+                  key={a.id}
+                  className="flex items-start gap-3.5 pt-2.5 first:pt-0 pb-1.5 hover:bg-muted/30 px-2 rounded-xl transition-colors"
+                >
+                  <span className="text-xl mt-0.5 shrink-0 select-none">{info.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-xs font-semibold ${info.color}`}>{info.label}</span>
+                      <span className="text-[11px] text-muted-foreground shrink-0">{timeAgo(a.createdAt)}</span>
+                    </div>
+                    {a.details && (
+                      <p className="text-xs text-foreground/90 font-medium truncate mt-0.5">
+                        {a.details}
+                      </p>
+                    )}
+                    {a.user && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        by <span className="text-foreground font-medium">{a.user.name}</span>
+                        {a.user.college_id ? ` (${a.user.college_id})` : ""}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
 function PriorityAlertCards({
-  dashStats,
+  pendingRequests,
+  unreadMessages,
   loading,
   horizontal,
 }: {
-  dashStats: DashStats;
+  pendingRequests: number;
+  unreadMessages: number;
   loading: boolean;
   horizontal?: boolean;
 }) {
-  const pendingRequests = dashStats.pendingRequests;
-  const unreadMessages = dashStats.unreadMessages;
-  const latestMessage = dashStats.latestMessage;
   return (
     <div className={horizontal ? "grid gap-4 sm:grid-cols-2" : "space-y-4"}>
       {/* Pending Access Requests */}
@@ -599,15 +598,7 @@ function PriorityAlertCards({
                 <p className="text-xs font-semibold text-foreground">
                   {unreadMessages === 1 ? "Contact Message" : "Contact Messages"}
                 </p>
-                <p className="text-[11px] text-muted-foreground line-clamp-2">
-                  {latestMessage ? (
-                    <>
-                      <strong className="text-foreground">{latestMessage.name}:</strong> &quot;{latestMessage.snippet || latestMessage.subject}&quot;
-                    </>
-                  ) : (
-                    "Inquiries & student feedback"
-                  )}
-                </p>
+                <p className="text-[11px] text-muted-foreground truncate">Inquiries & student feedback</p>
               </div>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
@@ -625,77 +616,86 @@ function AdminCommandCenter({
   isSuperAdmin: boolean;
   grid?: boolean;
 }) {
-  const sections = [
+  const commandSections = [
     {
-      title: "Course Materials",
+      category: "Course Materials",
+      badge: "Academic",
       items: [
-        { label: "Notes", href: "/admin/notes", icon: FileText, color: "text-emerald-500", desc: "Lecture docs & PDFs" },
+        { label: "Notes", href: "/admin/notes", icon: FileText, color: "text-blue-500", desc: "Lecture docs & PDFs" },
         { label: "Assignments", href: "/admin/assignments", icon: ClipboardList, color: "text-purple-500", desc: "Submissions & homework" },
-        { label: "Practicals", href: "/admin/practicals", icon: FlaskConical, color: "text-teal-500", desc: "Lab experiments" },
-        { label: "Library", href: "/admin/library", icon: FolderArchive, color: "text-blue-500", desc: "Reference books & materials" },
+        { label: "Practicals", href: "/admin/practicals", icon: FlaskConical, color: "text-emerald-500", desc: "Lab experiments" },
+        { label: "Library", href: "/admin/library", icon: BookOpen, color: "text-indigo-500", desc: "Reference books & materials" },
       ],
     },
     ...(isSuperAdmin
       ? [
           {
-            title: "Academic Structure",
+            category: "Academic Structure",
+            badge: "Super Admin",
             items: [
-              { label: "Subjects", href: "/admin/subjects", icon: BookOpen, color: "text-amber-500", desc: "Courses & syllabus" },
-              { label: "Streams", href: "/admin/streams", icon: GraduationCap, color: "text-rose-500", desc: "Degree departments" },
-              { label: "Sections", href: "/admin/sections", icon: School, color: "text-indigo-500", desc: "Student cohorts" },
+              { label: "Subjects", href: "/admin/subjects", icon: BookOpen, color: "text-teal-500", desc: "Syllabus & units" },
+              { label: "Streams", href: "/admin/streams", icon: GraduationCap, color: "text-amber-500", desc: "Departments & degrees" },
+              { label: "Sections", href: "/admin/sections", icon: School, color: "text-rose-500", desc: "Student batches" },
             ],
           },
         ]
       : []),
     {
-      title: "User Management & Requests",
+      category: "User Management & Requests",
+      badge: "Administration",
       items: [
         { label: "Students Directory", href: "/admin/users", icon: Users, color: "text-blue-500", desc: "Accounts & sections" },
         { label: "Access Requests", href: "/admin/access-requests", icon: Bell, color: "text-amber-500", desc: "New admissions" },
         ...(isSuperAdmin
           ? [{ label: "Admin Requests", href: "/admin/admin-requests", icon: Shield, color: "text-purple-500", desc: "Privilege requests" }]
           : []),
-        { label: "Contact Inbox", href: "/admin/messages", icon: Mail, color: "text-cyan-500", desc: "Direct messages" },
+        { label: "Contact Inbox", href: "/admin/messages", icon: Mail, color: "text-emerald-500", desc: "Direct messages" },
       ],
     },
   ];
 
   return (
-    <Card className="rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden">
+    <Card className="rounded-3xl border border-border/80 shadow-xs overflow-hidden">
       <CardHeader className="pb-3 border-b border-border/60 bg-muted/20">
-        <CardTitle className="text-sm font-semibold flex items-center justify-between text-foreground">
-          <span className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
             <Sparkles className="h-4 w-4 text-primary" />
-            Quick Navigation
-          </span>
-          <span className="text-[11px] text-muted-foreground font-normal">Command Center</span>
-        </CardTitle>
+            Command Center
+          </CardTitle>
+          <Badge variant="outline" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            1-Click Navigation
+          </Badge>
+        </div>
       </CardHeader>
-      <CardContent className="p-3 sm:p-4 space-y-4">
-        {sections.map((sec) => (
-          <div key={sec.title} className="space-y-1.5">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-2">
-              {sec.title}
-            </p>
-            <div className={grid ? "grid gap-1.5 sm:grid-cols-2" : "space-y-1"}>
-              {sec.items.map((item) => (
-                <Link key={item.href} href={item.href} className="group block">
-                  <div className="flex items-center justify-between px-3 py-2 rounded-xl border border-transparent hover:border-border hover:bg-muted/50 transition-all duration-150">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`p-1.5 rounded-lg bg-muted/80 ${item.color} shrink-0`}>
-                        <item.icon className="h-3.5 w-3.5" />
+      <CardContent className="p-4 sm:p-5 space-y-4">
+        {commandSections.map((section) => (
+          <div key={section.category} className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                {section.category}
+              </span>
+              <span className="text-[10px] font-medium text-muted-foreground/60">{section.badge}</span>
+            </div>
+            <div className={`grid gap-2 ${grid ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
+              {section.items.map((item) => {
+                const ItemIcon = item.icon;
+                return (
+                  <Link key={item.href} href={item.href} className="group">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl border border-border/60 bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-150">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2 rounded-lg bg-muted text-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                          <ItemIcon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-foreground truncate">{item.label}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{item.desc}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                          {item.label}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground truncate">{item.desc}</p>
-                      </div>
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                     </div>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         ))}

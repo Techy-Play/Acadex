@@ -18,18 +18,36 @@ export function buildPushPayload(title: string, body: string, url: string): Push
   };
 }
 
-export function noteUploadedPayload(subjectName: string, subjectId: string): PushPayload {
+export function noteUploadedPayload(
+  subjectName: string,
+  subjectId: string,
+  resourceTitle?: string
+): PushPayload {
+  const subjectPrefix = subjectName ? `[${subjectName}] ` : "";
+  const bodyText = resourceTitle
+    ? `${subjectPrefix}"${resourceTitle}" has been uploaded`
+    : `${subjectPrefix}New notes available for ${subjectName || "this subject"}`;
+
   return buildPushPayload(
-    "New Notes Uploaded",
-    `New notes available for ${subjectName}`,
+    `${subjectPrefix}New Note Uploaded`,
+    bodyText,
     `/user/dashboard/notes?subject=${subjectId}`
   );
 }
 
-export function assignmentUploadedPayload(subjectName: string, subjectId: string): PushPayload {
+export function assignmentUploadedPayload(
+  subjectName: string,
+  subjectId: string,
+  resourceTitle?: string
+): PushPayload {
+  const subjectPrefix = subjectName ? `[${subjectName}] ` : "";
+  const bodyText = resourceTitle
+    ? `${subjectPrefix}"${resourceTitle}" has been posted`
+    : `${subjectPrefix}A new assignment has been uploaded for ${subjectName || "this subject"}`;
+
   return buildPushPayload(
-    "New Assignment Added",
-    `A new assignment has been uploaded for ${subjectName}`,
+    `${subjectPrefix}New Assignment Added`,
+    bodyText,
     `/user/dashboard/assignments?subject=${subjectId}`
   );
 }
@@ -39,9 +57,10 @@ export function practicalUploadedPayload(
   subjectId: string,
   practicalFileName: string
 ): PushPayload {
+  const subjectPrefix = subjectName ? `[${subjectName}] ` : "";
   return buildPushPayload(
-    "New Practical Uploaded",
-    `${practicalFileName} of ${subjectName} is uploaded`,
+    `${subjectPrefix}New Practical Uploaded`,
+    `${subjectPrefix}"${practicalFileName}" has been uploaded`,
     `/user/dashboard/practicals?subject=${subjectId}`
   );
 }
@@ -66,16 +85,38 @@ function pickOne(items: string[]): string {
   return items[Math.floor(Math.random() * items.length)] || items[0];
 }
 
-export function assignmentReminderPayload(subjectId?: string): PushPayload {
+export function assignmentReminderPayload(
+  subjectId?: string,
+  subjectName?: string,
+  resourceTitle?: string
+): PushPayload {
   const url = subjectId
     ? `/user/dashboard/pending-work?tab=assignments&subject=${subjectId}`
     : "/user/dashboard/pending-work?tab=assignments";
-  return buildPushPayload("Assignment Reminder", pickOne(funnyAssignmentReminders), url);
+  const subjectPrefix = subjectName ? `[${subjectName}] ` : "";
+  const title = `${subjectPrefix}Assignment Reminder`;
+  const body =
+    subjectName && resourceTitle
+      ? `${subjectPrefix}"${resourceTitle}" is due soon. Finish it before the deadline catches you!`
+      : pickOne(funnyAssignmentReminders);
+
+  return buildPushPayload(title, body, url);
 }
 
-export function practicalReminderPayload(subjectId?: string): PushPayload {
+export function practicalReminderPayload(
+  subjectId?: string,
+  subjectName?: string,
+  resourceTitle?: string
+): PushPayload {
   const url = subjectId
     ? `/user/dashboard/pending-work?tab=practicals&subject=${subjectId}`
     : "/user/dashboard/pending-work?tab=practicals";
-  return buildPushPayload("Practical Reminder", pickOne(funnyPracticalReminders), url);
+  const subjectPrefix = subjectName ? `[${subjectName}] ` : "";
+  const title = `${subjectPrefix}Practical Reminder`;
+  const body =
+    subjectName && resourceTitle
+      ? `${subjectPrefix}"${resourceTitle}" is due soon. Your lab submission is waiting for you!`
+      : pickOne(funnyPracticalReminders);
+
+  return buildPushPayload(title, body, url);
 }

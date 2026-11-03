@@ -78,8 +78,8 @@ async function generateDeadlineAlerts() {
 
       toCreate.push({
         type: "deadline_alert",
-        title: "Assignment Deadline Approaching",
-        message: `"${a.title}" (${subjectName}) is due ${deadlineStr} [${assignmentId}]`,
+        title: `[${subjectName}] Assignment Deadline Approaching`,
+        message: `[${subjectName}] "${a.title}" is due ${deadlineStr} [${assignmentId}]`,
         link: "/user/dashboard/assignments",
         targetRole: "student",
       });

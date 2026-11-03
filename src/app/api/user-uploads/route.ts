@@ -4,6 +4,7 @@ import UserUpload from "@/models/UserUpload";
 import Note from "@/models/Note";
 import Assignment from "@/models/Assignment";
 import Practical from "@/models/Practical";
+import Subject from "@/models/Subject";
 import Notification from "@/models/Notification";
 import User from "@/models/User";
 import ActivityLog from "@/models/ActivityLog";
@@ -540,10 +541,16 @@ export async function POST(request: Request) {
       });
 
       // Notify students
+      let subjectName = "";
+      if (subject) {
+        const subDoc = await Subject.findById(subject).select("name").lean();
+        if (subDoc?.name) subjectName = subDoc.name;
+      }
+      const subjectPrefix = subjectName ? `[${subjectName}] ` : "";
       await Notification.create({
         type: type === "note" ? "new_note" : "new_assignment",
-        title: `New ${type.charAt(0).toUpperCase() + type.slice(1)} Added`,
-        message: `"${title.trim()}" has been uploaded`,
+        title: `${subjectPrefix}New ${type.charAt(0).toUpperCase() + type.slice(1)} Added`,
+        message: `${subjectPrefix}"${title.trim()}" has been uploaded`,
         link: `/user/dashboard/${type === "note" ? "notes" : type === "assignment" ? "assignments" : "practicals"}`,
         targetRole: "student",
       });
@@ -669,13 +676,20 @@ export async function POST(request: Request) {
     const adminIds = admins.map((a) => a._id);
 
     if (adminIds.length > 0) {
+      let subjectName = "";
+      if (subject) {
+        const subDoc = await Subject.findById(subject).select("name").lean();
+        if (subDoc?.name) subjectName = subDoc.name;
+      }
+      const subjectPrefix = subjectName ? `[${subjectName}] ` : "";
+
       await Notification.create({
         type: "admin_message",
-        title: "New Upload Request",
+        title: `${subjectPrefix}New Upload Request`,
         message:
           requestKind === "create"
-            ? `A student submitted a ${type} upload: "${title.trim()}"`
-            : `A student submitted a ${requestKind} request for ${type}: "${title.trim()}"`,
+            ? `${subjectPrefix}A student submitted a ${type} upload: "${title.trim()}"`
+            : `${subjectPrefix}A student submitted a ${requestKind} request for ${type}: "${title.trim()}"`,
         link: "/admin/user-uploads",
         targetUsers: adminIds,
       });
@@ -853,15 +867,22 @@ export async function PATCH(request: Request) {
           : "new_practical";
 
       // Notify the student
+      let uploadSubjectName = "";
+      if (upload.subject) {
+        const subDoc = await Subject.findById(upload.subject).select("name").lean();
+        if (subDoc?.name) uploadSubjectName = subDoc.name;
+      }
+      const uploadSubjectPrefix = uploadSubjectName ? `[${uploadSubjectName}] ` : "";
+
       await Notification.create({
         type: approvalNotificationType,
-        title: "Upload Approved! 🎉",
+        title: `${uploadSubjectPrefix}Upload Approved! 🎉`,
         message:
           uploadRequestKind === "create"
-            ? `Your ${upload.type} "${upload.title}" has been approved and is now live.`
+            ? `${uploadSubjectPrefix}Your ${upload.type} "${upload.title}" has been approved and is now live.`
             : uploadRequestKind === "edit"
-            ? `Your edit request for ${upload.type} "${upload.title}" was approved.`
-            : `Your removal request for ${upload.type} "${upload.title}" was approved.`,
+            ? `${uploadSubjectPrefix}Your edit request for ${upload.type} "${upload.title}" was approved.`
+            : `${uploadSubjectPrefix}Your removal request for ${upload.type} "${upload.title}" was approved.`,
         link: `/user/dashboard/${upload.type === "note" ? "notes" : upload.type === "assignment" ? "assignments" : "practicals"}`,
         targetUsers: [upload.uploadedBy],
       });
@@ -884,13 +905,20 @@ export async function PATCH(request: Request) {
         section: upload.section || null,
       });
 
+      let uploadSubjectName = "";
+      if (upload.subject) {
+        const subDoc = await Subject.findById(upload.subject).select("name").lean();
+        if (subDoc?.name) uploadSubjectName = subDoc.name;
+      }
+      const uploadSubjectPrefix = uploadSubjectName ? `[${uploadSubjectName}] ` : "";
+
       const denyMessage = admin_note
-        ? `Your ${uploadRequestKind} request for ${upload.type} "${upload.title}" was denied. Note: ${admin_note}`
-        : `Your ${uploadRequestKind} request for ${upload.type} "${upload.title}" was denied.`;
+        ? `${uploadSubjectPrefix}Your ${uploadRequestKind} request for ${upload.type} "${upload.title}" was denied. Note: ${admin_note}`
+        : `${uploadSubjectPrefix}Your ${uploadRequestKind} request for ${upload.type} "${upload.title}" was denied.`;
 
       await Notification.create({
         type: "admin_message",
-        title: "Upload Denied",
+        title: `${uploadSubjectPrefix}Upload Denied`,
         message: denyMessage,
         link: "/user/dashboard",
         targetUsers: [upload.uploadedBy],

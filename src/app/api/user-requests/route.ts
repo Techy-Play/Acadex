@@ -14,6 +14,7 @@ import UserRequest from "@/models/UserRequest";
 import Note from "@/models/Note";
 import Assignment from "@/models/Assignment";
 import Practical from "@/models/Practical";
+import Subject from "@/models/Subject";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
 import ActivityLog from "@/models/ActivityLog";
@@ -300,10 +301,16 @@ export async function POST(req: NextRequest) {
         assignment: "new_assignment",
         practical: "new_practical",
       };
+      let subjectName = "";
+      if (subject) {
+        const subDoc = await Subject.findById(subject).select("name").lean();
+        if (subDoc?.name) subjectName = subDoc.name;
+      }
+      const subjectPrefix = subjectName ? `[${subjectName}] ` : "";
       await Notification.create({
         type: notifTypeMap[resourceType],
-        title: `New ${resourceType}`,
-        message: `"${title.trim()}" has been added to ${resourceType}s.`,
+        title: `${subjectPrefix}New ${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)} Added`,
+        message: `${subjectPrefix}"${title.trim()}" has been added to ${resourceType}s.`,
         targetRole: "student",
         link: `/user/dashboard/${resourceType === "note" ? "notes" : resourceType + "s"}`,
       });
@@ -420,6 +427,13 @@ export async function POST(req: NextRequest) {
     const adminIds = admins.map((a) => a._id);
 
     if (adminIds.length > 0) {
+      let subjectName = "";
+      if (subject) {
+        const subDoc = await Subject.findById(subject).select("name").lean();
+        if (subDoc?.name) subjectName = subDoc.name;
+      }
+      const subjectPrefix = subjectName ? `[${subjectName}] ` : "";
+
       const actionLabels: Record<string, string> = {
         add: "Add",
         update: "Update",
@@ -427,8 +441,8 @@ export async function POST(req: NextRequest) {
       };
       await Notification.create({
         type: "admin_message",
-        title: `New ${actionLabels[action]} Request`,
-        message: `A student has submitted a ${action} request for ${resourceType}: "${title.trim()}"`,
+        title: `${subjectPrefix}New ${actionLabels[action]} Request`,
+        message: `${subjectPrefix}A student has submitted a ${action} request for ${resourceType}: "${title.trim()}"`,
         targetUsers: adminIds,
         link: "/admin/user-requests",
       });
@@ -601,6 +615,13 @@ export async function PATCH(req: NextRequest) {
       });
 
       // Notify student
+      let requestSubjectName = "";
+      if (request.subject) {
+        const subDoc = await Subject.findById(request.subject).select("name").lean();
+        if (subDoc?.name) requestSubjectName = subDoc.name;
+      }
+      const requestSubjectPrefix = requestSubjectName ? `[${requestSubjectName}] ` : "";
+
       const actionLabels: Record<string, string> = {
         add: "add",
         update: "update",
@@ -608,8 +629,8 @@ export async function PATCH(req: NextRequest) {
       };
       await Notification.create({
         type: "request_approved",
-        title: `Request Approved`,
-        message: `Your ${actionLabels[action]} request for ${resourceType} "${request.title}" has been approved.${
+        title: `${requestSubjectPrefix}Request Approved`,
+        message: `${requestSubjectPrefix}Your ${actionLabels[action]} request for ${resourceType} "${request.title}" has been approved.${
           reviewNote ? ` Note: ${reviewNote.trim()}` : ""
         }`,
         targetUsers: [request.uploadedBy],
@@ -632,10 +653,17 @@ export async function PATCH(req: NextRequest) {
       section: request.section,
     });
 
+    let requestSubjectName = "";
+    if (request.subject) {
+      const subDoc = await Subject.findById(request.subject).select("name").lean();
+      if (subDoc?.name) requestSubjectName = subDoc.name;
+    }
+    const requestSubjectPrefix = requestSubjectName ? `[${requestSubjectName}] ` : "";
+
     await Notification.create({
       type: "request_denied",
-      title: `Request Denied`,
-      message: `Your ${action} request for ${resourceType} "${request.title}" has been denied.${
+      title: `${requestSubjectPrefix}Request Denied`,
+      message: `${requestSubjectPrefix}Your ${action} request for ${resourceType} "${request.title}" has been denied.${
         reviewNote ? ` Reason: ${reviewNote.trim()}` : ""
       }`,
       targetUsers: [request.uploadedBy],
