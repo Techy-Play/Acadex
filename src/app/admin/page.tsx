@@ -1,15 +1,17 @@
 /**
  * @page AdminDashboard (/admin)
- * @description Modern Admin Dashboard — quick statistics, priority alerts,
- * curated command center, and simple, real-time activity feed.
+ * @description Advanced Admin Command Center — aggregated analytics, priority review center,
+ * instant resource preview, command finder, and categorized activity feed.
  */
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { useAdminLightbox } from "@/context/admin-lightbox-context";
 import {
   Users,
   FileText,
@@ -27,65 +29,104 @@ import {
   LayoutGrid,
   ListFilter,
   Sparkles,
-  Layers,
   ChevronRight,
   Clock,
+  Search,
+  Plus,
+  Layers,
+  RotateCw,
+  Eye,
+  CheckCircle2,
+  AlertTriangle,
+  Inbox,
+  Sunrise,
+  Sun,
+  Moon,
+  Calendar,
+  BarChart3,
+  ExternalLink,
+  ShieldCheck,
+  UserCheck,
+  UserPlus,
+  Compass,
 } from "lucide-react";
 
 type DashboardLayout = "overview" | "compact" | "analytics";
+type ActivityCategory = "all" | "uploads" | "requests" | "users";
 
 interface Stats {
   totalStudents: number;
   totalNotes: number;
   totalAssignments: number;
   totalPracticals: number;
+  totalLibrary: number;
   totalSubjects: number;
   totalStreams: number;
   totalSections: number;
 }
 
-interface DashStats {
-  pendingRequests: number;
+interface PendingQueues {
+  accessRequests: number;
+  adminRequests: number;
+  userRequests: number;
   unreadMessages: number;
+  total: number;
+}
+
+interface RecentUpload {
+  id: string;
+  type: "note" | "assignment" | "practical" | "library";
+  title: string;
+  fileUrl: string;
+  subjectName: string;
+  sectionName?: string | null;
+  uploadedBy: string;
+  createdAt: string;
 }
 
 interface ActivityItem {
   id: string;
   action: string;
   details: string;
+  sectionName?: string | null;
   user: { name: string; college_id: string } | null;
   createdAt: string;
 }
 
-const actionLabels: Record<string, { label: string; icon: string; color: string }> = {
-  USER_LOGIN: { label: "User Login", icon: "🔑", color: "text-blue-500" },
-  LOGIN: { label: "User Login", icon: "🔑", color: "text-blue-500" },
-  PASSWORD_CHANGED: { label: "Password Changed", icon: "🔐", color: "text-amber-500" },
-  NOTE_CREATED: { label: "Note Added", icon: "📄", color: "text-indigo-500" },
-  NOTE_ADDED: { label: "Note Added", icon: "📄", color: "text-indigo-500" },
-  NOTE_UPDATED: { label: "Note Updated", icon: "📝", color: "text-indigo-400" },
-  NOTE_DELETED: { label: "Note Deleted", icon: "🗑️", color: "text-red-400" },
-  ASSIGNMENT_CREATED: { label: "Assignment Added", icon: "📝", color: "text-purple-500" },
-  ASSIGNMENT_ADDED: { label: "Assignment Added", icon: "📝", color: "text-purple-500" },
-  ASSIGNMENT_UPDATED: { label: "Assignment Updated", icon: "✏️", color: "text-purple-400" },
-  ASSIGNMENT_DELETED: { label: "Assignment Deleted", icon: "🗑️", color: "text-red-400" },
-  PRACTICAL_CREATED: { label: "Practical Added", icon: "🧪", color: "text-emerald-500" },
-  PRACTICAL_ADDED: { label: "Practical Added", icon: "🧪", color: "text-emerald-500" },
-  PRACTICAL_UPDATED: { label: "Practical Updated", icon: "🔬", color: "text-emerald-400" },
-  PRACTICAL_DELETED: { label: "Practical Deleted", icon: "🗑️", color: "text-red-400" },
-  ACCESS_REQUEST_APPROVED: { label: "Request Approved", icon: "✅", color: "text-green-500" },
-  ACCESS_REQUEST_DENIED: { label: "Request Denied", icon: "❌", color: "text-red-500" },
-  STUDENT_CREATED: { label: "Student Added", icon: "👤", color: "text-blue-500" },
-  STUDENT_UPDATED: { label: "Student Updated", icon: "✏️", color: "text-blue-400" },
-  STUDENT_DELETED: { label: "Student Deleted", icon: "🗑️", color: "text-red-400" },
-  ADMIN_REQUEST_CREATED: { label: "Admin Request", icon: "🛡️", color: "text-purple-500" },
-  ADMIN_REQUEST_APPROVED: { label: "Admin Request Approved", icon: "✅", color: "text-green-500" },
-  ADMIN_REQUEST_DENIED: { label: "Admin Request Denied", icon: "❌", color: "text-red-500" },
-  SUBJECT_CREATED: { label: "Subject Added", icon: "📚", color: "text-teal-500" },
+const actionLabels: Record<string, { label: string; icon: string; color: string; category: ActivityCategory }> = {
+  USER_LOGIN: { label: "User Login", icon: "🔑", color: "text-blue-500", category: "users" },
+  LOGIN: { label: "User Login", icon: "🔑", color: "text-blue-500", category: "users" },
+  PASSWORD_CHANGED: { label: "Password Changed", icon: "🔐", color: "text-amber-500", category: "users" },
+  NOTE_CREATED: { label: "Note Added", icon: "📄", color: "text-indigo-500", category: "uploads" },
+  NOTE_ADDED: { label: "Note Added", icon: "📄", color: "text-indigo-500", category: "uploads" },
+  NOTE_UPDATED: { label: "Note Updated", icon: "📝", color: "text-indigo-400", category: "uploads" },
+  NOTE_DELETED: { label: "Note Deleted", icon: "🗑️", color: "text-red-400", category: "uploads" },
+  ASSIGNMENT_CREATED: { label: "Assignment Added", icon: "📝", color: "text-purple-500", category: "uploads" },
+  ASSIGNMENT_ADDED: { label: "Assignment Added", icon: "📝", color: "text-purple-500", category: "uploads" },
+  ASSIGNMENT_UPDATED: { label: "Assignment Updated", icon: "✏️", color: "text-purple-400", category: "uploads" },
+  ASSIGNMENT_DELETED: { label: "Assignment Deleted", icon: "🗑️", color: "text-red-400", category: "uploads" },
+  PRACTICAL_CREATED: { label: "Practical Added", icon: "🧪", color: "text-emerald-500", category: "uploads" },
+  PRACTICAL_ADDED: { label: "Practical Added", icon: "🧪", color: "text-emerald-500", category: "uploads" },
+  PRACTICAL_UPDATED: { label: "Practical Updated", icon: "🔬", color: "text-emerald-400", category: "uploads" },
+  PRACTICAL_DELETED: { label: "Practical Deleted", icon: "🗑️", color: "text-red-400", category: "uploads" },
+  ACCESS_REQUEST_APPROVED: { label: "Request Approved", icon: "✅", color: "text-green-500", category: "requests" },
+  ACCESS_REQUEST_DENIED: { label: "Request Denied", icon: "❌", color: "text-red-500", category: "requests" },
+  STUDENT_CREATED: { label: "Student Added", icon: "👤", color: "text-blue-500", category: "users" },
+  STUDENT_UPDATED: { label: "Student Updated", icon: "✏️", color: "text-blue-400", category: "users" },
+  STUDENT_DELETED: { label: "Student Deleted", icon: "🗑️", color: "text-red-400", category: "users" },
+  ADMIN_REQUEST_CREATED: { label: "Admin Request", icon: "🛡️", color: "text-purple-500", category: "requests" },
+  ADMIN_REQUEST_APPROVED: { label: "Admin Request Approved", icon: "✅", color: "text-green-500", category: "requests" },
+  ADMIN_REQUEST_DENIED: { label: "Admin Request Denied", icon: "❌", color: "text-red-500", category: "requests" },
+  SUBJECT_CREATED: { label: "Subject Added", icon: "📚", color: "text-teal-500", category: "uploads" },
 };
 
 function getActionInfo(action: string) {
-  return actionLabels[action] || { label: action.replace(/_/g, " "), icon: "📋", color: "text-muted-foreground" };
+  return actionLabels[action] || {
+    label: action.replace(/_/g, " "),
+    icon: "📋",
+    color: "text-muted-foreground",
+    category: "users" as ActivityCategory,
+  };
 }
 
 function timeAgo(dateStr: string) {
@@ -103,23 +144,37 @@ function timeAgo(dateStr: string) {
 }
 
 export default function AdminDashboard() {
+  const { openLightbox } = useAdminLightbox();
+
   const [stats, setStats] = useState<Stats>({
     totalStudents: 0,
     totalNotes: 0,
     totalAssignments: 0,
     totalPracticals: 0,
+    totalLibrary: 0,
     totalSubjects: 0,
     totalStreams: 0,
     totalSections: 0,
   });
-  const [dashStats, setDashStats] = useState<DashStats>({
-    pendingRequests: 0,
+
+  const [pending, setPending] = useState<PendingQueues>({
+    accessRequests: 0,
+    adminRequests: 0,
+    userRequests: 0,
     unreadMessages: 0,
+    total: 0,
   });
+
+  const [recentUploads, setRecentUploads] = useState<RecentUpload[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [activityFilter, setActivityFilter] = useState<ActivityCategory>("all");
   const [adminName, setAdminName] = useState("Administrator");
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showQuickActionMenu, setShowQuickActionMenu] = useState(false);
+
   const [layout, setLayout] = useState<DashboardLayout>(() => {
     if (typeof window !== "undefined") {
       return (localStorage.getItem("admin-dashboard-layout") as DashboardLayout) || "overview";
@@ -127,69 +182,73 @@ export default function AdminDashboard() {
     return "overview";
   });
 
-  useEffect(() => {
-    async function fetchAll() {
-      try {
-        const [
-          meRes,
-          studentsRes,
-          notesRes,
-          assignmentsRes,
-          practicalsRes,
-          subjectsRes,
-          streamsRes,
-          sectionsRes,
-          dashStatsRes,
-          activityRes,
-        ] = await Promise.all([
-          fetch("/api/auth/me"),
-          fetch("/api/admin/students"),
-          fetch("/api/notes"),
-          fetch("/api/assignments"),
-          fetch("/api/practicals"),
-          fetch("/api/subjects"),
-          fetch("/api/streams"),
-          fetch("/api/sections"),
-          fetch("/api/admin/dashboard-stats"),
-          fetch("/api/admin/activity"),
-        ]);
+  const fetchDashboardData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    try {
+      const [meRes, statsRes, activityRes] = await Promise.all([
+        fetch("/api/auth/me"),
+        fetch("/api/admin/dashboard-stats"),
+        fetch("/api/admin/activity"),
+      ]);
 
-        const meData = meRes.ok ? await meRes.json() : null;
+      if (meRes.ok) {
+        const meData = await meRes.json();
         if (meData?.user) {
           setIsSuperAdmin(Boolean(meData.user.isSuperAdmin));
           if (meData.user.name) setAdminName(meData.user.name);
         }
-
-        const studentsData = studentsRes.ok ? await studentsRes.json() : { students: [] };
-        const notesData = notesRes.ok ? await notesRes.json() : { notes: [] };
-        const assignmentsData = assignmentsRes.ok ? await assignmentsRes.json() : { assignments: [] };
-        const practicalsData = practicalsRes.ok ? await practicalsRes.json() : { practicals: [] };
-        const subjectsData = subjectsRes.ok ? await subjectsRes.json() : { subjects: [] };
-        const streamsData = streamsRes.ok ? await streamsRes.json() : { streams: [] };
-        const sectionsData = sectionsRes.ok ? await sectionsRes.json() : { sections: [] };
-        const dashStatsData = dashStatsRes.ok ? await dashStatsRes.json() : { pendingRequests: 0, unreadMessages: 0 };
-        const activityData = activityRes.ok ? await activityRes.json() : { activities: [] };
-
-        setStats({
-          totalStudents:
-            studentsData.students?.filter((s: { role: string }) => s.role === "student").length || 0,
-          totalNotes: notesData.notes?.length || 0,
-          totalAssignments: assignmentsData.assignments?.length || 0,
-          totalPracticals: practicalsData.practicals?.length || 0,
-          totalSubjects: subjectsData.subjects?.length || 0,
-          totalStreams: streamsData.streams?.length || 0,
-          totalSections: sectionsData.sections?.length || 0,
-        });
-        setDashStats(dashStatsData);
-        setActivities(activityData.activities || []);
-      } catch (error) {
-        console.error("Failed to fetch admin stats:", error);
-      } finally {
-        setLoading(false);
       }
+
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        if (statsData.counts) {
+          setStats({
+            totalStudents: statsData.counts.students || 0,
+            totalNotes: statsData.counts.notes || 0,
+            totalAssignments: statsData.counts.assignments || 0,
+            totalPracticals: statsData.counts.practicals || 0,
+            totalLibrary: statsData.counts.library || 0,
+            totalSubjects: statsData.counts.subjects || 0,
+            totalStreams: statsData.counts.streams || 0,
+            totalSections: statsData.counts.sections || 0,
+          });
+        }
+        if (statsData.pending) {
+          setPending(statsData.pending);
+        } else {
+          // Fallback compatibility
+          const acc = statsData.pendingRequests || 0;
+          const msg = statsData.unreadMessages || 0;
+          setPending({
+            accessRequests: acc,
+            adminRequests: 0,
+            userRequests: 0,
+            unreadMessages: msg,
+            total: acc + msg,
+          });
+        }
+        if (Array.isArray(statsData.recentUploads)) {
+          setRecentUploads(statsData.recentUploads);
+        }
+      }
+
+      if (activityRes.ok) {
+        const actData = await activityRes.json();
+        if (Array.isArray(actData.activities)) {
+          setActivities(actData.activities);
+        }
+      }
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+    } finally {
+      setLoading(false);
+      if (isRefresh) setRefreshing(false);
     }
-    fetchAll();
   }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const handleLayoutChange = (l: DashboardLayout) => {
     setLayout(l);
@@ -198,16 +257,26 @@ export default function AdminDashboard() {
     }
   };
 
-  const greeting = useMemo(() => {
+  const { greeting, GreetingIcon } = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
+    if (hour < 12) return { greeting: "Good morning", GreetingIcon: Sunrise };
+    if (hour < 18) return { greeting: "Good afternoon", GreetingIcon: Sun };
+    return { greeting: "Good evening", GreetingIcon: Moon };
   }, []);
 
+  const todayFormatted = useMemo(() => {
+    return new Date().toLocaleDateString("en-IN", {
+      weekday: "long",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }, []);
+
+  // Primary Metrics Grid Cards
   const statCards = [
     {
-      title: "Total Students",
+      title: "Students",
       value: stats.totalStudents,
       sublabel: "Enrolled Learners",
       icon: Users,
@@ -217,9 +286,9 @@ export default function AdminDashboard() {
       href: "/admin/users",
     },
     {
-      title: "Active Notes",
+      title: "Notes",
       value: stats.totalNotes,
-      sublabel: "Course Documents",
+      sublabel: "Lecture Documents",
       icon: FileText,
       color: "text-indigo-500",
       bg: "bg-indigo-500/10",
@@ -239,12 +308,22 @@ export default function AdminDashboard() {
     {
       title: "Practicals",
       value: stats.totalPracticals,
-      sublabel: "Lab Experiments",
+      sublabel: "Lab Manuals",
       icon: FlaskConical,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
       border: "border-emerald-500/20",
       href: "/admin/practicals",
+    },
+    {
+      title: "Library",
+      value: stats.totalLibrary,
+      sublabel: "Reference Catalog",
+      icon: BookOpen,
+      color: "text-sky-500",
+      bg: "bg-sky-500/10",
+      border: "border-sky-500/20",
+      href: "/admin/library",
     },
     ...(isSuperAdmin
       ? [
@@ -252,7 +331,7 @@ export default function AdminDashboard() {
             title: "Subjects",
             value: stats.totalSubjects,
             sublabel: "Curriculum Units",
-            icon: BookOpen,
+            icon: Layers,
             color: "text-teal-500",
             bg: "bg-teal-500/10",
             border: "border-teal-500/20",
@@ -282,36 +361,188 @@ export default function AdminDashboard() {
       : []),
   ];
 
+  // Quick Command Finder list
+  const allCommands = useMemo(() => {
+    return [
+      { label: "Notes & Lectures", href: "/admin/notes", icon: FileText, category: "Academic Content", desc: "Upload & publish PDF lecture notes" },
+      { label: "Assignments & Deadlines", href: "/admin/assignments", icon: ClipboardList, category: "Academic Content", desc: "Manage student coursework & due dates" },
+      { label: "Practicals & Lab Guides", href: "/admin/practicals", icon: FlaskConical, category: "Academic Content", desc: "Lab manuals and code references" },
+      { label: "Digital Library", href: "/admin/library", icon: BookOpen, category: "Academic Content", desc: "Reference textbooks and papers" },
+      { label: "Students Directory", href: "/admin/users", icon: Users, category: "User Governance", desc: "Enrollments, active accounts & section rosters" },
+      { label: "Enroll Student", href: "/admin/add-student", icon: UserPlus, category: "User Governance", desc: "Create a new student credential account" },
+      { label: "Access Requests Queue", href: "/admin/access-requests", icon: Bell, category: "Review Queues", desc: "Student registration approvals", badge: pending.accessRequests > 0 ? `${pending.accessRequests} Pending` : undefined },
+      { label: "Student Resource Submissions", href: "/admin/user-requests", icon: Inbox, category: "Review Queues", desc: "Student submitted notes & practicals", badge: pending.userRequests > 0 ? `${pending.userRequests} Pending` : undefined },
+      ...(isSuperAdmin
+        ? [
+            { label: "Admin Privilege Requests", href: "/admin/admin-requests", icon: Shield, category: "Review Queues", desc: "Faculty section permission changes", badge: pending.adminRequests > 0 ? `${pending.adminRequests} Pending` : undefined },
+            { label: "Subjects Catalog", href: "/admin/subjects", icon: Layers, category: "Curriculum", desc: "Manage degree subjects & credits" },
+            { label: "Streams & Departments", href: "/admin/streams", icon: GraduationCap, category: "Curriculum", desc: "Academic departments & branches" },
+            { label: "Sections & Batches", href: "/admin/sections", icon: School, category: "Curriculum", desc: "Class groups and section assignments" },
+          ]
+        : []),
+      { label: "Contact Messages Inbox", href: "/admin/messages", icon: Mail, category: "Review Queues", desc: "Student inquiries and feedback", badge: pending.unreadMessages > 0 ? `${pending.unreadMessages} Unread` : undefined },
+    ];
+  }, [isSuperAdmin, pending]);
+
+  // Filter commands by search query
+  const filteredCommands = useMemo(() => {
+    if (!searchQuery.trim()) return allCommands;
+    const q = searchQuery.toLowerCase().trim();
+    return allCommands.filter(
+      (c) =>
+        c.label.toLowerCase().includes(q) ||
+        c.category.toLowerCase().includes(q) ||
+        c.desc.toLowerCase().includes(q)
+    );
+  }, [allCommands, searchQuery]);
+
+  // Filter activities by category
+  const filteredActivities = useMemo(() => {
+    if (activityFilter === "all") return activities;
+    return activities.filter((a) => {
+      const info = getActionInfo(a.action);
+      return info.category === activityFilter;
+    });
+  }, [activities, activityFilter]);
+
+  // Academic Content Breakdown calculation
+  const totalAcademicResources = stats.totalNotes + stats.totalAssignments + stats.totalPracticals + stats.totalLibrary;
+  const contentDistribution = useMemo(() => {
+    if (totalAcademicResources === 0) return { notes: 25, assignments: 25, practicals: 25, library: 25 };
+    return {
+      notes: Math.round((stats.totalNotes / totalAcademicResources) * 100),
+      assignments: Math.round((stats.totalAssignments / totalAcademicResources) * 100),
+      practicals: Math.round((stats.totalPracticals / totalAcademicResources) * 100),
+      library: Math.round((stats.totalLibrary / totalAcademicResources) * 100),
+    };
+  }, [stats, totalAcademicResources]);
+
   const layoutOptions: { key: DashboardLayout; label: string; icon: typeof LayoutGrid }[] = [
     { key: "overview", label: "Overview", icon: LayoutGrid },
     { key: "compact", label: "Compact", icon: ListFilter },
-    { key: "analytics", label: "Activity", icon: Activity },
+    { key: "analytics", label: "Activity Stream", icon: Activity },
   ];
 
   return (
     <div className="space-y-6">
-      {/* ─── Hero & Welcome Header Banner ─── */}
-      <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-card via-card to-primary/5 border border-border/80 p-6 sm:p-8 shadow-xs">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+      {/* ─── Hero Header & Action Banner ─── */}
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-card via-card to-primary/5 border border-border/80 p-5 sm:p-7 shadow-xs">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
           <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                System Active
+                Operational
               </span>
-              <span className="text-xs text-muted-foreground/60">•</span>
-              <span className="text-xs text-muted-foreground font-mono font-medium">Acadex Academic Suite</span>
+              <span className="text-muted-foreground/40">•</span>
+              <span className="inline-flex items-center gap-1.5 text-muted-foreground font-medium">
+                <Calendar className="h-3.5 w-3.5" />
+                {todayFormatted}
+              </span>
+              {isSuperAdmin && (
+                <>
+                  <span className="text-muted-foreground/40">•</span>
+                  <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider text-purple-600 dark:text-purple-400 border-purple-500/30 bg-purple-500/5">
+                    Super Admin
+                  </Badge>
+                </>
+              )}
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              {greeting}, {adminName}
-            </h1>
-            <p className="text-sm text-muted-foreground max-w-xl leading-relaxed">
-              Monitor active student cohorts, publish course resources, manage workflow authorizations, and review recent activities.
+            <div className="flex items-center gap-2">
+              <GreetingIcon className="h-6 w-6 text-amber-500 shrink-0" />
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                {greeting}, {adminName}
+              </h1>
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed">
+              Your academic command center. Review student admissions, publish learning materials, and monitor real-time class section activity.
             </p>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+            {/* Quick Action Button & Popover */}
+            <div className="relative">
+              <Button
+                size="sm"
+                className="rounded-xl gap-1.5 text-xs font-semibold shadow-xs"
+                onClick={() => setShowQuickActionMenu((prev) => !prev)}
+              >
+                <Plus className="h-4 w-4" />
+                <span>Create New</span>
+              </Button>
+
+              {showQuickActionMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowQuickActionMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-border bg-card p-2 shadow-xl z-50 animate-in fade-in zoom-in-95">
+                    <div className="px-2.5 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                      Publish Material
+                    </div>
+                    <Link
+                      href="/admin/notes"
+                      onClick={() => setShowQuickActionMenu(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                    >
+                      <FileText className="h-4 w-4 text-indigo-500" />
+                      <span>Upload Notes</span>
+                    </Link>
+                    <Link
+                      href="/admin/assignments"
+                      onClick={() => setShowQuickActionMenu(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                    >
+                      <ClipboardList className="h-4 w-4 text-purple-500" />
+                      <span>New Assignment</span>
+                    </Link>
+                    <Link
+                      href="/admin/practicals"
+                      onClick={() => setShowQuickActionMenu(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                    >
+                      <FlaskConical className="h-4 w-4 text-emerald-500" />
+                      <span>New Practical Lab</span>
+                    </Link>
+                    <Link
+                      href="/admin/library"
+                      onClick={() => setShowQuickActionMenu(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                    >
+                      <BookOpen className="h-4 w-4 text-sky-500" />
+                      <span>Add to Library</span>
+                    </Link>
+                    <div className="my-1 border-t border-border/60" />
+                    <div className="px-2.5 py-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                      Student Accounts
+                    </div>
+                    <Link
+                      href="/admin/add-student"
+                      onClick={() => setShowQuickActionMenu(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                    >
+                      <UserPlus className="h-4 w-4 text-blue-500" />
+                      <span>Enroll Student</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Manual Refresh Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchDashboardData(true)}
+              disabled={refreshing}
+              className="rounded-xl h-9 w-9 p-0"
+              title="Refresh Dashboard Statistics"
+            >
+              <RotateCw className={`h-4 w-4 text-muted-foreground ${refreshing ? "animate-spin text-primary" : ""}`} />
+            </Button>
+
             {/* Layout Mode Segmented Control */}
             <div className="flex items-center gap-1 bg-muted/80 backdrop-blur-xs rounded-xl p-1 border border-border/60">
               {layoutOptions.map((opt) => (
@@ -326,7 +557,7 @@ export default function AdminDashboard() {
                   }`}
                 >
                   <opt.icon className="h-3.5 w-3.5" />
-                  <span>{opt.label}</span>
+                  <span className="hidden sm:inline">{opt.label}</span>
                 </button>
               ))}
             </div>
@@ -334,24 +565,18 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ─── Metric & Stats Cards Grid ─── */}
-      <div
-        className={`grid gap-3.5 sm:gap-4 ${
-          layout === "compact"
-            ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7"
-            : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7"
-        }`}
-      >
+      {/* ─── Metrics KPI Cards Grid ─── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-3.5">
         {statCards.map((stat) => (
           <Link key={stat.title} href={stat.href} className="group">
-            <Card className="h-full rounded-2xl border border-border/80 bg-card hover:border-primary/40 hover:shadow-md transition-all duration-200 cursor-pointer p-4 flex flex-col justify-between">
-              <div className="flex items-start justify-between gap-2">
+            <Card className="h-full rounded-2xl border border-border/80 bg-card hover:border-primary/40 hover:shadow-md transition-all duration-200 cursor-pointer p-3.5 sm:p-4 flex flex-col justify-between">
+              <div className="flex items-start justify-between gap-1.5">
                 <div className={`p-2 rounded-xl ${stat.bg} ${stat.color} border ${stat.border} transition-transform group-hover:scale-105 duration-200`}>
                   <stat.icon className="h-4 w-4" />
                 </div>
                 <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </div>
-              <div className="mt-3.5 space-y-0.5">
+              <div className="mt-3 space-y-0.5">
                 <p className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                   {loading ? (
                     <span className="inline-block h-8 w-12 bg-muted rounded animate-pulse" />
@@ -360,30 +585,50 @@ export default function AdminDashboard() {
                   )}
                 </p>
                 <p className="text-xs font-semibold text-foreground truncate">{stat.title}</p>
-                <p className="text-[11px] text-muted-foreground/80 truncate hidden sm:block">{stat.sublabel}</p>
+                <p className="text-[10px] text-muted-foreground/80 truncate hidden sm:block">{stat.sublabel}</p>
               </div>
             </Card>
           </Link>
         ))}
       </div>
 
+      {/* ─── Priority Action Center (Review Queues) ─── */}
+      <PriorityActionCenter pending={pending} loading={loading} isSuperAdmin={isSuperAdmin} />
+
       {/* ─── Dynamic Layout Content ─── */}
       {layout === "overview" && (
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Column: Recent Activity Feed (2/3 width) */}
+          {/* Left Column (2/3): Recent Uploads & Activity Feed */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Quick Command Finder */}
+            <CommandFinder
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              commands={filteredCommands}
+            />
+
+            {/* Recent Uploads Showcase with 1-Click Lightbox Preview */}
+            <RecentUploadsShowcase
+              uploads={recentUploads}
+              loading={loading}
+              onPreview={(url, title) => openLightbox(url, title)}
+            />
+
+            {/* Activity Stream with Category Filters */}
             <ActivityFeed
-              activities={activities.slice(0, 10)}
+              activities={filteredActivities}
+              filter={activityFilter}
+              onFilterChange={setActivityFilter}
               loading={loading}
             />
           </div>
 
-          {/* Right Column: Priority Alerts & Command Center (1/3 width) */}
+          {/* Right Column (1/3): Academic Health & Command Center */}
           <div className="space-y-6">
-            <PriorityAlertCards
-              pendingRequests={dashStats.pendingRequests}
-              unreadMessages={dashStats.unreadMessages}
-              loading={loading}
+            <AcademicHealthCard
+              distribution={contentDistribution}
+              total={totalAcademicResources}
+              stats={stats}
             />
             <AdminCommandCenter isSuperAdmin={isSuperAdmin} />
           </div>
@@ -392,15 +637,28 @@ export default function AdminDashboard() {
 
       {layout === "compact" && (
         <div className="space-y-6">
-          <PriorityAlertCards
-            pendingRequests={dashStats.pendingRequests}
-            unreadMessages={dashStats.unreadMessages}
-            loading={loading}
-            horizontal
+          <CommandFinder
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            commands={filteredCommands}
           />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <RecentUploadsShowcase
+              uploads={recentUploads}
+              loading={loading}
+              onPreview={(url, title) => openLightbox(url, title)}
+            />
+            <AcademicHealthCard
+              distribution={contentDistribution}
+              total={totalAcademicResources}
+              stats={stats}
+            />
+          </div>
           <AdminCommandCenter isSuperAdmin={isSuperAdmin} grid />
           <ActivityFeed
-            activities={activities.slice(0, 10)}
+            activities={filteredActivities}
+            filter={activityFilter}
+            onFilterChange={setActivityFilter}
             loading={loading}
           />
         </div>
@@ -408,17 +666,29 @@ export default function AdminDashboard() {
 
       {layout === "analytics" && (
         <div className="space-y-6">
-          <PriorityAlertCards
-            pendingRequests={dashStats.pendingRequests}
-            unreadMessages={dashStats.unreadMessages}
-            loading={loading}
-            horizontal
-          />
-          <ActivityFeed
-            activities={activities}
-            loading={loading}
-            expanded
-          />
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <ActivityFeed
+                activities={filteredActivities}
+                filter={activityFilter}
+                onFilterChange={setActivityFilter}
+                loading={loading}
+                expanded
+              />
+            </div>
+            <div className="space-y-6">
+              <AcademicHealthCard
+                distribution={contentDistribution}
+                total={totalAcademicResources}
+                stats={stats}
+              />
+              <RecentUploadsShowcase
+                uploads={recentUploads}
+                loading={loading}
+                onPreview={(url, title) => openLightbox(url, title)}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -426,33 +696,488 @@ export default function AdminDashboard() {
 }
 
 /* ─────────────────────────────────────────────────────────────
- * Sub-components: Priority Alerts, Command Center, Activity Feed
+ * Sub-components: Priority Center, Uploads, Activity, Commands
  * ───────────────────────────────────────────────────────────── */
 
-function ActivityFeed({
-  activities,
+function PriorityActionCenter({
+  pending,
   loading,
-  expanded,
+  isSuperAdmin,
 }: {
-  activities: ActivityItem[];
+  pending: PendingQueues;
   loading: boolean;
-  expanded?: boolean;
+  isSuperAdmin: boolean;
 }) {
+  const cards = [
+    {
+      title: "Access Requests",
+      count: pending.accessRequests,
+      sublabel: "New student registrations awaiting verification",
+      href: "/admin/access-requests",
+      icon: Bell,
+      color: "text-amber-500",
+      bg: "bg-amber-500/10",
+      border: "border-amber-500/30",
+      activeText: "Review Admissions",
+    },
+    {
+      title: "Student Uploads",
+      count: pending.userRequests,
+      sublabel: "Student submitted notes & materials pending review",
+      href: "/admin/user-requests",
+      icon: Inbox,
+      color: "text-indigo-500",
+      bg: "bg-indigo-500/10",
+      border: "border-indigo-500/30",
+      activeText: "Review Submissions",
+    },
+    ...(isSuperAdmin
+      ? [
+          {
+            title: "Admin Requests",
+            count: pending.adminRequests,
+            sublabel: "Faculty privilege and section change proposals",
+            href: "/admin/admin-requests",
+            icon: Shield,
+            color: "text-purple-500",
+            bg: "bg-purple-500/10",
+            border: "border-purple-500/30",
+            activeText: "Review Permissions",
+          },
+        ]
+      : []),
+    {
+      title: "Contact Messages",
+      count: pending.unreadMessages,
+      sublabel: "Direct student queries and website feedback",
+      href: "/admin/messages",
+      icon: Mail,
+      color: "text-blue-500",
+      bg: "bg-blue-500/10",
+      border: "border-blue-500/30",
+      activeText: "View Inquiries",
+    },
+  ];
+
+  if (!loading && pending.total === 0) {
+    return (
+      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 sm:p-5 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Priority Queues Clear</p>
+            <p className="text-xs text-muted-foreground">No pending access requests, student uploads, or unread messages requiring attention.</p>
+          </div>
+        </div>
+        <Badge variant="outline" className="hidden sm:inline-flex text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+          All Caught Up
+        </Badge>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Priority Action Queues
+          </span>
+        </div>
+        {pending.total > 0 && (
+          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+            {pending.total} items pending
+          </span>
+        )}
+      </div>
+
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map((item) => {
+          const ItemIcon = item.icon;
+          const hasPending = item.count > 0;
+          return (
+            <Link key={item.title} href={item.href} className="group">
+              <Card
+                className={`h-full rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${
+                  hasPending
+                    ? `${item.border} bg-card hover:bg-muted/40`
+                    : "border-border/80 bg-card hover:border-border"
+                }`}
+              >
+                <CardContent className="p-4 flex flex-col justify-between h-full gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold tracking-tight text-foreground">
+                          {loading ? <span className="inline-block h-6 w-8 bg-muted rounded animate-pulse" /> : item.count}
+                        </span>
+                        {hasPending && (
+                          <Badge variant="outline" className={`text-[10px] uppercase font-bold tracking-wider ${item.bg} ${item.color} ${item.border}`}>
+                            Action Needed
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs font-semibold text-foreground truncate">{item.title}</p>
+                      <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{item.sublabel}</p>
+                    </div>
+                    <div className={`p-2.5 rounded-xl ${item.bg} ${item.color} shrink-0`}>
+                      <ItemIcon className="h-4.5 w-4.5" />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-border/50 flex items-center justify-between text-xs font-semibold text-primary">
+                    <span>{hasPending ? item.activeText : "Open Queue"}</span>
+                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CommandFinder({
+  searchQuery,
+  setSearchQuery,
+  commands,
+}: {
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  commands: Array<{ label: string; href: string; icon: any; category: string; desc: string; badge?: string }>;
+}) {
+  return (
+    <Card className="rounded-3xl border border-border/80 shadow-xs overflow-hidden">
+      <CardContent className="p-4 sm:p-5 space-y-3.5">
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            type="text"
+            placeholder="Search dashboard commands, modules, or actions (e.g. 'notes', 'add student', 'admissions')..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-10 rounded-2xl h-11 bg-muted/40 border-border/80 text-xs sm:text-sm focus-visible:ring-primary/40"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground font-mono"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        {searchQuery ? (
+          <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1">
+              Matching Shortcuts ({commands.length})
+            </p>
+            {commands.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">No matching admin modules found.</p>
+            ) : (
+              commands.map((cmd) => {
+                const IconComponent = cmd.icon;
+                return (
+                  <Link
+                    key={cmd.href}
+                    href={cmd.href}
+                    className="flex items-center justify-between p-2.5 rounded-xl border border-border/60 bg-card hover:bg-muted/50 hover:border-primary/40 transition-all group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2 rounded-lg bg-muted text-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                        <IconComponent className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-foreground">{cmd.label}</span>
+                          <span className="text-[10px] font-mono text-muted-foreground/60">({cmd.category})</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate">{cmd.desc}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {cmd.badge && (
+                        <Badge variant="outline" className="text-[10px] font-semibold text-amber-600 border-amber-500/30 bg-amber-500/10">
+                          {cmd.badge}
+                        </Badge>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
+                    </div>
+                  </Link>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-medium text-muted-foreground">Quick jumps:</span>
+            <Link href="/admin/notes" className="text-xs px-2.5 py-1 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition-colors font-medium">
+              📄 Notes
+            </Link>
+            <Link href="/admin/assignments" className="text-xs px-2.5 py-1 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition-colors font-medium">
+              📝 Assignments
+            </Link>
+            <Link href="/admin/users" className="text-xs px-2.5 py-1 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition-colors font-medium">
+              👥 Students
+            </Link>
+            <Link href="/admin/access-requests" className="text-xs px-2.5 py-1 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition-colors font-medium">
+              🔔 Admissions
+            </Link>
+            <Link href="/admin/library" className="text-xs px-2.5 py-1 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition-colors font-medium">
+              📚 Library
+            </Link>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecentUploadsShowcase({
+  uploads,
+  loading,
+  onPreview,
+}: {
+  uploads: RecentUpload[];
+  loading: boolean;
+  onPreview: (url: string, title: string) => void;
+}) {
+  const typeBadgeConfig: Record<string, { label: string; color: string }> = {
+    note: { label: "Note", color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30" },
+    assignment: { label: "Assignment", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30" },
+    practical: { label: "Practical", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" },
+    library: { label: "Library", color: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30" },
+  };
+
   return (
     <Card className="rounded-3xl border border-border/80 shadow-xs overflow-hidden">
       <CardHeader className="pb-3 border-b border-border/60 bg-muted/20 flex flex-row items-center justify-between gap-3">
         <div className="space-y-0.5">
           <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-            <Activity className="h-4.5 w-4.5 text-primary" />
-            Recent Activity
+            <Sparkles className="h-4.5 w-4.5 text-primary" />
+            Recent Resource Uploads
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Latest moderation, uploads, and student activities across your sections.
+            Recently published learning documents with instant lightbox review.
           </p>
         </div>
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary">
-          {activities.length} recent
+        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary">
+          Live Sync
         </span>
+      </CardHeader>
+      <CardContent className="p-4 sm:p-5">
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 py-2">
+                <div className="h-10 w-10 rounded-xl bg-muted animate-pulse shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3.5 w-2/3 bg-muted rounded animate-pulse" />
+                  <div className="h-2.5 w-1/3 bg-muted rounded animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : uploads.length === 0 ? (
+          <div className="py-8 text-center space-y-2">
+            <FileText className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+            <p className="text-sm font-medium text-muted-foreground">No recent uploads recorded</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {uploads.map((item) => {
+              const cfg = typeBadgeConfig[item.type] || { label: item.type, color: "bg-muted text-muted-foreground" };
+              return (
+                <div
+                  key={`${item.type}-${item.id}`}
+                  className="flex items-center justify-between p-3 rounded-2xl border border-border/60 bg-card hover:bg-muted/30 transition-all gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
+                      {item.type === "note" && <FileText className="h-4 w-4" />}
+                      {item.type === "assignment" && <ClipboardList className="h-4 w-4" />}
+                      {item.type === "practical" && <FlaskConical className="h-4 w-4" />}
+                      {item.type === "library" && <BookOpen className="h-4 w-4" />}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-semibold text-foreground truncate max-w-[220px] sm:max-w-xs" title={item.title}>
+                          {item.title}
+                        </span>
+                        <Badge variant="outline" className={`text-[10px] font-semibold py-0 px-1.5 ${cfg.color}`}>
+                          {cfg.label}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground flex-wrap">
+                        <span className="text-foreground/80 font-medium">{item.subjectName}</span>
+                        {item.sectionName && (
+                          <>
+                            <span>•</span>
+                            <span>{item.sectionName}</span>
+                          </>
+                        )}
+                        <span>•</span>
+                        <span>{timeAgo(item.createdAt)}</span>
+                        <span>•</span>
+                        <span className="truncate">by {item.uploadedBy}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {item.fileUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onPreview(item.fileUrl, item.title)}
+                        className="rounded-xl h-8 px-2.5 gap-1.5 text-xs font-medium"
+                        title="Instant Document Preview"
+                      >
+                        <Eye className="h-3.5 w-3.5 text-primary" />
+                        <span className="hidden sm:inline">Preview</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AcademicHealthCard({
+  distribution,
+  total,
+  stats,
+}: {
+  distribution: { notes: number; assignments: number; practicals: number; library: number };
+  total: number;
+  stats: Stats;
+}) {
+  return (
+    <Card className="rounded-3xl border border-border/80 shadow-xs overflow-hidden">
+      <CardHeader className="pb-3 border-b border-border/60 bg-muted/20">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
+            <BarChart3 className="h-4.5 w-4.5 text-primary" />
+            Content Balance
+          </CardTitle>
+          <span className="text-xs font-semibold text-muted-foreground font-mono">
+            {total} items
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 sm:p-5 space-y-4">
+        {/* Multi-segment progress bar */}
+        <div className="space-y-1.5">
+          <div className="h-3 w-full rounded-full bg-muted overflow-hidden flex">
+            <div style={{ width: `${distribution.notes}%` }} className="bg-indigo-500 h-full transition-all" title={`Notes: ${distribution.notes}%`} />
+            <div style={{ width: `${distribution.assignments}%` }} className="bg-purple-500 h-full transition-all" title={`Assignments: ${distribution.assignments}%`} />
+            <div style={{ width: `${distribution.practicals}%` }} className="bg-emerald-500 h-full transition-all" title={`Practicals: ${distribution.practicals}%`} />
+            <div style={{ width: `${distribution.library}%` }} className="bg-sky-500 h-full transition-all" title={`Library: ${distribution.library}%`} />
+          </div>
+          <p className="text-[11px] text-muted-foreground text-right">Distribution across learning formats</p>
+        </div>
+
+        {/* Legend pills */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40 border border-border/60">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-indigo-500 shrink-0" />
+              <span className="font-medium text-foreground">Notes</span>
+            </div>
+            <span className="font-mono font-semibold text-muted-foreground">{stats.totalNotes}</span>
+          </div>
+
+          <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40 border border-border/60">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-purple-500 shrink-0" />
+              <span className="font-medium text-foreground">Tasks</span>
+            </div>
+            <span className="font-mono font-semibold text-muted-foreground">{stats.totalAssignments}</span>
+          </div>
+
+          <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40 border border-border/60">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
+              <span className="font-medium text-foreground">Labs</span>
+            </div>
+            <span className="font-mono font-semibold text-muted-foreground">{stats.totalPracticals}</span>
+          </div>
+
+          <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40 border border-border/60">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-sky-500 shrink-0" />
+              <span className="font-medium text-foreground">Library</span>
+            </div>
+            <span className="font-mono font-semibold text-muted-foreground">{stats.totalLibrary}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActivityFeed({
+  activities,
+  filter,
+  onFilterChange,
+  loading,
+  expanded,
+}: {
+  activities: ActivityItem[];
+  filter: ActivityCategory;
+  onFilterChange: (f: ActivityCategory) => void;
+  loading: boolean;
+  expanded?: boolean;
+}) {
+  const filterOptions: { key: ActivityCategory; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "uploads", label: "Uploads" },
+    { key: "requests", label: "Approvals" },
+    { key: "users", label: "Users & Auth" },
+  ];
+
+  return (
+    <Card className="rounded-3xl border border-border/80 shadow-xs overflow-hidden">
+      <CardHeader className="pb-3 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="space-y-0.5">
+          <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
+            <Activity className="h-4.5 w-4.5 text-primary" />
+            Activity Stream
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Live administrative and moderation log across your cohort.
+          </p>
+        </div>
+
+        {/* Category Tabs */}
+        <div className="flex items-center gap-1 bg-muted/80 rounded-xl p-1 border border-border/60 shrink-0">
+          {filterOptions.map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => onFilterChange(opt.key)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                filter === opt.key
+                  ? "bg-card text-foreground shadow-xs border border-border/60"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </CardHeader>
       <CardContent className="p-4 sm:p-5">
         {loading ? (
@@ -470,7 +1195,7 @@ function ActivityFeed({
         ) : activities.length === 0 ? (
           <div className="py-12 text-center space-y-2">
             <Clock className="h-8 w-8 text-muted-foreground/40 mx-auto" />
-            <p className="text-sm font-medium text-muted-foreground">No recent activity</p>
+            <p className="text-sm font-medium text-muted-foreground">No activities found in this filter</p>
           </div>
         ) : (
           <div className={`space-y-1.5 divide-y divide-border/40 ${expanded ? "max-h-none" : "max-h-[460px] overflow-y-auto pr-1"}`}>
@@ -484,7 +1209,14 @@ function ActivityFeed({
                   <span className="text-xl mt-0.5 shrink-0 select-none">{info.icon}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className={`text-xs font-semibold ${info.color}`}>{info.label}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-xs font-semibold ${info.color}`}>{info.label}</span>
+                        {a.sectionName && (
+                          <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal text-muted-foreground">
+                            {a.sectionName}
+                          </Badge>
+                        )}
+                      </div>
                       <span className="text-[11px] text-muted-foreground shrink-0">{timeAgo(a.createdAt)}</span>
                     </div>
                     {a.details && (
@@ -509,106 +1241,6 @@ function ActivityFeed({
   );
 }
 
-function PriorityAlertCards({
-  pendingRequests,
-  unreadMessages,
-  loading,
-  horizontal,
-}: {
-  pendingRequests: number;
-  unreadMessages: number;
-  loading: boolean;
-  horizontal?: boolean;
-}) {
-  return (
-    <div className={horizontal ? "grid gap-4 sm:grid-cols-2" : "space-y-4"}>
-      {/* Pending Access Requests */}
-      <Link href="/admin/access-requests" className="group">
-        <Card
-          className={`rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${
-            pendingRequests > 0
-              ? "border-amber-500/40 bg-linear-to-r from-amber-500/5 to-transparent"
-              : "border-border/80 bg-card"
-          }`}
-        >
-          <CardContent className="p-5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div
-                className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ${
-                  pendingRequests > 0
-                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                <Bell className="h-5 w-5" />
-              </div>
-              <div className="space-y-0.5 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-xl font-bold tracking-tight text-foreground">
-                    {loading ? <span className="inline-block h-6 w-8 bg-muted rounded animate-pulse" /> : pendingRequests}
-                  </p>
-                  {pendingRequests > 0 && (
-                    <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30">
-                      Requires Action
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs font-semibold text-foreground">
-                  {pendingRequests === 1 ? "Pending Access Request" : "Pending Access Requests"}
-                </p>
-                <p className="text-[11px] text-muted-foreground truncate">Student registration applications</p>
-              </div>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
-          </CardContent>
-        </Card>
-      </Link>
-
-      {/* Unread Contact Messages */}
-      <Link href="/admin/messages" className="group">
-        <Card
-          className={`rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${
-            unreadMessages > 0
-              ? "border-blue-500/40 bg-linear-to-r from-blue-500/5 to-transparent"
-              : "border-border/80 bg-card"
-          }`}
-        >
-          <CardContent className="p-5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div
-                className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ${
-                  unreadMessages > 0
-                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                <Mail className="h-5 w-5" />
-              </div>
-              <div className="space-y-0.5 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-xl font-bold tracking-tight text-foreground">
-                    {loading ? <span className="inline-block h-6 w-8 bg-muted rounded animate-pulse" /> : unreadMessages}
-                  </p>
-                  {unreadMessages > 0 && (
-                    <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30">
-                      New
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs font-semibold text-foreground">
-                  {unreadMessages === 1 ? "Contact Message" : "Contact Messages"}
-                </p>
-                <p className="text-[11px] text-muted-foreground truncate">Inquiries & student feedback</p>
-              </div>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
-          </CardContent>
-        </Card>
-      </Link>
-    </div>
-  );
-}
-
 function AdminCommandCenter({
   isSuperAdmin,
   grid,
@@ -618,38 +1250,40 @@ function AdminCommandCenter({
 }) {
   const commandSections = [
     {
-      category: "Course Materials",
-      badge: "Academic",
+      category: "Academic Content",
+      badge: "Materials",
       items: [
         { label: "Notes", href: "/admin/notes", icon: FileText, color: "text-blue-500", desc: "Lecture docs & PDFs" },
-        { label: "Assignments", href: "/admin/assignments", icon: ClipboardList, color: "text-purple-500", desc: "Submissions & homework" },
-        { label: "Practicals", href: "/admin/practicals", icon: FlaskConical, color: "text-emerald-500", desc: "Lab experiments" },
-        { label: "Library", href: "/admin/library", icon: BookOpen, color: "text-indigo-500", desc: "Reference books & materials" },
+        { label: "Assignments", href: "/admin/assignments", icon: ClipboardList, color: "text-purple-500", desc: "Coursework & deadlines" },
+        { label: "Practicals", href: "/admin/practicals", icon: FlaskConical, color: "text-emerald-500", desc: "Lab manuals & guides" },
+        { label: "Digital Library", href: "/admin/library", icon: BookOpen, color: "text-sky-500", desc: "Reference books & materials" },
       ],
     },
     ...(isSuperAdmin
       ? [
           {
-            category: "Academic Structure",
+            category: "Curriculum Structure",
             badge: "Super Admin",
             items: [
-              { label: "Subjects", href: "/admin/subjects", icon: BookOpen, color: "text-teal-500", desc: "Syllabus & units" },
-              { label: "Streams", href: "/admin/streams", icon: GraduationCap, color: "text-amber-500", desc: "Departments & degrees" },
-              { label: "Sections", href: "/admin/sections", icon: School, color: "text-rose-500", desc: "Student batches" },
+              { label: "Subjects", href: "/admin/subjects", icon: Layers, color: "text-teal-500", desc: "Syllabus units & credits" },
+              { label: "Streams", href: "/admin/streams", icon: GraduationCap, color: "text-amber-500", desc: "Academic departments" },
+              { label: "Sections", href: "/admin/sections", icon: School, color: "text-rose-500", desc: "Class cohorts & batches" },
             ],
           },
         ]
       : []),
     {
-      category: "User Management & Requests",
+      category: "User Governance",
       badge: "Administration",
       items: [
-        { label: "Students Directory", href: "/admin/users", icon: Users, color: "text-blue-500", desc: "Accounts & sections" },
-        { label: "Access Requests", href: "/admin/access-requests", icon: Bell, color: "text-amber-500", desc: "New admissions" },
+        { label: "Students Directory", href: "/admin/users", icon: Users, color: "text-blue-500", desc: "Manage accounts & sections" },
+        { label: "Enroll Student", href: "/admin/add-student", icon: UserPlus, color: "text-indigo-500", desc: "Create a new student credential" },
+        { label: "Access Requests", href: "/admin/access-requests", icon: Bell, color: "text-amber-500", desc: "Student registration approvals" },
+        { label: "Student Submissions", href: "/admin/user-requests", icon: Inbox, color: "text-purple-500", desc: "Review student uploaded content" },
         ...(isSuperAdmin
-          ? [{ label: "Admin Requests", href: "/admin/admin-requests", icon: Shield, color: "text-purple-500", desc: "Privilege requests" }]
+          ? [{ label: "Admin Requests", href: "/admin/admin-requests", icon: Shield, color: "text-purple-500", desc: "Faculty privilege proposals" }]
           : []),
-        { label: "Contact Inbox", href: "/admin/messages", icon: Mail, color: "text-emerald-500", desc: "Direct messages" },
+        { label: "Contact Messages", href: "/admin/messages", icon: Mail, color: "text-emerald-500", desc: "Student inquiries & feedback" },
       ],
     },
   ];
@@ -659,11 +1293,11 @@ function AdminCommandCenter({
       <CardHeader className="pb-3 border-b border-border/60 bg-muted/20">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Command Center
+            <Compass className="h-4.5 w-4.5 text-primary" />
+            Navigation Hub
           </CardTitle>
           <Badge variant="outline" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-            1-Click Navigation
+            1-Click Control
           </Badge>
         </div>
       </CardHeader>

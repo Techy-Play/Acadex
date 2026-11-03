@@ -6,6 +6,8 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import ActivityLog from "@/models/ActivityLog";
+import Section from "@/models/Section";
+import User from "@/models/User";
 import { requireAdmin } from "@/lib/rbac";
 
 // GET /api/admin/activity — Fetch recent activity log entries
@@ -16,6 +18,8 @@ export async function GET(request: Request) {
     const { authUser } = authResult;
 
     await connectDB();
+    void Section;
+    void User;
 
     // Sub-admins only see activity from their own assigned sections
     const filter: Record<string, unknown> = {};
@@ -27,12 +31,14 @@ export async function GET(request: Request) {
       .sort({ createdAt: -1 })
       .limit(50)
       .populate("user", "name college_id role")
+      .populate("section", "name")
       .lean();
 
     const mapped = activities.map((a) => ({
       id: a._id.toString(),
       action: a.action,
       details: a.details,
+      sectionName: (a.section as { name?: string } | null)?.name || null,
       user: a.user
         ? {
             name: (a.user as { name?: string }).name || "Unknown",
